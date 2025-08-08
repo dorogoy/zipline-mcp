@@ -118,10 +118,44 @@ npm install
 - `npm run dev`: Run the server in development mode with `tsx`.
 - `npm run test`: Run tests in watch mode.
 - `npm run test:run`: Run tests once.
-- `npm run lint`: Lint the codebase.
-- `npm run lint:fix`: Lint and fix the codebase.
+- `npm run lint`: Lint the codebase using ESLint.
+- `npm run lint:fix`: Automatically fix lint errors where possible.
 - `npm run format`: Format the codebase with Prettier.
 - `npm run format:check`: Check if the codebase is formatted.
+
+### Linting
+
+#### Running Lint Locally
+
+To check for lint errors:
+
+```bash
+npm run lint
+```
+
+To automatically fix fixable issues:
+
+```bash
+npm run lint:fix
+```
+
+Or use the Makefile:
+
+```bash
+make lint
+```
+
+#### Lint in CI
+
+- Linting runs automatically on every pull request and before every release.
+- The CI will fail if there are any lint errors.
+- Linting is required for merging PRs.
+
+#### Interpreting Lint Results
+
+- Errors will be shown in the terminal or CI logs.
+- Fix errors locally using `npm run lint:fix` or by editing the code as indicated.
+- Warnings do not block CI but should be addressed for code quality.
 
 ### Makefile
 

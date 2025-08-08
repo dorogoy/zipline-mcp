@@ -35,6 +35,10 @@ format-check:
 clean:
 	rm -rf dist/
 
+# Lint the code
+lint:
+	npm run lint
+
 # Publish to npm
 publish: clean build format-check test
 	npm publish

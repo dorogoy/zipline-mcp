@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 // Mock the McpServer and its methods
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
-  McpServer: vi.fn().mockImplementation(() => ({
-    registerTool: vi.fn(),
-    connect: vi.fn(),
-  })),
+  McpServer: vi.fn().mockImplementation(function() {
+    return {
+      registerTool: vi.fn(),
+      connect: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
@@ -26,8 +27,8 @@ vi.mock('path', async (importOriginal) => {
   const actualPath = await importOriginal<typeof import('path')>();
   return {
     ...actualPath,
-    basename: vi.fn((p) => p.split('/').pop() || p),
-    extname: vi.fn((p) => {
+    basename: vi.fn((p: string) => p.split('/').pop() || p),
+    extname: vi.fn((p: string) => {
       const lastDotIndex = p.lastIndexOf('.');
       return lastDotIndex === -1 ? '' : p.substring(lastDotIndex);
     }),
@@ -40,7 +41,7 @@ vi.mock('url', () => ({
 }));
 
 // Mock console.error to suppress output during tests
-const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+vi.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('Zipline MCP Server', () => {
   beforeEach(() => {
@@ -60,6 +61,7 @@ describe('Zipline MCP Server', () => {
 
   it('should register the upload_file_to_zipline tool', async () => {
     const { server } = await import('./index.ts');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(server.registerTool).toHaveBeenCalledWith(
       'upload_file_to_zipline',
       expect.any(Object),
@@ -69,6 +71,7 @@ describe('Zipline MCP Server', () => {
 
   it('should register the get_upload_url_only tool', async () => {
     const { server } = await import('./index.ts');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(server.registerTool).toHaveBeenCalledWith(
       'get_upload_url_only',
       expect.any(Object),
@@ -78,6 +81,7 @@ describe('Zipline MCP Server', () => {
 
   it('should register the preview_upload_command tool', async () => {
     const { server } = await import('./index.ts');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(server.registerTool).toHaveBeenCalledWith(
       'preview_upload_command',
       expect.any(Object),
@@ -87,6 +91,7 @@ describe('Zipline MCP Server', () => {
 
   it('should register the validate_file tool', async () => {
     const { server } = await import('./index.ts');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(server.registerTool).toHaveBeenCalledWith(
       'validate_file',
       expect.any(Object),
@@ -97,19 +102,19 @@ describe('Zipline MCP Server', () => {
   // Add more specific tests for tool logic here
   // For example, testing the upload_file_to_zipline tool handler
   describe('upload_file_to_zipline tool', () => {
-    it('should handle successful file upload', async () => {
+    it('should handle successful file upload', () => {
       // This test will require more complex mocking of readFile, spawn, etc.
       // For now, it's a placeholder.
       // TODO: Implement detailed test for successful upload
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle file not found error', async () => {
+    it('should handle file not found error', () => {
       // TODO: Implement test for file not found
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle unsupported file type error', async () => {
+    it('should handle unsupported file type error', () => {
       // TODO: Implement test for unsupported file type
       expect(true).toBe(true); // Placeholder
     });

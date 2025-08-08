@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { spawn } from 'child_process';
-import { promisify } from 'util';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+path.dirname(__filename);
 
 const server = new McpServer({
   name: 'zipline-upload-server',
@@ -22,7 +21,7 @@ function isValidUrl(string: string): boolean {
   try {
     new URL(string);
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -63,7 +62,7 @@ server.registerTool(
   }) => {
     try {
       // Validate file exists and is accessible
-      const fileContent = await readFile(filePath, 'utf-8');
+      const fileContent = await readFile(filePath);
       const fileSize = Buffer.byteLength(fileContent, 'utf-8');
 
       // Get file extension for validation
@@ -83,11 +82,21 @@ server.registerTool(
         '.sh',
         '.yaml',
         '.yml',
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.svg',
+        '.bmp',
+        '.tiff',
       ];
 
       if (!allowedExtensions.includes(fileExt)) {
         throw new Error(
-          `File type ${fileExt} not supported. Supported types: ${allowedExtensions.join(', ')}`
+          `File type ${fileExt} not supported. Supported types: ${allowedExtensions.join(
+            ', '
+          )}`
         );
       }
 
@@ -102,15 +111,15 @@ server.registerTool(
       let stdout = '';
       let stderr = '';
 
-      child.stdout.on('data', (data) => {
+      child.stdout.on('data', (data: { toString: () => string }) => {
         stdout += data.toString();
       });
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on('data', (data: { toString: () => string }) => {
         stderr += data.toString();
       });
 
-      const result = new Promise((resolve, reject) => {
+      const result = await new Promise((resolve, reject) => {
         child.on('close', (code) => {
           if (code === 0) {
             resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
@@ -126,7 +135,7 @@ server.registerTool(
         });
       });
 
-      const { stdout: url, stderr: error } = (await result) as {
+      const { stdout: url, stderr: error } = result as {
         stdout: string;
         stderr: string;
       };
@@ -156,13 +165,13 @@ server.registerTool(
           {
             type: 'text',
             text:
-              `✅ FILE UPLOADED SUCCESSFULLY!\n\n` +
+              '✅ FILE UPLOADED SUCCESSFULLY!\n\n' +
               `📁 File: ${fileName}\n` +
               `📊 Size: ${formattedSize}\n` +
               `🏷️  Format: ${format}\n` +
               `🔗 DOWNLOAD URL: ${url}\n\n` +
-              `─────────────────────────────\n` +
-              `💡 You can now share this URL or click it to download the file.`,
+              '─────────────────────────────\n' +
+              '💡 You can now share this URL or click it to download the file.',
           },
         ],
       };
@@ -176,11 +185,11 @@ server.registerTool(
             type: 'text',
             text:
               `❌ UPLOAD FAILED!\n\nError: ${errorMessage}\n\n` +
-              `Possible solutions:\n` +
-              `• Check if the file exists and is accessible\n` +
-              `• Verify your authorization token is correct\n` +
-              `• Ensure the server https://files.etereo.cloud is reachable\n` +
-              `• Confirm the file type is supported`,
+              'Possible solutions:\n' +
+              '• Check if the file exists and is accessible\n' +
+              '• Verify your authorization token is correct\n' +
+              '• Ensure the server https://files.etereo.cloud is reachable\n' +
+              '• Confirm the file type is supported',
           },
         ],
         isError: true,
@@ -234,6 +243,14 @@ server.registerTool(
         '.sh',
         '.yaml',
         '.yml',
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.svg',
+        '.bmp',
+        '.tiff',
       ];
 
       if (!allowedExtensions.includes(fileExt)) {
@@ -249,15 +266,15 @@ server.registerTool(
       let stdout = '';
       let stderr = '';
 
-      child.stdout.on('data', (data) => {
+      child.stdout.on('data', (data: { toString: () => string }) => {
         stdout += data.toString();
       });
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on('data', (data: { toString: () => string }) => {
         stderr += data.toString();
       });
 
-      const result = new Promise((resolve, reject) => {
+      const result = await new Promise((resolve, reject) => {
         child.on('close', (code) => {
           if (code === 0) {
             resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
@@ -271,7 +288,7 @@ server.registerTool(
         });
       });
 
-      const { stdout: url, stderr: error } = (await result) as {
+      const { stdout: url, stderr: error } = result as {
         stdout: string;
         stderr: string;
       };
@@ -327,7 +344,7 @@ server.registerTool(
         .describe('Filename format (default: random)'),
     },
   },
-  async ({
+  ({
     filePath,
     authorizationToken,
     format = 'random',
@@ -340,7 +357,10 @@ server.registerTool(
       // For security, mask most of the token in the preview
       const maskedToken =
         authorizationToken.length > 8
-          ? `${authorizationToken.substring(0, 4)}...${authorizationToken.substring(authorizationToken.length - 4)}`
+          ? `${authorizationToken.substring(
+              0,
+              4
+            )}...${authorizationToken.substring(authorizationToken.length - 4)}`
           : '***masked***';
 
       const curlCommand = `curl -s -H "authorization: ${maskedToken}" https://files.etereo.cloud/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
@@ -350,12 +370,12 @@ server.registerTool(
           {
             type: 'text',
             text:
-              `📋 UPLOAD COMMAND PREVIEW:\n\n` +
+              '📋 UPLOAD COMMAND PREVIEW:\n\n' +
               `Command:\n${curlCommand}\n\n` +
-              `🔒 Token is masked for security.\n` +
-              `✂️ The actual command will use your full token.\n` +
+              '🔒 Token is masked for security.\n' +
+              '✂️ The actual command will use your full token.\n' +
               `📤 This will upload: ${path.basename(filePath)}\n` +
-              `🎯 Expected output: The download URL for your file`,
+              '🎯 Expected output: The download URL for your file',
           },
         ],
       };
@@ -406,6 +426,14 @@ server.registerTool(
         '.sh',
         '.yaml',
         '.yml',
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.svg',
+        '.bmp',
+        '.tiff',
       ];
       const isSupported = allowedExtensions.includes(fileExt);
 
@@ -417,13 +445,15 @@ server.registerTool(
           {
             type: 'text',
             text:
-              `📋 FILE VALIDATION REPORT\n\n` +
+              '📋 FILE VALIDATION REPORT\n\n' +
               `📁 File: ${fileName}\n` +
               `📍 Path: ${filePath}\n` +
               `📊 Size: ${formattedSize}\n` +
               `🏷️  Extension: ${fileExt || 'none'}\n` +
               `✅ Supported: ${isSupported ? 'Yes' : 'No'}\n\n` +
-              `Status: ${isSupported ? '🟢 Ready for upload' : '🔴 File type not supported'}\n\n` +
+              `Status: ${
+                isSupported ? '🟢 Ready for upload' : '🔴 File type not supported'
+              }\n\n` +
               `Supported formats: ${allowedExtensions.join(', ')}`,
           },
         ],
@@ -436,11 +466,11 @@ server.registerTool(
           {
             type: 'text',
             text:
-              `❌ FILE VALIDATION FAILED\n\nError: ${errorMessage}\n\n` +
-              `Please check:\n` +
-              `• File path is correct\n` +
-              `• File exists and is readable\n` +
-              `• You have proper permissions`,
+              `❌ FILE VALIDATION FAILED!\n\nError: ${errorMessage}\n\n` +
+              'Please check:\n' +
+              '• File path is correct\n' +
+              '• File exists and is readable\n' +
+              '• You have proper permissions',
           },
         ],
         isError: true,
@@ -460,7 +490,7 @@ async function main() {
   console.error('   • preview_upload_command: Preview upload command');
   console.error('   • validate_file: Check file compatibility');
   console.error(
-    '📂 This server handles: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml'
+    '📂 This server handles: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff'
   );
 }
 
