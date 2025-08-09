@@ -1,3 +1,6 @@
+// Set required environment variables for tests
+process.env.ZIPLINE_TOKEN = 'test-token';
+process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Dirent } from 'fs';
