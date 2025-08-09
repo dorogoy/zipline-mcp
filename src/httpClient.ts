@@ -72,7 +72,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
 
   // Build FormData with file as Blob
   // Note: global Blob and FormData are available in Node >= 18
-  const blob = new Blob([data.buffer as ArrayBuffer], { type: mimeType });
+  const blob = new Blob([data as unknown as ArrayBuffer], { type: mimeType });
   const form = new FormData();
   // Provide a filename for the form field; server may rely on it
   const filename = filenameOverride ?? inferFilename(filePath);
@@ -111,7 +111,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     const res = await fetch(`${endpoint}/api/upload`, {
       method: 'POST',
       headers,
-      body: form as unknown as BodyInit,
+      body: form,
       redirect: 'follow',
       signal: ac.signal,
     });
