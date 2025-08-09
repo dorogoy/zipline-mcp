@@ -42,6 +42,26 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Format validation and normalization
+const ALLOWED_FORMATS = ['random', 'uuid', 'date', 'name', 'gfycat', 'random-words'] as const;
+type FormatType = typeof ALLOWED_FORMATS[number];
+
+function normalizeFormat(format: string): FormatType | null {
+  const lower = format.toLowerCase();
+
+  // Handle alias: gfycat -> random-words
+  if (lower === 'gfycat') {
+    return 'random-words';
+  }
+
+  // Check if format is allowed
+  if (ALLOWED_FORMATS.includes(lower as FormatType)) {
+    return lower as FormatType;
+  }
+
+  return null;
+}
+
 // --- TMP FILE MANAGER SANDBOX HELPERS ---
 
 const TMP_DIR = path.join(os.homedir(), '.zipline_tmp');
@@ -83,7 +103,7 @@ server.registerTool(
         .string()
         .describe('Path to the file to upload (txt, md, gpx, html, etc.)'),
       format: z
-        .enum(['random', 'original'])
+        .enum(ALLOWED_FORMATS)
         .optional()
         .describe('Filename format (default: random)'),
     },
@@ -93,9 +113,15 @@ server.registerTool(
     format = 'random',
   }: {
     filePath: string;
-    format?: 'random' | 'original' | undefined;
+    format?: FormatType | undefined;
   }) => {
     try {
+      // Validate and normalize format
+      const normalizedFormat = normalizeFormat(format || 'random');
+      if (!normalizedFormat) {
+        throw new Error(`Invalid format: ${format}`);
+      }
+
       // Validate file exists and is accessible
       const fileContent = await readFile(filePath);
       const fileSize = Buffer.byteLength(fileContent, 'utf-8');
@@ -140,14 +166,7 @@ server.registerTool(
       }
 
       // Build the curl command
-      const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
-      const ZIPLINE_ENDPOINT = process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
-
-      if (!ZIPLINE_TOKEN) {
-        throw new Error('Environment variable ZIPLINE_TOKEN is required.');
-      }
-
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
 
       console.error(`Executing upload for: ${path.basename(filePath)}`);
 
@@ -206,6 +225,27 @@ server.registerTool(
       const formattedSize = formatFileSize(fileSize);
       const fileName = path.basename(filePath);
 
+      if (fileExt === '.md') {
+        const viewUrl = url.replace('/u/', '/view/');
+        console.error(`View URL: ${viewUrl}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                '✅ FILE UPLOADED SUCCESSFULLY!\n\n' +
+                `📁 File: ${fileName}\n` +
+                `📊 Size: ${formattedSize}\n` +
+                `🏷️  Format: ${format}\n` +
+                `🔗 DOWNLOAD URL: ${url}\n` +
+                `🔗 VIEW URL: ${viewUrl}\n\n` +
+                '─────────────────────────────\n' +
+                '💡 You can now share this URL or click it to download the file.',
+            },
+          ],
+        };
+      }
+
       return {
         content: [
           {
@@ -253,7 +293,7 @@ server.registerTool(
     inputSchema: {
       filePath: z.string().describe('Path to the file to upload'),
       format: z
-        .enum(['random', 'original'])
+        .enum(ALLOWED_FORMATS)
         .optional()
         .describe('Filename format (default: random)'),
     },
@@ -263,9 +303,15 @@ server.registerTool(
     format = 'random',
   }: {
     filePath: string;
-    format?: 'random' | 'original' | undefined;
+    format?: FormatType | undefined;
   }) => {
     try {
+      // Validate and normalize format
+      const normalizedFormat = normalizeFormat(format || 'random');
+      if (!normalizedFormat) {
+        throw new Error(`Invalid format: ${format}`);
+      }
+
       // Quick file validation
       await readFile(filePath, 'utf-8');
       const fileExt = path.extname(filePath).toLowerCase();
@@ -301,7 +347,7 @@ server.registerTool(
         throw new Error(`Unsupported file type: ${fileExt}`);
       }
 
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
 
       console.error(`Quick upload: ${path.basename(filePath)}`);
 
@@ -377,13 +423,8 @@ server.registerTool(
       'Generate and preview the curl command that will be used for uploading',
     inputSchema: {
       filePath: z.string().describe('Path to the file to upload'),
-      authorizationToken: z
-        .string()
-        .describe(
-          'Authorization token for Zipline API (will be partially masked)'
-        ),
       format: z
-        .enum(['random', 'original'])
+        .enum(ALLOWED_FORMATS)
         .optional()
         .describe('Filename format (default: random)'),
     },
@@ -393,13 +434,17 @@ server.registerTool(
     format = 'random',
   }: {
     filePath: string;
-    authorizationToken: string;
-    format?: 'random' | 'original' | undefined;
+    format?: FormatType | undefined;
   }) => {
     try {
-      // For security, mask most of the token in the preview
+      // Validate and normalize format
+      const normalizedFormat = normalizeFormat(format || 'random');
+      if (!normalizedFormat) {
+        throw new Error(`Invalid format: ${format}`);
+      }
 
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      // For security, mask most of the token in the preview
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
 
       return {
         content: [
@@ -725,18 +770,8 @@ async (
 
 // Start the server
 async function main() {
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error('✅ MCP Zipline Upload Server started successfully');
-console.error('🛠️  Available tools:');
-console.error('   • upload_file_to_zipline: Upload file with full details');
-console.error('   • get_upload_url_only: Upload and return only URL');
-console.error('   • preview_upload_command: Preview upload command');
-console.error('   • validate_file: Check file compatibility');
-console.error('   • tmp_file_manager: Minimal file management in ~/.zipline_tmp');
-console.error(
-  '📂 This server handles: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff'
-);
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
 }
 
 export { server };

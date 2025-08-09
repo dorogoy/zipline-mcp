@@ -29,7 +29,32 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 }));
 
 vi.mock('child_process', () => ({
-  spawn: vi.fn(),
+  spawn: vi.fn(() => {
+    let stdoutCallback: ((data: string) => void) | null = null;
+
+    const mockChild = {
+      stdout: {
+        on: vi.fn((event: string, callback: (data: string) => void) => {
+          if (event === 'data') {
+            stdoutCallback = callback;
+          }
+        }),
+      },
+      stderr: {
+        on: vi.fn(), // Not used in tests
+      },
+      on: vi.fn((event: string, callback: (code: number) => void) => {
+        if (event === 'close') {
+          // Simulate successful execution with URL output
+          if (stdoutCallback) {
+            stdoutCallback('https://example.com/file.txt');
+          }
+          callback(0);
+        }
+      }),
+    };
+    return mockChild;
+  }),
 }));
 
 const fsMock = {
@@ -115,16 +140,141 @@ describe('Zipline MCP Server', () => {
   });
 
   describe('upload_file_to_zipline tool', () => {
-    it('should handle successful file upload', () => {
-      expect(true).toBe(true);
+    let server: MockServer;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      const imported = (await import('./index')) as unknown as { server: MockServer };
+      server = imported.server;
     });
 
-    it('should handle file not found error', () => {
-      expect(true).toBe(true);
+    const getToolHandler = (toolName: string): ToolHandler | undefined => {
+      const call = vi.mocked(server.registerTool).mock.calls.find(
+        (c: unknown[]) => c[0] === toolName
+      );
+      return call?.[2] as ToolHandler | undefined;
+    };
+
+    it('should validate and normalize format correctly', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test invalid format
+      const result3 = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      expect(result3.isError).toBe(true);
+      expect(result3.content[0]?.text).toContain('Invalid format: invalid');
+
+      // Test case-insensitive matching (should be valid)
+      const result1 = await handler({ filePath: '/path/to/file.txt', format: 'UUID' }, {});
+      expect(!result1.isError).toBe(true); // Should succeed since UUID is valid (normalized to uuid)
+
+      // Test alias handling (should be valid)
+      const result2 = await handler({ filePath: '/path/to/file.txt', format: 'GFYCAT' }, {});
+      expect(!result2.isError).toBe(true); // Should succeed since GFYCAT is valid (normalized to random-words)
     });
 
-    it('should handle unsupported file type error', () => {
-      expect(true).toBe(true);
+    it('should handle file not found error', async () => {
+      fsMock.readFile.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/nonexistent.txt' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('UPLOAD FAILED');
+    });
+
+    it('should handle unsupported file type error', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.xyz' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('File type .xyz not supported');
+    });
+  });
+
+  describe('get_upload_url_only tool', () => {
+    let server: MockServer;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      const imported = (await import('./index')) as unknown as { server: MockServer };
+      server = imported.server;
+    });
+
+    const getToolHandler = (toolName: string): ToolHandler | undefined => {
+      const call = vi.mocked(server.registerTool).mock.calls.find(
+        (c: unknown[]) => c[0] === toolName
+      );
+      return call?.[2] as ToolHandler | undefined;
+    };
+
+    it('should validate format for URL-only upload', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('get_upload_url_only');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test invalid format
+      const resultInvalid = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      expect(resultInvalid.isError).toBe(true);
+      expect(resultInvalid.content[0]?.text).toContain('Invalid format: invalid');
+
+      // Test valid formats
+      const validFormats = ['random', 'uuid', 'date', 'name', 'random-words'];
+      for (const format of validFormats) {
+        const result = await handler({ filePath: '/path/to/file.txt', format }, {});
+        expect(!result.isError).toBe(true); // Should succeed since spawn is now mocked properly
+      }
+
+      // Test alias
+      const resultAlias = await handler({ filePath: '/path/to/file.txt', format: 'gfycat' }, {});
+      expect(!resultAlias.isError).toBe(true); // Should succeed since spawn is now mocked properly
+    });
+  });
+
+  describe('preview_upload_command tool', () => {
+    let server: MockServer;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      const imported = (await import('./index')) as unknown as { server: MockServer };
+      server = imported.server;
+    });
+
+    const getToolHandler = (toolName: string): ToolHandler | undefined => {
+      const call = vi.mocked(server.registerTool).mock.calls.find(
+        (c: unknown[]) => c[0] === toolName
+      );
+      return call?.[2] as ToolHandler | undefined;
+    };
+
+    it('should generate preview command with normalized format', async () => {
+      const handler = getToolHandler('preview_upload_command');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test with alias
+      const result1 = await handler({ filePath: '/path/to/file.txt', format: 'gfycat' }, {});
+      expect(!result1.isError).toBe(true);
+      expect(result1.content[0]?.text).toContain('x-zipline-format: random-words');
+
+      // Test with uppercase
+      const result2 = await handler({ filePath: '/path/to/file.txt', format: 'UUID' }, {});
+      expect(!result2.isError).toBe(true);
+      expect(result2.content[0]?.text).toContain('x-zipline-format: uuid');
+
+      // Test with invalid format
+      const result3 = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      expect(result3.isError).toBe(true);
+      expect(result3.content[0]?.text).toContain('Invalid format: invalid');
     });
   });
 });

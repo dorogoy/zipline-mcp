@@ -1,5 +1,5 @@
 {
-  "name": "zipline-mcp-server",
+  "name": "zipline-mcp",
   "version": "1.0.0",
   "description": "An MCP server to upload files to a Zipline-compatible host.",
   "main": "dist/index.js",
@@ -27,16 +27,16 @@
     "file-upload",
     "server"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "Sergio Rael <npm.8ydjc@etereo.one>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/zipline-mcp-server.git"
+    "url": "git+https://github.com/dorogoy/zipline-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/zipline-mcp-server/issues"
+    "url": "https://github.com/dorogoy/zipline-mcp/issues"
   },
-  "homepage": "https://github.com/your-username/zipline-mcp-server#readme",
+  "homepage": "https://github.com/dorogoy/zipline-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.2",
     "typescript-eslint": "^8.39.0",
