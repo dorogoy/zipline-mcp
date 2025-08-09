@@ -19,7 +19,7 @@ An MCP (Model Context Protocol) server that allows you to upload files to a Zipl
 To install the server globally so you can use it with `npx`:
 
 ```bash
-npm install -g zipline-mcp-server
+npm install -g zipline-mcp
 ```
 
 ### Local Installation
@@ -27,7 +27,7 @@ npm install -g zipline-mcp-server
 To install the server as a dependency in your project:
 
 ```bash
-npm install zipline-mcp-server
+npm install zipline-mcp
 ```
 
 ## Usage
@@ -85,7 +85,7 @@ mcpServers:
 
 ##### Optional Settings
 
-- `environment.ZIPLINE_FORMAT`: File naming format ("random" or "original")
+- `environment.ZIPLINE_FORMAT`: File naming format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words". Defaults to "random".
 - `environment.ZIPLINE_ENDPOINT`: Custom Zipline server URL
 
 #### Security Best Practices
@@ -133,6 +133,48 @@ graph LR
 4. Zipline processes upload and returns URL
 5. Server formats response for MCP client
 
+### Format Options
+
+The `format` parameter controls how uploaded files are named on the Zipline server. Here are the supported formats:
+
+#### `random`
+Generates a random filename with characters, with length defined by the server configuration. This is the default format.
+
+#### `uuid`
+Generates a UUID-based filename (e.g., `550e8400-e29b-41d4-a716-446655440000`).
+
+#### `date`
+Uses the current date/time formatted according to the server's default date format. Note that date formatting is handled entirely by the Zipline server.
+
+#### `name`
+Uses the original filename without its extension (e.g., `document.txt` becomes `document`).
+
+#### `gfycat`
+Alias for `random-words`. Provides human-readable "random words" style filenames.
+
+#### `random-words`
+Generates human-readable filenames using random words (e.g., `happy-purple-elephant`).
+
+#### Format Normalization and Validation
+
+- **Case-insensitive**: All format values are case-insensitive (e.g., `UUID`, `uuid`, and `Uuid` are equivalent).
+- **Alias handling**: `gfycat` is automatically mapped to `random-words`.
+- **Error handling**: Invalid format values will result in an "Invalid format" error.
+- **Default behavior**: If the format parameter is omitted, the server uses its configured default format (typically `random`).
+
+#### Examples
+
+```bash
+# Use UUID format
+upload_file_to_zipline(filePath: "document.txt", format: "uuid")
+
+# Use human-readable format (via alias)
+upload_file_to_zipline(filePath: "document.txt", format: "gfycat")
+
+# Case-insensitive usage
+upload_file_to_zipline(filePath: "document.txt", format: "RANDOM-WORDS")
+```
+
 ### Available Tools
 
 This server provides the following tools:
@@ -142,24 +184,21 @@ This server provides the following tools:
 Uploads a file to the Zipline server and returns a detailed success message.
 
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
-- `authorizationToken`: Your Zipline API authorization token.
-- `format` (optional): Filename format ("random" or "original"). Defaults to "random".
+- `format` (optional): Filename format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words", "original". Defaults to "random".
 
 #### `get_upload_url_only`
 
 Uploads a file and returns only the download URL.
 
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
-- `authorizationToken`: Your Zipline API authorization token.
-- `format` (optional): Filename format ("random" or "original"). Defaults to "random".
+- `format` (optional): Filename format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words", "original". Defaults to "random".
 
 #### `preview_upload_command`
 
 Generates and previews the curl command that will be used for uploading.
 
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
-- `authorizationToken`: Your Zipline API authorization token (will be partially masked in the preview).
-- `format` (optional): Filename format ("random" or "original"). Defaults to "random".
+- `format` (optional): Filename format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words", "original". Defaults to "random".
 
 #### `validate_file`
 
@@ -204,8 +243,8 @@ Minimal, sandboxed file management in `~/.zipline_tmp`. Only bare filenames are 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/zipline-mcp-server.git
-cd zipline-mcp-server
+git clone https://github.com/dorogoy/zipline-mcp.git
+cd zipline-mcp
 ```
 
 2. Install dependencies:

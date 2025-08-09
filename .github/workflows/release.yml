@@ -58,7 +58,7 @@ jobs:
         id: release
         with:
           release-type: node
-          package-name: zipline-mcp-server
+          package-name: zipline-mcp
           extra-files: |
             package.json
 
