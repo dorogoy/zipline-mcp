@@ -28,33 +28,9 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: vi.fn().mockImplementation(() => ({})),
 }));
 
-vi.mock('child_process', () => ({
-  spawn: vi.fn(() => {
-    let stdoutCallback: ((data: string) => void) | null = null;
-
-    const mockChild = {
-      stdout: {
-        on: vi.fn((event: string, callback: (data: string) => void) => {
-          if (event === 'data') {
-            stdoutCallback = callback;
-          }
-        }),
-      },
-      stderr: {
-        on: vi.fn(), // Not used in tests
-      },
-      on: vi.fn((event: string, callback: (code: number) => void) => {
-        if (event === 'close') {
-          // Simulate successful execution with URL output
-          if (stdoutCallback) {
-            stdoutCallback('https://example.com/file.txt');
-          }
-          callback(0);
-        }
-      }),
-    };
-    return mockChild;
-  }),
+// Mock the httpClient module
+vi.mock('./httpClient', () => ({
+  uploadFile: vi.fn().mockResolvedValue('https://example.com/file.txt'),
 }));
 
 const fsMock = {
@@ -264,12 +240,12 @@ describe('Zipline MCP Server', () => {
       // Test with alias
       const result1 = await handler({ filePath: '/path/to/file.txt', format: 'gfycat' }, {});
       expect(!result1.isError).toBe(true);
-      expect(result1.content[0]?.text).toContain('x-zipline-format: random-words');
+      expect(result1.content[0]?.text).toContain('format: \'random-words\'');
 
       // Test with uppercase
       const result2 = await handler({ filePath: '/path/to/file.txt', format: 'UUID' }, {});
       expect(!result2.isError).toBe(true);
-      expect(result2.content[0]?.text).toContain('x-zipline-format: uuid');
+      expect(result2.content[0]?.text).toContain('format: \'uuid\'');
 
       // Test with invalid format
       const result3 = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
