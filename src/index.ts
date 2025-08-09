@@ -2,13 +2,13 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { spawn } from 'child_process';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { uploadFile } from './httpClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 path.dirname(__filename);
@@ -163,55 +163,15 @@ server.registerTool(
         );
       }
 
-      // Build the curl command
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
-
       console.error(`Executing upload for: ${path.basename(filePath)}`);
 
-      // Execute the command
-      const child = spawn('bash', ['-c', curlCommand]);
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (data: { toString: () => string }) => {
-        stdout += data.toString();
+      // Use the HTTP client instead of curl
+      const url = await uploadFile({
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        filePath,
+        format: normalizedFormat,
       });
-
-      child.stderr.on('data', (data: { toString: () => string }) => {
-        stderr += data.toString();
-      });
-
-      const result = await new Promise((resolve, reject) => {
-        child.on('close', (code) => {
-          if (code === 0) {
-            resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
-          } else {
-            reject(
-              new Error(`Command failed with exit code ${code}: ${stderr}`)
-            );
-          }
-        });
-
-        child.on('error', (error) => {
-          reject(error);
-        });
-      });
-
-      const { stdout: url, stderr: error } = result as {
-        stdout: string;
-        stderr: string;
-      };
-
-      if (error) {
-        console.error(`Warning during upload: ${error}`);
-      }
-
-      if (!url) {
-        throw new Error(
-          'No URL returned from Zipline server - the server may have returned an error'
-        );
-      }
 
       // Validate that the URL is properly formatted
       if (!isValidUrl(url)) {
@@ -318,45 +278,15 @@ server.registerTool(
         throw new Error(`Unsupported file type: ${fileExt}`);
       }
 
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
-
       console.error(`Quick upload: ${path.basename(filePath)}`);
 
-      const child = spawn('bash', ['-c', curlCommand]);
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (data: { toString: () => string }) => {
-        stdout += data.toString();
+      // Use the HTTP client instead of curl
+      const url = await uploadFile({
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        filePath,
+        format: normalizedFormat,
       });
-
-      child.stderr.on('data', (data: { toString: () => string }) => {
-        stderr += data.toString();
-      });
-
-      const result = await new Promise((resolve, reject) => {
-        child.on('close', (code) => {
-          if (code === 0) {
-            resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
-          } else {
-            reject(new Error(`Upload failed with code ${code}: ${stderr}`));
-          }
-        });
-
-        child.on('error', (error) => {
-          reject(error);
-        });
-      });
-
-      const { stdout: url, stderr: error } = result as {
-        stdout: string;
-        stderr: string;
-      };
-
-      if (error) {
-        console.error(`Warning: ${error}`);
-      }
 
       if (!url || !isValidUrl(url)) {
         throw new Error('Invalid or empty URL received from server');
@@ -414,18 +344,26 @@ server.registerTool(
         throw new Error(`Invalid format: ${format}`);
       }
 
-      // For security, mask most of the token in the preview
-      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${normalizedFormat}' | jq -r '.files[0].url'`;
+      // For security, show the Node.js implementation instead of curl
+      const nodeJsImplementation = `// Node.js implementation (no external dependencies)
+import { uploadFile } from './httpClient.js';
+
+const url = await uploadFile({
+  endpoint: '${ZIPLINE_ENDPOINT}',
+  token: 'YOUR_TOKEN_HERE',
+  filePath: '${filePath}',
+  format: '${normalizedFormat}',
+});`;
 
       return {
         content: [
           {
             type: 'text',
             text:
-              '📋 UPLOAD COMMAND PREVIEW:\n\n' +
-              `Command:\n${curlCommand}\n\n` +
+              '📋 NODE.JS IMPLEMENTATION PREVIEW:\n\n' +
+              `Code:\n\`\`\`javascript\n${nodeJsImplementation}\n\`\`\`\n\n` +
               '🔒 Token is masked for security.\n' +
-              '✂️ The actual command will use your full token.\n' +
+              '✂️ The actual code will use your full token.\n' +
               `📤 This will upload: ${path.basename(filePath)}\n` +
               '🎯 Expected output: The download URL for your file',
           },
