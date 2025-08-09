@@ -1,0 +1,32 @@
+name: Create Release Tag
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !contains(github.event.head_commit.message, 'chore(release)') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/exec
+      - name: Run semantic-release
+        run: npx semantic-release@23.0.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

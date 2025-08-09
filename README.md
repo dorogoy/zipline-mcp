@@ -138,21 +138,27 @@ graph LR
 The `format` parameter controls how uploaded files are named on the Zipline server. Here are the supported formats:
 
 #### `random`
+
 Generates a random filename with characters, with length defined by the server configuration. This is the default format.
 
 #### `uuid`
+
 Generates a UUID-based filename (e.g., `550e8400-e29b-41d4-a716-446655440000`).
 
 #### `date`
+
 Uses the current date/time formatted according to the server's default date format. Note that date formatting is handled entirely by the Zipline server.
 
 #### `name`
+
 Uses the original filename without its extension (e.g., `document.txt` becomes `document`).
 
 #### `gfycat`
+
 Alias for `random-words`. Provides human-readable "random words" style filenames.
 
 #### `random-words`
+
 Generates human-readable filenames using random words (e.g., `happy-purple-elephant`).
 
 #### Format Normalization and Validation
@@ -184,27 +190,30 @@ The Zipline MCP Server now supports additional optional headers that provide enh
 Controls when the uploaded file should be automatically deleted.
 
 **Formats:**
+
 - **Relative duration**: Strings like "1d" (1 day), "2h" (2 hours), "30m" (30 minutes)
 - **Absolute date**: ISO-8601 format with "date=" prefix, e.g., "date=2025-12-31T23:59:59Z"
 
 **Examples:**
+
 ```javascript
 // Delete after 24 hours
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  deletesAt: "1d"
+  filePath: 'document.txt',
+  format: 'random',
+  deletesAt: '1d',
 });
 
 // Delete at specific date
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  deletesAt: "date=2025-12-31T23:59:59Z"
+  filePath: 'document.txt',
+  format: 'random',
+  deletesAt: 'date=2025-12-31T23:59:59Z',
 });
 ```
 
 **Validation:**
+
 - Relative durations must be positive and use valid units (d, h, m)
 - Absolute dates must be in ISO-8601 format and specify a future date
 - Invalid formats will be rejected with descriptive error messages
@@ -214,18 +223,21 @@ uploadFile({
 Protects the uploaded file with a password. When this header is provided, users will need to enter the password to access the file.
 
 **Format:**
+
 - Non-empty string value
 
 **Examples:**
+
 ```javascript
 uploadFile({
-  filePath: "secret.txt",
-  format: "random",
-  password: "my-secret-password"
+  filePath: 'secret.txt',
+  format: 'random',
+  password: 'my-secret-password',
 });
 ```
 
 **Validation:**
+
 - Password must be a non-empty string
 - Whitespace-only passwords are rejected
 - **Security**: Passwords are never logged or exposed in error messages
@@ -235,26 +247,29 @@ uploadFile({
 Limits the number of times a file can be viewed before it becomes unavailable. Each successful view decrements the counter.
 
 **Format:**
+
 - Non-negative integer (0 or greater)
 
 **Examples:**
+
 ```javascript
 // Allow 10 views
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  maxViews: 10
+  filePath: 'document.txt',
+  format: 'random',
+  maxViews: 10,
 });
 
 // Allow single view (disposable link)
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  maxViews: 1
+  filePath: 'document.txt',
+  format: 'random',
+  maxViews: 1,
 });
 ```
 
 **Validation:**
+
 - Must be an integer ≥ 0
 - Negative numbers and non-integer values are rejected
 - When counter reaches 0, file becomes eligible for removal
@@ -264,18 +279,21 @@ uploadFile({
 Specifies the ID of the folder where the upload should be placed. The folder must exist on the Zipline server.
 
 **Format:**
+
 - Alphanumeric string (letters and numbers only)
 
 **Examples:**
+
 ```javascript
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  folder: "myfolder123"
+  filePath: 'document.txt',
+  format: 'random',
+  folder: 'myfolder123',
 });
 ```
 
 **Validation:**
+
 - Must be a non-empty alphanumeric string
 - Special characters and whitespace are rejected
 - If the specified folder doesn't exist, the upload will fail
@@ -286,12 +304,12 @@ You can combine multiple headers for enhanced control:
 
 ```javascript
 uploadFile({
-  filePath: "document.txt",
-  format: "random",
-  deletesAt: "7d",           // Delete after 7 days
-  password: "secret123",     // Password protect
-  maxViews: 5,             // Allow 5 views
-  folder: "shared"          // Place in "shared" folder
+  filePath: 'document.txt',
+  format: 'random',
+  deletesAt: '7d', // Delete after 7 days
+  password: 'secret123', // Password protect
+  maxViews: 5, // Allow 5 views
+  folder: 'shared', // Place in "shared" folder
 });
 ```
 
@@ -350,18 +368,21 @@ Minimal, sandboxed file management in `~/.zipline_tmp`. Only bare filenames are 
 - `content`: (optional) String content for `CREATE`
 
 **Examples:**
+
 - `LIST`
 - `CREATE notes.txt` (with or without content)
 - `OPEN notes.txt`
 - `READ notes.txt`
 
 **Safety:**
+
 - Only bare filenames allowed (no `/`, `\`, `..`, or absolute paths)
 - Any attempt to access outside `~/.zipline_tmp` is refused with an explicit error
 - Files larger than 1MB cannot be read
 - Subdirectories are not supported
 
 **Error Example:**
+
 - `CREATE ../evil.txt` → Error: Operation refused. Filenames must not include path separators or dot segments. Only bare filenames in `~/.zipline_tmp` are allowed.
 
 ## Development
