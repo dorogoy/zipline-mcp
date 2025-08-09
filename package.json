@@ -8,7 +8,8 @@
     "zipline-mcp": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "prebuild": "mkdir -p dist",
+    "build": "tsc --outDir dist",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "test": "vitest",
@@ -42,7 +43,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/node": "^20.10.5",
+    "@types/node": "^20.19.10",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "eslint": "^8.57.1",
