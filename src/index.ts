@@ -56,20 +56,25 @@ const ALLOWED_EXTENSIONS = [
         '.xml',
         '.csv',
         '.js',
+        '.ts',
         '.css',
         '.py',
         '.sh',
         '.yaml',
         '.yml',
-        // All common image types
+        '.toml',
+        // Common video files
+        '.mp4',
+        '.mkv',
+        '.webm',
+        '.avi',
+        // Common web image types
         '.png',
         '.jpg',
         '.jpeg',
         '.gif',
         '.webp',
         '.svg',
-        '.bmp',
-        '.tiff',
       ];
 
 function normalizeFormat(format: string): FormatType | null {
