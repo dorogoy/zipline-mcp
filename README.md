@@ -175,6 +175,139 @@ upload_file_to_zipline(filePath: "document.txt", format: "gfycat")
 upload_file_to_zipline(filePath: "document.txt", format: "RANDOM-WORDS")
 ```
 
+### Enhanced Upload Options
+
+The Zipline MCP Server now supports additional optional headers that provide enhanced control over file uploads. These headers are sent as `x-zipline-*` headers to the Zipline server.
+
+#### `x-zipline-deletes-at`
+
+Controls when the uploaded file should be automatically deleted.
+
+**Formats:**
+- **Relative duration**: Strings like "1d" (1 day), "2h" (2 hours), "30m" (30 minutes)
+- **Absolute date**: ISO-8601 format with "date=" prefix, e.g., "date=2025-12-31T23:59:59Z"
+
+**Examples:**
+```javascript
+// Delete after 24 hours
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  deletesAt: "1d"
+});
+
+// Delete at specific date
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  deletesAt: "date=2025-12-31T23:59:59Z"
+});
+```
+
+**Validation:**
+- Relative durations must be positive and use valid units (d, h, m)
+- Absolute dates must be in ISO-8601 format and specify a future date
+- Invalid formats will be rejected with descriptive error messages
+
+#### `x-zipline-password`
+
+Protects the uploaded file with a password. When this header is provided, users will need to enter the password to access the file.
+
+**Format:**
+- Non-empty string value
+
+**Examples:**
+```javascript
+uploadFile({
+  filePath: "secret.txt",
+  format: "random",
+  password: "my-secret-password"
+});
+```
+
+**Validation:**
+- Password must be a non-empty string
+- Whitespace-only passwords are rejected
+- **Security**: Passwords are never logged or exposed in error messages
+
+#### `x-zipline-max-views`
+
+Limits the number of times a file can be viewed before it becomes unavailable. Each successful view decrements the counter.
+
+**Format:**
+- Non-negative integer (0 or greater)
+
+**Examples:**
+```javascript
+// Allow 10 views
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  maxViews: 10
+});
+
+// Allow single view (disposable link)
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  maxViews: 1
+});
+```
+
+**Validation:**
+- Must be an integer ≥ 0
+- Negative numbers and non-integer values are rejected
+- When counter reaches 0, file becomes eligible for removal
+
+#### `x-zipline-folder`
+
+Specifies the ID of the folder where the upload should be placed. The folder must exist on the Zipline server.
+
+**Format:**
+- Alphanumeric string (letters and numbers only)
+
+**Examples:**
+```javascript
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  folder: "myfolder123"
+});
+```
+
+**Validation:**
+- Must be a non-empty alphanumeric string
+- Special characters and whitespace are rejected
+- If the specified folder doesn't exist, the upload will fail
+
+#### Combining Multiple Headers
+
+You can combine multiple headers for enhanced control:
+
+```javascript
+uploadFile({
+  filePath: "document.txt",
+  format: "random",
+  deletesAt: "7d",           // Delete after 7 days
+  password: "secret123",     // Password protect
+  maxViews: 5,             // Allow 5 views
+  folder: "shared"          // Place in "shared" folder
+});
+```
+
+#### Error Handling
+
+All headers are validated locally before the upload request is sent to the server. If any header is invalid:
+
+- The upload is aborted immediately
+- A descriptive error message is returned
+- No HTTP request is made to the Zipline server
+- The error message explains exactly what needs to be fixed
+
+#### Backward Compatibility
+
+All enhanced headers are **optional**. Existing code that doesn't use these headers will continue to work exactly as before. The new functionality only activates when you explicitly provide these parameters.
+
 ### Available Tools
 
 This server provides the following tools:

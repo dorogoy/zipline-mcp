@@ -12,6 +12,10 @@ export interface UploadOptions {
     mimeType: string;
     size: number;
   };
+  deletesAt?: string;
+  password?: string;
+  maxViews?: number;
+  folder?: string;
 }
 
 export interface ZiplineUploadResponse {
@@ -23,17 +27,31 @@ export interface ZiplineUploadResponse {
  * - Adds minimal required headers: authorization, x-zipline-format
  * - Automatically detects file MIME type based on extension (prioritizing video formats)
  * - Includes metadata (originalFileName, mimeType, size) for Zipline identification
+ * - Supports optional enhanced headers for file expiration, password protection, view limits, and folder placement
+ * - Validates all headers locally before making HTTP request
  * - Follows redirects
  * - Supports timeout via AbortController
  * - Robust error handling for HTTP and network errors
+ *
+ * Enhanced Headers (all optional):
+ * - deletesAt: File expiration time (e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")
+ * - password: Password protection for the uploaded file
+ * - maxViews: Maximum number of views before file removal (≥ 0)
+ * - folder: Target folder ID (alphanumeric, must exist)
  */
 export async function uploadFile(opts: UploadOptions): Promise<string> {
-  const { endpoint, token, filePath, format, timeoutMs = 30000, filenameOverride } = opts;
+  const { endpoint, token, filePath, format, timeoutMs = 30000, filenameOverride, deletesAt, password, maxViews, folder } = opts;
 
   if (!endpoint) throw new Error('endpoint is required');
   if (!token) throw new Error('token is required');
   if (!filePath) throw new Error('filePath is required');
   if (!format) throw new Error('format is required');
+
+  // Validate optional headers if provided
+  if (deletesAt !== undefined) validateDeletesAt(deletesAt);
+  if (password !== undefined) validatePassword(password);
+  if (maxViews !== undefined) validateMaxViews(maxViews);
+  if (folder !== undefined) validateFolder(folder);
 
   // Read file content
   const data = await readFile(filePath);
@@ -65,13 +83,22 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   const timer = setTimeout(() => ac.abort(), timeoutMs);
 
   try {
+    // Build headers object with optional headers
+    const headers: Record<string, string> = {
+      authorization: token,
+      'x-zipline-format': format,
+      // Do NOT set Content-Type; fetch will add correct boundary for FormData
+    };
+
+    // Add optional headers if provided
+    if (deletesAt !== undefined) headers['x-zipline-deletes-at'] = deletesAt;
+    if (password !== undefined) headers['x-zipline-password'] = password;
+    if (maxViews !== undefined) headers['x-zipline-max-views'] = maxViews.toString();
+    if (folder !== undefined) headers['x-zipline-folder'] = folder;
+
     const res = await fetch(`${endpoint}/api/upload`, {
       method: 'POST',
-      headers: {
-        authorization: token,
-        'x-zipline-format': format,
-        // Do NOT set Content-Type; fetch will add correct boundary for FormData
-      } as Record<string, string>,
+      headers,
       body: form as unknown as BodyInit,
       redirect: 'follow',
       signal: ac.signal,
@@ -160,4 +187,81 @@ function extractFirstFileUrl(json: unknown): string | undefined {
   const first = files[0];
   if (!first || typeof first.url !== 'string' || first.url.length === 0) return undefined;
   return first.url;
+}
+
+// Header validation functions
+export function validateDeletesAt(deletesAt: string): void {
+  if (!deletesAt || typeof deletesAt !== 'string') {
+    throw new Error('deletes-at header must be a non-empty string');
+  }
+
+  // Check if it's an absolute date format
+  if (deletesAt.startsWith('date=')) {
+    const dateStr = deletesAt.substring(5);
+    if (!dateStr) {
+      throw new Error('deletes-at header with date= prefix must include a valid date');
+    }
+
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      throw new Error('deletes-at header contains invalid date format');
+    }
+
+    // Check if date is in the future
+    const now = new Date();
+    if (date <= now) {
+      throw new Error('deletes-at header must specify a future date');
+    }
+  } else {
+    // Parse as relative duration
+    const durationRegex = /^(\d+)([dhm])$/;
+    const match = deletesAt.match(durationRegex);
+
+    if (!match) {
+      throw new Error('deletes-at header must be in format like "1d", "2h", "30m" or "date=2025-01-01T00:00:00Z"');
+    }
+
+    const value = parseInt(match[1]!, 10);
+
+    if (value <= 0) {
+      throw new Error('deletes-at header duration must be positive');
+    }
+  }
+}
+
+export function validatePassword(password: string): void {
+  if (!password || typeof password !== 'string') {
+    throw new Error('password header must be a non-empty string');
+  }
+
+  const trimmed = password.trim();
+  if (!trimmed) {
+    throw new Error('password header cannot be empty or whitespace only');
+  }
+}
+
+export function validateMaxViews(maxViews: number): void {
+  if (typeof maxViews !== 'number' || !Number.isInteger(maxViews)) {
+    throw new Error('max-views header must be an integer');
+  }
+
+  if (maxViews < 0) {
+    throw new Error('max-views header must be a non-negative integer');
+  }
+}
+
+export function validateFolder(folder: string): void {
+  if (!folder || typeof folder !== 'string') {
+    throw new Error('folder header must be a non-empty string');
+  }
+
+  const trimmed = folder.trim();
+  if (!trimmed) {
+    throw new Error('folder header cannot be empty or whitespace only');
+  }
+
+  // Check for valid characters (alphanumeric only)
+  if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
+    throw new Error('folder header must contain only alphanumeric characters');
+  }
 }
