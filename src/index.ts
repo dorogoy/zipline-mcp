@@ -6,11 +6,8 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { uploadFile } from './httpClient.js';
-
-const __filename = fileURLToPath(import.meta.url);
 
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
 const ZIPLINE_ENDPOINT =
@@ -162,7 +159,7 @@ server.registerTool(
 
       // Validate file exists and is accessible
       const fileContent = await readFile(filePath);
-      const fileSize = Buffer.byteLength(fileContent, 'utf-8');
+      const fileSize = fileContent.length;
 
       // Get file extension for validation
       const fileExt = path.extname(filePath).toLowerCase();
@@ -283,7 +280,7 @@ server.registerTool(
       }
 
       // Quick file validation
-      await readFile(filePath, 'utf-8');
+      await readFile(filePath);
       const fileExt = path.extname(filePath).toLowerCase();
 
       if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
