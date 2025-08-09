@@ -11,7 +11,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { uploadFile } from './httpClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
-path.dirname(__filename);
 
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
 const ZIPLINE_ENDPOINT =
