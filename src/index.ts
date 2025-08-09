@@ -46,6 +46,32 @@ function formatFileSize(bytes: number): string {
 const ALLOWED_FORMATS = ['random', 'uuid', 'date', 'name', 'gfycat', 'random-words'] as const;
 type FormatType = typeof ALLOWED_FORMATS[number];
 
+const ALLOWED_EXTENSIONS = [
+        '.txt',
+        '.md',
+        '.gpx',
+        '.html',
+        '.htm',
+        '.json',
+        '.xml',
+        '.csv',
+        '.js',
+        '.css',
+        '.py',
+        '.sh',
+        '.yaml',
+        '.yml',
+        // All common image types
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.svg',
+        '.bmp',
+        '.tiff',
+      ];
+
 function normalizeFormat(format: string): FormatType | null {
   const lower = format.toLowerCase();
 
@@ -128,38 +154,10 @@ server.registerTool(
 
       // Get file extension for validation
       const fileExt = path.extname(filePath).toLowerCase();
-      const allowedExtensions = [
-        '.txt',
-        '.md',
-        '.gpx',
-        '.html',
-        '.htm',
-        '.json',
-        '.xml',
-        '.csv',
-        '.js',
-        '.css',
-        '.py',
-        '.sh',
-        '.yaml',
-        '.yml',
-        // All common image types
-        '.png',
-        '.jpg',
-        '.jpeg',
-        '.gif',
-        '.webp',
-        '.svg',
-        '.bmp',
-        '.tiff',
-        '.ico',
-        '.heic',
-        '.avif',
-      ];
 
-      if (!allowedExtensions.includes(fileExt)) {
+      if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
         throw new Error(
-          `File type ${fileExt} not supported. Supported types: ${allowedExtensions.join(
+          `File type ${fileExt} not supported. Supported types: ${ALLOWED_EXTENSIONS.join(
             ', '
           )}`
         );
@@ -315,35 +313,8 @@ server.registerTool(
       // Quick file validation
       await readFile(filePath, 'utf-8');
       const fileExt = path.extname(filePath).toLowerCase();
-      const allowedExtensions = [
-        '.txt',
-        '.md',
-        '.gpx',
-        '.html',
-        '.htm',
-        '.json',
-        '.xml',
-        '.csv',
-        '.js',
-        '.css',
-        '.py',
-        '.sh',
-        '.yaml',
-        '.yml',
-        '.png',
-        '.jpg',
-        '.jpeg',
-        '.gif',
-        '.webp',
-        '.svg',
-        '.bmp',
-        '.tiff',
-        '.ico',
-        '.heic',
-        '.avif',
-      ];
 
-      if (!allowedExtensions.includes(fileExt)) {
+      if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
         throw new Error(`Unsupported file type: ${fileExt}`);
       }
 
@@ -492,34 +463,7 @@ server.registerTool(
       const fileSize = Buffer.byteLength(content, 'utf-8');
       const fileExt = path.extname(filePath).toLowerCase();
 
-      const allowedExtensions = [
-        '.txt',
-        '.md',
-        '.gpx',
-        '.html',
-        '.htm',
-        '.json',
-        '.xml',
-        '.csv',
-        '.js',
-        '.css',
-        '.py',
-        '.sh',
-        '.yaml',
-        '.yml',
-        '.png',
-        '.jpg',
-        '.jpeg',
-        '.gif',
-        '.webp',
-        '.svg',
-        '.bmp',
-        '.tiff',
-        '.ico',
-        '.heic',
-        '.avif',
-      ];
-      const isSupported = allowedExtensions.includes(fileExt);
+      const isSupported = ALLOWED_EXTENSIONS.includes(fileExt);
 
       const formattedSize = formatFileSize(fileSize);
       const fileName = path.basename(filePath);
@@ -540,7 +484,7 @@ server.registerTool(
                   ? '🟢 Ready for upload'
                   : '🔴 File type not supported'
               }\n\n` +
-              `Supported formats: ${allowedExtensions.join(', ')}`,
+              `Supported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
           },
         ],
       };
