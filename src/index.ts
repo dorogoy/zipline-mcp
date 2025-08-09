@@ -14,7 +14,8 @@ const __filename = fileURLToPath(import.meta.url);
 path.dirname(__filename);
 
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
-const ZIPLINE_ENDPOINT = process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
+const ZIPLINE_ENDPOINT =
+  process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
 
 if (!ZIPLINE_TOKEN) {
   throw new Error('Environment variable ZIPLINE_TOKEN is required.');
@@ -43,39 +44,46 @@ function formatFileSize(bytes: number): string {
 }
 
 // Format validation and normalization
-const ALLOWED_FORMATS = ['random', 'uuid', 'date', 'name', 'gfycat', 'random-words'] as const;
-type FormatType = typeof ALLOWED_FORMATS[number];
+const ALLOWED_FORMATS = [
+  'random',
+  'uuid',
+  'date',
+  'name',
+  'gfycat',
+  'random-words',
+] as const;
+type FormatType = (typeof ALLOWED_FORMATS)[number];
 
 const ALLOWED_EXTENSIONS = [
-        '.txt',
-        '.md',
-        '.gpx',
-        '.html',
-        '.htm',
-        '.json',
-        '.xml',
-        '.csv',
-        '.js',
-        '.ts',
-        '.css',
-        '.py',
-        '.sh',
-        '.yaml',
-        '.yml',
-        '.toml',
-        // Common video files
-        '.mp4',
-        '.mkv',
-        '.webm',
-        '.avi',
-        // Common web image types
-        '.png',
-        '.jpg',
-        '.jpeg',
-        '.gif',
-        '.webp',
-        '.svg',
-      ];
+  '.txt',
+  '.md',
+  '.gpx',
+  '.html',
+  '.htm',
+  '.json',
+  '.xml',
+  '.csv',
+  '.js',
+  '.ts',
+  '.css',
+  '.py',
+  '.sh',
+  '.yaml',
+  '.yml',
+  '.toml',
+  // Common video files
+  '.mp4',
+  '.mkv',
+  '.webm',
+  '.avi',
+  // Common web image types
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+];
 
 function normalizeFormat(format: string): FormatType | null {
   const lower = format.toLowerCase();
@@ -453,206 +461,211 @@ server.registerTool(
 );
 
 server.registerTool(
-'tmp_file_manager',
-{
-  title: 'Minimal Temporary File Manager',
-  description:
-    'Perform minimal file management in ~/.zipline_tmp. Allowed commands: LIST, CREATE <filename>, OPEN <filename>, READ <filename>. Only bare filenames allowed. CREATE overwrites existing files.',
-  inputSchema: {
-    command: z.string().describe('Command: LIST, CREATE <filename>, OPEN <filename>, READ <filename>'),
-    content: z.string().optional().describe('File content for CREATE (optional)'),
+  'tmp_file_manager',
+  {
+    title: 'Minimal Temporary File Manager',
+    description:
+      'Perform minimal file management in ~/.zipline_tmp. Allowed commands: LIST, CREATE <filename>, OPEN <filename>, READ <filename>. Only bare filenames allowed. CREATE overwrites existing files.',
+    inputSchema: {
+      command: z
+        .string()
+        .describe(
+          'Command: LIST, CREATE <filename>, OPEN <filename>, READ <filename>'
+        ),
+      content: z
+        .string()
+        .optional()
+        .describe('File content for CREATE (optional)'),
+    },
   },
-},
-async (
-  args: { command: string; content?: string | undefined }
-) => {
-  await ensureTmpDir();
-  const { command, content } = args;
-  if (!command || typeof command !== 'string') {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: '❌ Command is required.',
-        },
-      ],
-      isError: true,
-    };
-  }
-  const trimmed = command.trim();
-  const [cmd, ...argsArr] = trimmed.split(/\s+/);
-  if (!cmd) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: '❌ Command is required.',
-        },
-      ],
-      isError: true,
-    };
-  }
-  const upperCmd = cmd.toUpperCase();
+  async (args: { command: string; content?: string | undefined }) => {
+    await ensureTmpDir();
+    const { command, content } = args;
+    if (!command || typeof command !== 'string') {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ Command is required.',
+          },
+        ],
+        isError: true,
+      };
+    }
+    const trimmed = command.trim();
+    const [cmd, ...argsArr] = trimmed.split(/\s+/);
+    if (!cmd) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ Command is required.',
+          },
+        ],
+        isError: true,
+      };
+    }
+    const upperCmd = cmd.toUpperCase();
 
-  // LIST
-  if (upperCmd === 'LIST') {
-    try {
-      const files = await fs.readdir(TMP_DIR, { withFileTypes: true });
-      const fileList = files.filter(f => f.isFile()).map(f => f.name);
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              fileList.length > 0
-                ? `Files in ~/.zipline_tmp:\n${fileList.join('\n')}`
-                : 'No files found in ~/.zipline_tmp.',
-          },
-        ],
-      };
-    } catch (e) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ LIST failed: ${(e as Error).message}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-
-  // CREATE
-  if (upperCmd === 'CREATE' && argsArr.length === 1) {
-    const filename = argsArr[0];
-    if (!filename) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ CREATE refused: Filename is required.',
-          },
-        ],
-        isError: true,
-      };
-    }
-    const err = validateFilename(filename);
-    if (err) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ CREATE refused: ${err}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-    const filePath = resolveInTmp(filename);
-    try {
-      await fs.writeFile(filePath, content ?? '', { encoding: 'utf8' });
-      const stat = await fs.stat(filePath);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ Created/Overwritten: ${filename}\nSize: ${formatFileSize(stat.size)}`,
-          },
-        ],
-      };
-    } catch (e) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ CREATE failed: ${(e as Error).message}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-
-  // OPEN/READ
-  if ((upperCmd === 'OPEN' || upperCmd === 'READ') && argsArr.length === 1) {
-    const filename = argsArr[0];
-    if (!filename) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ ${upperCmd} refused: Filename is required.`,
-          },
-        ],
-        isError: true,
-      };
-    }
-    const err = validateFilename(filename);
-    if (err) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ ${upperCmd} refused: ${err}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-    const filePath = resolveInTmp(filename);
-    try {
-      const stat = await fs.stat(filePath);
-      if (stat.size > TMP_MAX_READ_SIZE) {
+    // LIST
+    if (upperCmd === 'LIST') {
+      try {
+        const files = await fs.readdir(TMP_DIR, { withFileTypes: true });
+        const fileList = files.filter((f) => f.isFile()).map((f) => f.name);
         return {
           content: [
             {
               type: 'text',
-              text: `❌ ${upperCmd} refused: File too large (${formatFileSize(stat.size)}). Max allowed: ${formatFileSize(TMP_MAX_READ_SIZE)}.`,
+              text:
+                fileList.length > 0
+                  ? `Files in ~/.zipline_tmp:\n${fileList.join('\n')}`
+                  : 'No files found in ~/.zipline_tmp.',
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ LIST failed: ${(e as Error).message}`,
             },
           ],
           isError: true,
         };
       }
-      const data = await fs.readFile(filePath, { encoding: 'utf8' });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ ${upperCmd}: ${filename}\nSize: ${formatFileSize(stat.size)}\n\n${data}`,
-          },
-        ],
-      };
-    } catch (e) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ ${upperCmd} failed: ${(e as Error).message}`,
-          },
-        ],
-        isError: true,
-      };
     }
-  }
 
-  // Invalid command or usage
-  return {
-    content: [
-      {
-        type: 'text',
-        text:
-          '❌ Invalid command.\n\nUsage:\n' +
-          '  LIST\n' +
-          '  CREATE <filename> (with optional content)\n' +
-          '  OPEN <filename>\n' +
-          '  READ <filename>\n\n' +
-          'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in ~/.zipline_tmp are allowed.',
-      },
-    ],
-    isError: true,
-  };
-}
+    // CREATE
+    if (upperCmd === 'CREATE' && argsArr.length === 1) {
+      const filename = argsArr[0];
+      if (!filename) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ CREATE refused: Filename is required.',
+            },
+          ],
+          isError: true,
+        };
+      }
+      const err = validateFilename(filename);
+      if (err) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ CREATE refused: ${err}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      const filePath = resolveInTmp(filename);
+      try {
+        await fs.writeFile(filePath, content ?? '', { encoding: 'utf8' });
+        const stat = await fs.stat(filePath);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Created/Overwritten: ${filename}\nSize: ${formatFileSize(stat.size)}`,
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ CREATE failed: ${(e as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    // OPEN/READ
+    if ((upperCmd === 'OPEN' || upperCmd === 'READ') && argsArr.length === 1) {
+      const filename = argsArr[0];
+      if (!filename) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ ${upperCmd} refused: Filename is required.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      const err = validateFilename(filename);
+      if (err) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ ${upperCmd} refused: ${err}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      const filePath = resolveInTmp(filename);
+      try {
+        const stat = await fs.stat(filePath);
+        if (stat.size > TMP_MAX_READ_SIZE) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `❌ ${upperCmd} refused: File too large (${formatFileSize(stat.size)}). Max allowed: ${formatFileSize(TMP_MAX_READ_SIZE)}.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        const data = await fs.readFile(filePath, { encoding: 'utf8' });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ ${upperCmd}: ${filename}\nSize: ${formatFileSize(stat.size)}\n\n${data}`,
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ ${upperCmd} failed: ${(e as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    // Invalid command or usage
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            '❌ Invalid command.\n\nUsage:\n' +
+            '  LIST\n' +
+            '  CREATE <filename> (with optional content)\n' +
+            '  OPEN <filename>\n' +
+            '  READ <filename>\n\n' +
+            'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in ~/.zipline_tmp are allowed.',
+        },
+      ],
+      isError: true,
+    };
+  }
 );
 
 // Start the server

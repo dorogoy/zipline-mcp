@@ -40,7 +40,18 @@ export interface ZiplineUploadResponse {
  * - folder: Target folder ID (alphanumeric, must exist)
  */
 export async function uploadFile(opts: UploadOptions): Promise<string> {
-  const { endpoint, token, filePath, format, timeoutMs = 30000, filenameOverride, deletesAt, password, maxViews, folder } = opts;
+  const {
+    endpoint,
+    token,
+    filePath,
+    format,
+    timeoutMs = 30000,
+    filenameOverride,
+    deletesAt,
+    password,
+    maxViews,
+    folder,
+  } = opts;
 
   if (!endpoint) throw new Error('endpoint is required');
   if (!token) throw new Error('token is required');
@@ -72,7 +83,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   const metadata = opts.metadata || {
     originalFileName: filename,
     mimeType: mimeType,
-    size: data.length
+    size: data.length,
   };
   form.append('originalFileName', metadata.originalFileName);
   form.append('mimeType', metadata.mimeType);
@@ -93,7 +104,8 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     // Add optional headers if provided
     if (deletesAt !== undefined) headers['x-zipline-deletes-at'] = deletesAt;
     if (password !== undefined) headers['x-zipline-password'] = password;
-    if (maxViews !== undefined) headers['x-zipline-max-views'] = maxViews.toString();
+    if (maxViews !== undefined)
+      headers['x-zipline-max-views'] = maxViews.toString();
     if (folder !== undefined) headers['x-zipline-folder'] = folder;
 
     const res = await fetch(`${endpoint}/api/upload`, {
@@ -131,7 +143,9 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     return url;
   } catch (err) {
     // Normalize abort/timeout error message
-    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    const msg = (
+      err instanceof Error ? err.message : String(err)
+    ).toLowerCase();
     if (msg.includes('abort') || msg.includes('timeout')) {
       throw new Error('Request aborted or timeout exceeded');
     }
@@ -154,7 +168,7 @@ function detectMimeType(filePath: string): string {
     mp4: 'video/mp4',
     mkv: 'video/x-matroska',
     webm: 'video/webm',
-    avi: 'video/avi'
+    avi: 'video/avi',
   };
 
   // Additional common file types for better support
@@ -166,7 +180,7 @@ function detectMimeType(filePath: string): string {
     pdf: 'application/pdf',
     txt: 'text/plain',
     json: 'application/json',
-    zip: 'application/zip'
+    zip: 'application/zip',
   };
 
   // Check video types first (priority), then other types
@@ -185,7 +199,8 @@ function extractFirstFileUrl(json: unknown): string | undefined {
   const files = (json as ZiplineUploadResponse).files;
   if (!Array.isArray(files) || files.length === 0) return undefined;
   const first = files[0];
-  if (!first || typeof first.url !== 'string' || first.url.length === 0) return undefined;
+  if (!first || typeof first.url !== 'string' || first.url.length === 0)
+    return undefined;
   return first.url;
 }
 
@@ -199,7 +214,9 @@ export function validateDeletesAt(deletesAt: string): void {
   if (deletesAt.startsWith('date=')) {
     const dateStr = deletesAt.substring(5);
     if (!dateStr) {
-      throw new Error('deletes-at header with date= prefix must include a valid date');
+      throw new Error(
+        'deletes-at header with date= prefix must include a valid date'
+      );
     }
 
     const date = new Date(dateStr);
@@ -218,7 +235,9 @@ export function validateDeletesAt(deletesAt: string): void {
     const match = deletesAt.match(durationRegex);
 
     if (!match) {
-      throw new Error('deletes-at header must be in format like "1d", "2h", "30m" or "date=2025-01-01T00:00:00Z"');
+      throw new Error(
+        'deletes-at header must be in format like "1d", "2h", "30m" or "date=2025-01-01T00:00:00Z"'
+      );
     }
 
     const value = parseInt(match[1]!, 10);

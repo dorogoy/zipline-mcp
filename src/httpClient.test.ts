@@ -6,7 +6,8 @@ const fsMock = {
   readFile: vi.fn(),
 };
 vi.mock('fs/promises', () => ({
-  readFile: (...args: unknown[]) => (fsMock.readFile as unknown as Function)(...args),
+  readFile: (...args: unknown[]) =>
+    (fsMock.readFile as unknown as Function)(...args),
 }));
 
 // Use Node 18+ global fetch/FormData/Blob/AbortController
@@ -148,7 +149,8 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       }
     }
 
-    globalThis.AbortController = MockAbortController as unknown as typeof AbortController;
+    globalThis.AbortController =
+      MockAbortController as unknown as typeof AbortController;
 
     // Simulate fetch that hangs until aborted
     fetchSpy.mockImplementation(async (_input: any, init?: any) => {
@@ -186,8 +188,13 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       const res: FetchResponse = {
         ok: true,
         status: 200,
-        json: async () => ({ files: [{ url: 'https://files.example.com/u/xyz' }] }),
-        text: async () => JSON.stringify({ files: [{ url: 'https://files.example.com/u/xyz' }] }),
+        json: async () => ({
+          files: [{ url: 'https://files.example.com/u/xyz' }],
+        }),
+        text: async () =>
+          JSON.stringify({
+            files: [{ url: 'https://files.example.com/u/xyz' }],
+          }),
       };
       return res as any;
     });
@@ -228,8 +235,12 @@ describe('Header Validation', () => {
       const futureDate2 = new Date();
       futureDate2.setFullYear(futureDate2.getFullYear() + 2);
 
-      expect(() => validateDeletesAt(`date=${futureDate1.toISOString()}`)).not.toThrow();
-      expect(() => validateDeletesAt(`date=${futureDate2.toISOString()}`)).not.toThrow();
+      expect(() =>
+        validateDeletesAt(`date=${futureDate1.toISOString()}`)
+      ).not.toThrow();
+      expect(() =>
+        validateDeletesAt(`date=${futureDate2.toISOString()}`)
+      ).not.toThrow();
     });
 
     it('rejects invalid relative duration strings', async () => {
@@ -257,7 +268,9 @@ describe('Header Validation', () => {
       // Use a date in the past
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 1);
-      expect(() => validateDeletesAt(`date=${pastDate.toISOString()}`)).toThrow();
+      expect(() =>
+        validateDeletesAt(`date=${pastDate.toISOString()}`)
+      ).toThrow();
     });
   });
 
@@ -566,7 +579,9 @@ describe('Header Validation', () => {
           format,
           folder: 'invalid@folder',
         })
-      ).rejects.toThrow('folder header must contain only alphanumeric characters');
+      ).rejects.toThrow(
+        'folder header must contain only alphanumeric characters'
+      );
 
       // Ensure fetch was not called due to validation failure
       expect(fetchSpy).not.toHaveBeenCalled();

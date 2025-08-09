@@ -80,7 +80,9 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the upload_file_to_zipline tool', async () => {
-    const { server } = (await import('./index')) as unknown as { server: MockServer };
+    const { server } = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
     expect(server.registerTool).toHaveBeenCalledWith(
       'upload_file_to_zipline',
       expect.any(Object),
@@ -89,7 +91,9 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the get_upload_url_only tool', async () => {
-    const { server } = (await import('./index')) as unknown as { server: MockServer };
+    const { server } = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
     expect(server.registerTool).toHaveBeenCalledWith(
       'get_upload_url_only',
       expect.any(Object),
@@ -98,7 +102,9 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the preview_upload_command tool', async () => {
-    const { server } = (await import('./index')) as unknown as { server: MockServer };
+    const { server } = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
     expect(server.registerTool).toHaveBeenCalledWith(
       'preview_upload_command',
       expect.any(Object),
@@ -107,7 +113,9 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the validate_file tool', async () => {
-    const { server } = (await import('./index')) as unknown as { server: MockServer };
+    const { server } = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
     expect(server.registerTool).toHaveBeenCalledWith(
       'validate_file',
       expect.any(Object),
@@ -121,14 +129,16 @@ describe('Zipline MCP Server', () => {
     beforeEach(async () => {
       vi.resetModules();
       Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as { server: MockServer };
+      const imported = (await import('./index')) as unknown as {
+        server: MockServer;
+      };
       server = imported.server;
     });
 
     const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi.mocked(server.registerTool).mock.calls.find(
-        (c: unknown[]) => c[0] === toolName
-      );
+      const call = vi
+        .mocked(server.registerTool)
+        .mock.calls.find((c: unknown[]) => c[0] === toolName);
       return call?.[2] as ToolHandler | undefined;
     };
 
@@ -139,26 +149,40 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       // Test invalid format
-      const result3 = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      const result3 = await handler(
+        { filePath: '/path/to/file.txt', format: 'invalid' },
+        {}
+      );
       expect(result3.isError).toBe(true);
       expect(result3.content[0]?.text).toContain('Invalid format: invalid');
 
       // Test case-insensitive matching (should be valid)
-      const result1 = await handler({ filePath: '/path/to/file.txt', format: 'UUID' }, {});
+      const result1 = await handler(
+        { filePath: '/path/to/file.txt', format: 'UUID' },
+        {}
+      );
       expect(!result1.isError).toBe(true); // Should succeed since UUID is valid (normalized to uuid)
 
       // Test alias handling (should be valid)
-      const result2 = await handler({ filePath: '/path/to/file.txt', format: 'GFYCAT' }, {});
+      const result2 = await handler(
+        { filePath: '/path/to/file.txt', format: 'GFYCAT' },
+        {}
+      );
       expect(!result2.isError).toBe(true); // Should succeed since GFYCAT is valid (normalized to random-words)
     });
 
     it('should handle file not found error', async () => {
-      fsMock.readFile.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+      fsMock.readFile.mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
 
-      const result = await handler({ filePath: '/path/to/nonexistent.txt' }, {});
+      const result = await handler(
+        { filePath: '/path/to/nonexistent.txt' },
+        {}
+      );
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('UPLOAD FAILED');
     });
@@ -181,14 +205,16 @@ describe('Zipline MCP Server', () => {
     beforeEach(async () => {
       vi.resetModules();
       Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as { server: MockServer };
+      const imported = (await import('./index')) as unknown as {
+        server: MockServer;
+      };
       server = imported.server;
     });
 
     const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi.mocked(server.registerTool).mock.calls.find(
-        (c: unknown[]) => c[0] === toolName
-      );
+      const call = vi
+        .mocked(server.registerTool)
+        .mock.calls.find((c: unknown[]) => c[0] === toolName);
       return call?.[2] as ToolHandler | undefined;
     };
 
@@ -199,19 +225,30 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       // Test invalid format
-      const resultInvalid = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      const resultInvalid = await handler(
+        { filePath: '/path/to/file.txt', format: 'invalid' },
+        {}
+      );
       expect(resultInvalid.isError).toBe(true);
-      expect(resultInvalid.content[0]?.text).toContain('Invalid format: invalid');
+      expect(resultInvalid.content[0]?.text).toContain(
+        'Invalid format: invalid'
+      );
 
       // Test valid formats
       const validFormats = ['random', 'uuid', 'date', 'name', 'random-words'];
       for (const format of validFormats) {
-        const result = await handler({ filePath: '/path/to/file.txt', format }, {});
+        const result = await handler(
+          { filePath: '/path/to/file.txt', format },
+          {}
+        );
         expect(!result.isError).toBe(true); // Should succeed since spawn is now mocked properly
       }
 
       // Test alias
-      const resultAlias = await handler({ filePath: '/path/to/file.txt', format: 'gfycat' }, {});
+      const resultAlias = await handler(
+        { filePath: '/path/to/file.txt', format: 'gfycat' },
+        {}
+      );
       expect(!resultAlias.isError).toBe(true); // Should succeed since spawn is now mocked properly
     });
   });
@@ -222,14 +259,16 @@ describe('Zipline MCP Server', () => {
     beforeEach(async () => {
       vi.resetModules();
       Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as { server: MockServer };
+      const imported = (await import('./index')) as unknown as {
+        server: MockServer;
+      };
       server = imported.server;
     });
 
     const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi.mocked(server.registerTool).mock.calls.find(
-        (c: unknown[]) => c[0] === toolName
-      );
+      const call = vi
+        .mocked(server.registerTool)
+        .mock.calls.find((c: unknown[]) => c[0] === toolName);
       return call?.[2] as ToolHandler | undefined;
     };
 
@@ -238,17 +277,26 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       // Test with alias
-      const result1 = await handler({ filePath: '/path/to/file.txt', format: 'gfycat' }, {});
+      const result1 = await handler(
+        { filePath: '/path/to/file.txt', format: 'gfycat' },
+        {}
+      );
       expect(!result1.isError).toBe(true);
-      expect(result1.content[0]?.text).toContain('format: \'random-words\'');
+      expect(result1.content[0]?.text).toContain("format: 'random-words'");
 
       // Test with uppercase
-      const result2 = await handler({ filePath: '/path/to/file.txt', format: 'UUID' }, {});
+      const result2 = await handler(
+        { filePath: '/path/to/file.txt', format: 'UUID' },
+        {}
+      );
       expect(!result2.isError).toBe(true);
-      expect(result2.content[0]?.text).toContain('format: \'uuid\'');
+      expect(result2.content[0]?.text).toContain("format: 'uuid'");
 
       // Test with invalid format
-      const result3 = await handler({ filePath: '/path/to/file.txt', format: 'invalid' }, {});
+      const result3 = await handler(
+        { filePath: '/path/to/file.txt', format: 'invalid' },
+        {}
+      );
       expect(result3.isError).toBe(true);
       expect(result3.content[0]?.text).toContain('Invalid format: invalid');
     });
@@ -261,7 +309,10 @@ interface ToolResult {
   isError?: boolean;
 }
 
-type ToolHandler = (args: Record<string, unknown>, context: Record<string, unknown>) => Promise<ToolResult>;
+type ToolHandler = (
+  args: Record<string, unknown>,
+  context: Record<string, unknown>
+) => Promise<ToolResult>;
 
 describe('tmp_file_manager tool', () => {
   let server: MockServer;
@@ -269,14 +320,16 @@ describe('tmp_file_manager tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as { server: MockServer };
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
     server = imported.server;
   });
 
   const getToolHandler = (toolName: string): ToolHandler | undefined => {
-    const call = vi.mocked(server.registerTool).mock.calls.find(
-      (c: unknown[]) => c[0] === toolName
-    );
+    const call = vi
+      .mocked(server.registerTool)
+      .mock.calls.find((c: unknown[]) => c[0] === toolName);
     return call?.[2] as ToolHandler | undefined;
   };
 
