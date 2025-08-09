@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/dorogoy/zipline-mcp/compare/v1.0.0...v1.0.1) (2025-08-09)
+
+
+### Bug Fixes
+
+* **api:** correct blob creation and file validation ([436a3bc](https://github.com/dorogoy/zipline-mcp/commit/436a3bc6ade63712b604b6c5c42ceaa518ece657))
+
 # 1.0.0 (2025-08-09)
 
 
