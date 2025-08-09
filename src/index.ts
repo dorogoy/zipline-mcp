@@ -13,6 +13,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 const __filename = fileURLToPath(import.meta.url);
 path.dirname(__filename);
 
+const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
+const ZIPLINE_ENDPOINT = process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
+
+if (!ZIPLINE_TOKEN) {
+  throw new Error('Environment variable ZIPLINE_TOKEN is required.');
+}
+
 const server = new McpServer({
   name: 'zipline-upload-server',
   version: '1.0.0',
@@ -75,9 +82,6 @@ server.registerTool(
       filePath: z
         .string()
         .describe('Path to the file to upload (txt, md, gpx, html, etc.)'),
-      authorizationToken: z
-        .string()
-        .describe('Authorization token for Zipline API'),
       format: z
         .enum(['random', 'original'])
         .optional()
@@ -86,11 +90,9 @@ server.registerTool(
   },
   async ({
     filePath,
-    authorizationToken,
     format = 'random',
   }: {
     filePath: string;
-    authorizationToken: string;
     format?: 'random' | 'original' | undefined;
   }) => {
     try {
@@ -138,7 +140,14 @@ server.registerTool(
       }
 
       // Build the curl command
-      const curlCommand = `curl -s -H "authorization: ${authorizationToken}" https://files.etereo.cloud/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
+      const ZIPLINE_ENDPOINT = process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
+
+      if (!ZIPLINE_TOKEN) {
+        throw new Error('Environment variable ZIPLINE_TOKEN is required.');
+      }
+
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
 
       console.error(`Executing upload for: ${path.basename(filePath)}`);
 
@@ -243,9 +252,6 @@ server.registerTool(
       'Upload a file and return ONLY the download URL (minimal output)',
     inputSchema: {
       filePath: z.string().describe('Path to the file to upload'),
-      authorizationToken: z
-        .string()
-        .describe('Authorization token for Zipline API'),
       format: z
         .enum(['random', 'original'])
         .optional()
@@ -254,11 +260,9 @@ server.registerTool(
   },
   async ({
     filePath,
-    authorizationToken,
     format = 'random',
   }: {
     filePath: string;
-    authorizationToken: string;
     format?: 'random' | 'original' | undefined;
   }) => {
     try {
@@ -297,7 +301,7 @@ server.registerTool(
         throw new Error(`Unsupported file type: ${fileExt}`);
       }
 
-      const curlCommand = `curl -s -H "authorization: ${authorizationToken}" https://files.etereo.cloud/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
 
       console.error(`Quick upload: ${path.basename(filePath)}`);
 
@@ -386,7 +390,6 @@ server.registerTool(
   },
   ({
     filePath,
-    authorizationToken,
     format = 'random',
   }: {
     filePath: string;
@@ -395,15 +398,8 @@ server.registerTool(
   }) => {
     try {
       // For security, mask most of the token in the preview
-      const maskedToken =
-        authorizationToken.length > 8
-          ? `${authorizationToken.substring(
-              0,
-              4
-            )}...${authorizationToken.substring(authorizationToken.length - 4)}`
-          : '***masked***';
 
-      const curlCommand = `curl -s -H "authorization: ${maskedToken}" https://files.etereo.cloud/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
+      const curlCommand = `curl -s -H "authorization: ${ZIPLINE_TOKEN}" ${ZIPLINE_ENDPOINT}/api/upload -F file=@${filePath} -H 'content-type: multipart/form-data' -H 'x-zipline-format: ${format}' | jq -r '.files[0].url'`;
 
       return {
         content: [
