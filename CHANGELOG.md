@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/dorogoy/zipline-mcp/compare/v1.0.1...v1.0.2) (2025-08-10)
+
+
+### Bug Fixes
+
+* **deps:** bump zod from 3.25.76 to 4.0.17 ([4831858](https://github.com/dorogoy/zipline-mcp/commit/4831858c24965d4416449aff6f2b1195f18a7ba9))
+
 ## [1.0.1](https://github.com/dorogoy/zipline-mcp/compare/v1.0.0...v1.0.1) (2025-08-09)
 
 
