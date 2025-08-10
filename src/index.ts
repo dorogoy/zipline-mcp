@@ -128,40 +128,42 @@ async function ensureTmpDir(): Promise<void> {
   }
 }
 
+const uploadFileInputSchema = {
+  filePath: z
+    .string()
+    .describe('Path to the file to upload (txt, md, gpx, html, etc.)'),
+  format: z
+    .enum(ALLOWED_FORMATS)
+    .optional()
+    .describe('Filename format (default: random)'),
+  deletesAt: z
+    .string()
+    .optional()
+    .describe(
+      'File expiration time (e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")'
+    ),
+  password: z
+    .string()
+    .optional()
+    .describe('Password protection for the uploaded file'),
+  maxViews: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe('Maximum number of views before file removal (≥ 0)'),
+  folder: z
+    .string()
+    .optional()
+    .describe('Target folder ID (alphanumeric, must exist)'),
+};
+
 server.registerTool(
   'upload_file_to_zipline',
   {
     title: 'Upload File to Zipline',
     description: 'Upload a file to Zipline server and get the download URL',
-    inputSchema: {
-      filePath: z
-        .string()
-        .describe('Path to the file to upload (txt, md, gpx, html, etc.)'),
-      format: z
-        .enum(ALLOWED_FORMATS)
-        .optional()
-        .describe('Filename format (default: random)'),
-      deletesAt: z
-        .string()
-        .optional()
-        .describe(
-          'File expiration time (e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")'
-        ),
-      password: z
-        .string()
-        .optional()
-        .describe('Password protection for the uploaded file'),
-      maxViews: z
-        .number()
-        .int()
-        .nonnegative()
-        .optional()
-        .describe('Maximum number of views before file removal (≥ 0)'),
-      folder: z
-        .string()
-        .optional()
-        .describe('Target folder ID (alphanumeric, must exist)'),
-    },
+    inputSchema: uploadFileInputSchema,
   },
   async ({
     filePath,
@@ -276,79 +278,6 @@ server.registerTool(
               '• Verify your authorization token is correct\n' +
               '• Ensure the server https://files.etereo.cloud is reachable\n' +
               '• Confirm the file type is supported',
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-);
-
-server.registerTool(
-  'get_upload_url_only',
-  {
-    title: 'Get Upload URL Only',
-    description:
-      'Upload a file and return ONLY the download URL (minimal output)',
-    inputSchema: {
-      filePath: z.string().describe('Path to the file to upload'),
-      format: z
-        .enum(ALLOWED_FORMATS)
-        .optional()
-        .describe('Filename format (default: random)'),
-    },
-  },
-  async ({
-    filePath,
-    format = 'random',
-  }: {
-    filePath: string;
-    format?: FormatType | undefined;
-  }) => {
-    try {
-      // Validate and normalize format
-      const normalizedFormat = normalizeFormat(format || 'random');
-      if (!normalizedFormat) {
-        throw new Error(`Invalid format: ${format}`);
-      }
-
-      // Quick file validation
-      await readFile(filePath);
-      const fileExt = path.extname(filePath).toLowerCase();
-
-      if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
-        throw new Error(`Unsupported file type: ${fileExt}`);
-      }
-
-      console.error(`Quick upload: ${path.basename(filePath)}`);
-
-      const url = await uploadFile({
-        endpoint: ZIPLINE_ENDPOINT,
-        token: ZIPLINE_TOKEN,
-        filePath,
-        format: normalizedFormat,
-      });
-
-      if (!url || !isValidUrl(url)) {
-        throw new Error('Invalid or empty URL received from server');
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: url,
-          },
-        ],
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred';
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `ERROR: ${errorMessage}`,
           },
         ],
         isError: true,

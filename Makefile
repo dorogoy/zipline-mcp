@@ -8,7 +8,7 @@ install:
 	npm install
 
 # Build the project
-build:
+build: clean
 	npm run build
 
 # Start the server

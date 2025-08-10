@@ -70,7 +70,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   if (!format) throw new Error('format is required');
 
   // Validate optional headers if provided
-  if (deletesAt !== undefined) validateDeletesAt(deletesAt);
+  if (deletesAt !== undefined) validateDeleteAt(deletesAt);
   if (password !== undefined) validatePassword(password);
   if (maxViews !== undefined) validateMaxViews(maxViews);
   if (folder !== undefined) validateFolder(folder);
@@ -216,45 +216,45 @@ function extractFirstFileUrl(json: unknown): string | undefined {
 }
 
 // Header validation functions
-export function validateDeletesAt(deletesAt: string): void {
-  if (!deletesAt || typeof deletesAt !== 'string') {
-    throw new Error('deletes-at header must be a non-empty string');
+export function validateDeleteAt(deleteAt: string): void {
+  if (!deleteAt || typeof deleteAt !== 'string') {
+    throw new Error('delete-at header must be a non-empty string');
   }
 
   // Check if it's an absolute date format
-  if (deletesAt.startsWith('date=')) {
-    const dateStr = deletesAt.substring(5);
+  if (deleteAt.startsWith('date=')) {
+    const dateStr = deleteAt.substring(5);
     if (!dateStr) {
       throw new Error(
-        'deletes-at header with date= prefix must include a valid date'
+        'delete-at header with date= prefix must include a valid date'
       );
     }
 
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) {
-      throw new Error('deletes-at header contains invalid date format');
+      throw new Error('delete-at header contains invalid date format');
     }
 
     // Check if date is in the future
     const now = new Date();
     if (date <= now) {
-      throw new Error('deletes-at header must specify a future date');
+      throw new Error('delete-at header must specify a future date');
     }
   } else {
     // Parse as relative duration
     const durationRegex = /^(\d+)([dhm])$/;
-    const match = deletesAt.match(durationRegex);
+    const match = deleteAt.match(durationRegex);
 
     if (!match) {
       throw new Error(
-        'deletes-at header must be in format like "1d", "2h", "30m" or "date=2025-01-01T00:00:00Z"'
+        'delete-at header must be in format like "1d", "2h", "30m" or "date=2025-01-01T00:00:00Z"'
       );
     }
 
     const value = parseInt(match[1]!, 10);
 
     if (value <= 0) {
-      throw new Error('deletes-at header duration must be positive');
+      throw new Error('delete-at header duration must be positive');
     }
   }
 }
