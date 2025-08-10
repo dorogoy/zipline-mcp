@@ -90,17 +90,6 @@ describe('Zipline MCP Server', () => {
     );
   });
 
-  it('should register the get_upload_url_only tool', async () => {
-    const { server } = (await import('./index')) as unknown as {
-      server: MockServer;
-    };
-    expect(server.registerTool).toHaveBeenCalledWith(
-      'get_upload_url_only',
-      expect.any(Object),
-      expect.any(Function)
-    );
-  });
-
   it('should register the validate_file tool', async () => {
     const { server } = (await import('./index')) as unknown as {
       server: MockServer;
@@ -186,59 +175,136 @@ describe('Zipline MCP Server', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('File type .xyz not supported');
     });
-  });
 
-  describe('get_upload_url_only tool', () => {
-    let server: MockServer;
-
-    beforeEach(async () => {
-      vi.resetModules();
-      Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as {
-        server: MockServer;
-      };
-      server = imported.server;
-    });
-
-    const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi
-        .mocked(server.registerTool)
-        .mock.calls.find((c: unknown[]) => c[0] === toolName);
-      return call?.[2] as ToolHandler | undefined;
-    };
-
-    it('should validate format for URL-only upload', async () => {
+    it('should handle deleteAt parameter correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
 
-      const handler = getToolHandler('get_upload_url_only');
+      const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
 
-      // Test invalid format
-      const resultInvalid = await handler(
-        { filePath: '/path/to/file.txt', format: 'invalid' },
+      // Test with valid deletesAt parameter
+      const result = await handler(
+        {
+          filePath: '/path/to/file.txt',
+          deletesAt: '1d',
+        },
         {}
       );
-      expect(resultInvalid.isError).toBe(true);
-      expect(resultInvalid.content[0]?.text).toContain(
-        'Invalid format: invalid'
+      expect(!result.isError).toBe(true);
+
+      // Verify uploadFile was called with the correct deleteAt parameter
+      const { uploadFile } = await import('./httpClient');
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deletesAt: '1d',
+        })
       );
+    });
 
-      // Test valid formats
-      const validFormats = ['random', 'uuid', 'date', 'name', 'random-words'];
-      for (const format of validFormats) {
-        const result = await handler(
-          { filePath: '/path/to/file.txt', format },
-          {}
-        );
-        expect(!result.isError).toBe(true); // Should succeed since spawn is now mocked properly
-      }
+    it('should handle password parameter correctly', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
 
-      // Test alias
-      const resultAlias = await handler(
-        { filePath: '/path/to/file.txt', format: 'gfycat' },
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test with valid password parameter
+      const result = await handler(
+        {
+          filePath: '/path/to/file.txt',
+          password: 'secret123',
+        },
         {}
       );
-      expect(!resultAlias.isError).toBe(true); // Should succeed since spawn is now mocked properly
+      expect(!result.isError).toBe(true);
+
+      // Verify uploadFile was called with the correct password parameter
+      const { uploadFile } = await import('./httpClient');
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          password: 'secret123',
+        })
+      );
+    });
+
+    it('should handle maxViews parameter correctly', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test with valid maxViews parameter
+      const result = await handler(
+        {
+          filePath: '/path/to/file.txt',
+          maxViews: 10,
+        },
+        {}
+      );
+      expect(!result.isError).toBe(true);
+
+      // Verify uploadFile was called with the correct maxViews parameter
+      const { uploadFile } = await import('./httpClient');
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxViews: 10,
+        })
+      );
+    });
+
+    it('should handle folder parameter correctly', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test with valid folder parameter
+      const result = await handler(
+        {
+          filePath: '/path/to/file.txt',
+          folder: 'testfolder',
+        },
+        {}
+      );
+      expect(!result.isError).toBe(true);
+
+      // Verify uploadFile was called with the correct folder parameter
+      const { uploadFile } = await import('./httpClient');
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          folder: 'testfolder',
+        })
+      );
+    });
+
+    it('should handle all optional parameters together', async () => {
+      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Test with all optional parameters
+      const result = await handler(
+        {
+          filePath: '/path/to/file.txt',
+          deletesAt: '2h',
+          password: 'secret123',
+          maxViews: 5,
+          folder: 'testfolder',
+        },
+        {}
+      );
+      expect(!result.isError).toBe(true);
+
+      // Verify uploadFile was called with all parameters
+      const { uploadFile } = await import('./httpClient');
+      expect(uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deletesAt: '2h',
+          password: 'secret123',
+          maxViews: 5,
+          folder: 'testfolder',
+        })
+      );
     });
   });
 });

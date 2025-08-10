@@ -215,18 +215,18 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
 
 // Unit tests for header validation
 describe('Header Validation', () => {
-  describe('validateDeletesAt', () => {
+  describe('validateDeleteAt', () => {
     it('accepts valid relative duration strings', async () => {
-      const { validateDeletesAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient');
 
-      expect(() => validateDeletesAt('1d')).not.toThrow();
-      expect(() => validateDeletesAt('2h')).not.toThrow();
-      expect(() => validateDeletesAt('30m')).not.toThrow();
-      expect(() => validateDeletesAt('7d')).not.toThrow();
+      expect(() => validateDeleteAt('1d')).not.toThrow();
+      expect(() => validateDeleteAt('2h')).not.toThrow();
+      expect(() => validateDeleteAt('30m')).not.toThrow();
+      expect(() => validateDeleteAt('7d')).not.toThrow();
     });
 
     it('accepts valid absolute date format with date= prefix', async () => {
-      const { validateDeletesAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient');
 
       // Use dates that are definitely in the future
       const futureDate1 = new Date();
@@ -236,40 +236,40 @@ describe('Header Validation', () => {
       futureDate2.setFullYear(futureDate2.getFullYear() + 2);
 
       expect(() =>
-        validateDeletesAt(`date=${futureDate1.toISOString()}`)
+        validateDeleteAt(`date=${futureDate1.toISOString()}`)
       ).not.toThrow();
       expect(() =>
-        validateDeletesAt(`date=${futureDate2.toISOString()}`)
+        validateDeleteAt(`date=${futureDate2.toISOString()}`)
       ).not.toThrow();
     });
 
     it('rejects invalid relative duration strings', async () => {
-      const { validateDeletesAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient');
 
-      expect(() => validateDeletesAt('')).toThrow();
-      expect(() => validateDeletesAt('1')).toThrow();
-      expect(() => validateDeletesAt('x')).toThrow();
-      expect(() => validateDeletesAt('1x')).toThrow();
-      expect(() => validateDeletesAt('-1d')).toThrow();
+      expect(() => validateDeleteAt('')).toThrow();
+      expect(() => validateDeleteAt('1')).toThrow();
+      expect(() => validateDeleteAt('x')).toThrow();
+      expect(() => validateDeleteAt('1x')).toThrow();
+      expect(() => validateDeleteAt('-1d')).toThrow();
     });
 
     it('rejects invalid absolute date format', async () => {
-      const { validateDeletesAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient');
 
-      expect(() => validateDeletesAt('date=')).toThrow();
-      expect(() => validateDeletesAt('date=invalid')).toThrow();
-      expect(() => validateDeletesAt('date=2025-13-01T00:00:00Z')).toThrow();
-      expect(() => validateDeletesAt('2025-01-01T00:00:00Z')).toThrow(); // missing date= prefix
+      expect(() => validateDeleteAt('date=')).toThrow();
+      expect(() => validateDeleteAt('date=invalid')).toThrow();
+      expect(() => validateDeleteAt('date=2025-13-01T00:00:00Z')).toThrow();
+      expect(() => validateDeleteAt('2025-01-01T00:00:00Z')).toThrow(); // missing date= prefix
     });
 
     it('rejects past dates', async () => {
-      const { validateDeletesAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient');
 
       // Use a date in the past
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 1);
       expect(() =>
-        validateDeletesAt(`date=${pastDate.toISOString()}`)
+        validateDeleteAt(`date=${pastDate.toISOString()}`)
       ).toThrow();
     });
   });
@@ -509,7 +509,7 @@ describe('Header Validation', () => {
       expect(headers['x-zipline-format']).toBe(format);
     });
 
-    it('rejects upload with invalid deletes-at header before making request', async () => {
+    it('rejects upload with invalid delete-at header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
       const { uploadFile } = await import('./httpClient');
@@ -522,7 +522,7 @@ describe('Header Validation', () => {
           format,
           deletesAt: 'invalid',
         })
-      ).rejects.toThrow('deletes-at header must be in format like');
+      ).rejects.toThrow('delete-at header must be in format like');
 
       // Ensure fetch was not called due to validation failure
       expect(fetchSpy).not.toHaveBeenCalled();
