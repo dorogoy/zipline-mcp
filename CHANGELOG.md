@@ -5,6 +5,13 @@
 
 * Revert "fix(deps): bump zod from 3.25.76 to 4.0.17" ([#6](https://github.com/dorogoy/zipline-mcp/issues/6)) ([2c286ee](https://github.com/dorogoy/zipline-mcp/commit/2c286eee6c6dafa93a22adb9d457031d13ec7487))
 
+## [1.1.0](https://github.com/dorogoy/zipline-mcp/compare/v1.0.3...v1.1.0) (2025-08-10)
+
+
+### Features
+
+* **api:** add upload options and remove preview tool ([4bc271a](https://github.com/dorogoy/zipline-mcp/commit/4bc271adc9f0742b9ffe017e2a662473e51b304e))
+
 ## [1.0.2](https://github.com/dorogoy/zipline-mcp/compare/v1.0.1...v1.0.2) (2025-08-10)
 
 
