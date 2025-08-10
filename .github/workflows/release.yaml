@@ -1,32 +1,51 @@
-name: Create Release Tag
+name: Release and Publish NPM package
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  issues: write
-  contents: write
-  pull-requests: write
-
 jobs:
-  release-tag:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: ${{ !contains(github.event.head_commit.message, 'chore(release)') }}
+    permissions:
+      contents: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-node@v4
+
+      - name: Run Release Please
+        uses: googleapis/release-please-action@v4
+        id: release
         with:
-          node-version: lts/*
-          cache: 'npm'
+          release-type: node
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Cache npm dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install dependencies
-        run: npm install @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/exec
-      - name: Run semantic-release
-        run: npx semantic-release@23.0.6
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm ci --prefer-offline
+
+      - name: Publish to npm
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
