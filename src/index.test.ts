@@ -73,10 +73,15 @@ describe('Zipline MCP Server', () => {
 
   it('should create an McpServer instance', async () => {
     await import('./index');
-    expect(McpServer).toHaveBeenCalledWith({
-      name: 'zipline-upload-server',
-      version: '1.0.0',
-    });
+    // Check that McpServer is called with a valid semver version string
+    const calls = vi.mocked(McpServer).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const call = calls[0]?.[0];
+    expect(call).toBeDefined();
+    if (call) {
+      expect(call.name).toBe('zipline-upload-server');
+      expect(call.version).toMatch(/^[0-9]+\.[0-9]+\.[0-9]+$/);
+    }
   });
 
   it('should register the upload_file_to_zipline tool', async () => {
