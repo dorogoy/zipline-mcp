@@ -26,3 +26,6 @@ jobs:
 
       - name: Run linter and test
         run: make test
+
+      - name: Check the build
+        run: make build
