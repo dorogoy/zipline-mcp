@@ -17,9 +17,10 @@ if (!ZIPLINE_TOKEN) {
   throw new Error('Environment variable ZIPLINE_TOKEN is required.');
 }
 
+export const RELEASE_VERSION = '1.1.1';
 const server = new McpServer({
   name: 'zipline-upload-server',
-  version: '1.0.0',
+  version: RELEASE_VERSION,
 });
 
 // Helper function to validate URLs
