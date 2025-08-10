@@ -1,6 +1,6 @@
 {
   "name": "zipline-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "An MCP server to upload files to a Zipline-compatible host.",
   "main": "dist/index.js",
   "type": "module",
