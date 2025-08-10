@@ -12,10 +12,10 @@ export interface UploadOptions {
     mimeType: string;
     size: number;
   };
-  deletesAt?: string;
-  password?: string;
-  maxViews?: number;
-  folder?: string;
+  deletesAt?: string | undefined;
+  password?: string | undefined;
+  maxViews?: number | undefined;
+  folder?: string | undefined;
 }
 
 export interface ZiplineUploadResponse {
@@ -34,10 +34,21 @@ export interface ZiplineUploadResponse {
  * - Robust error handling for HTTP and network errors
  *
  * Enhanced Headers (all optional):
- * - deletesAt: File expiration time (e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")
- * - password: Password protection for the uploaded file
- * - maxViews: Maximum number of views before file removal (≥ 0)
- * - folder: Target folder ID (alphanumeric, must exist)
+ * - deletesAt: File expiration time. Supports:
+ *   - Relative durations: "1d" (1 day), "2h" (2 hours), "30m" (30 minutes)
+ *   - Absolute dates: "date=YYYY-MM-DDTHH:mm:ssZ" (e.g., "date=2025-12-31T23:59:59Z")
+ *   - Validation ensures the value is either a valid duration or ISO-8601 date.
+ * - password: Protects the uploaded file with a password.
+ *   - Must be a non-empty string.
+ *   - Whitespace-only passwords are rejected.
+ *   - Passwords are never logged or exposed in error messages for security.
+ * - maxViews: Limits the number of times a file can be viewed before it becomes unavailable.
+ *   - Must be a non-negative integer (≥ 0).
+ *   - When the counter reaches 0, the file becomes inaccessible.
+ * - folder: Specifies the ID of the folder where the upload should be placed.
+ *   - Must be a non-empty alphanumeric string.
+ *   - Special characters and whitespace are rejected.
+ *   - If the specified folder doesn't exist, the upload will fail.
  */
 export async function uploadFile(opts: UploadOptions): Promise<string> {
   const {

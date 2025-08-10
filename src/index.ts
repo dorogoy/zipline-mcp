@@ -7,7 +7,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { uploadFile } from './httpClient.js';
+import { uploadFile, UploadOptions } from './httpClient.js';
 
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
 const ZIPLINE_ENDPOINT =
@@ -141,14 +141,42 @@ server.registerTool(
         .enum(ALLOWED_FORMATS)
         .optional()
         .describe('Filename format (default: random)'),
+      deletesAt: z
+        .string()
+        .optional()
+        .describe(
+          'File expiration time (e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")'
+        ),
+      password: z
+        .string()
+        .optional()
+        .describe('Password protection for the uploaded file'),
+      maxViews: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe('Maximum number of views before file removal (≥ 0)'),
+      folder: z
+        .string()
+        .optional()
+        .describe('Target folder ID (alphanumeric, must exist)'),
     },
   },
   async ({
     filePath,
     format = 'random',
+    deletesAt = undefined,
+    password = undefined,
+    maxViews = undefined,
+    folder = undefined,
   }: {
     filePath: string;
     format?: FormatType | undefined;
+    deletesAt?: string | undefined;
+    password?: string | undefined;
+    maxViews?: number | undefined;
+    folder?: string | undefined;
   }) => {
     try {
       // Validate and normalize format
@@ -174,13 +202,18 @@ server.registerTool(
 
       console.error(`Executing upload for: ${path.basename(filePath)}`);
 
-      // Use the HTTP client instead of curl
-      const url = await uploadFile({
+      const uploadOptions: UploadOptions = {
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
         filePath,
         format: normalizedFormat,
-      });
+        password,
+        maxViews,
+        folder,
+        deletesAt,
+      };
+
+      const url = await uploadFile(uploadOptions);
 
       // Validate that the URL is properly formatted
       if (!isValidUrl(url)) {
@@ -289,7 +322,6 @@ server.registerTool(
 
       console.error(`Quick upload: ${path.basename(filePath)}`);
 
-      // Use the HTTP client instead of curl
       const url = await uploadFile({
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
@@ -317,75 +349,6 @@ server.registerTool(
           {
             type: 'text',
             text: `ERROR: ${errorMessage}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-);
-
-server.registerTool(
-  'preview_upload_command',
-  {
-    title: 'Preview Upload Command',
-    description:
-      'Generate and preview the curl command that will be used for uploading',
-    inputSchema: {
-      filePath: z.string().describe('Path to the file to upload'),
-      format: z
-        .enum(ALLOWED_FORMATS)
-        .optional()
-        .describe('Filename format (default: random)'),
-    },
-  },
-  ({
-    filePath,
-    format = 'random',
-  }: {
-    filePath: string;
-    format?: FormatType | undefined;
-  }) => {
-    try {
-      // Validate and normalize format
-      const normalizedFormat = normalizeFormat(format || 'random');
-      if (!normalizedFormat) {
-        throw new Error(`Invalid format: ${format}`);
-      }
-
-      // For security, show the Node.js implementation instead of curl
-      const nodeJsImplementation = `// Node.js implementation (no external dependencies)
-import { uploadFile } from './httpClient.js';
-
-const url = await uploadFile({
-  endpoint: '${ZIPLINE_ENDPOINT}',
-  token: 'YOUR_TOKEN_HERE',
-  filePath: '${filePath}',
-  format: '${normalizedFormat}',
-});`;
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              '📋 NODE.JS IMPLEMENTATION PREVIEW:\n\n' +
-              `Code:\n\`\`\`javascript\n${nodeJsImplementation}\n\`\`\`\n\n` +
-              '🔒 Token is masked for security.\n' +
-              '✂️ The actual code will use your full token.\n' +
-              `📤 This will upload: ${path.basename(filePath)}\n` +
-              '🎯 Expected output: The download URL for your file',
-          },
-        ],
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred';
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error generating preview: ${errorMessage}`,
           },
         ],
         isError: true,

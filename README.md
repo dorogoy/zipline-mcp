@@ -55,9 +55,10 @@ Add this minimal configuration to your MCP client (e.g., Claude Desktop):
 mcpServers:
   zipline:
     command: npx
-    args: ['zipline-mcp']
+    args: ['-y', 'zipline-mcp']
     environment:
       ZIPLINE_TOKEN: 'your-api-token-here'
+      ZIPLINE_ENDPOINT: 'http://localhost:3000'
 ```
 
 ```json
@@ -66,9 +67,10 @@ mcpServers:
   "mcpServers": {
     "zipline": {
       "command": "npx",
-      "args": ["zipline-mcp"],
+      "args": ["-y", "zipline-mcp"],
       "environment": {
-        "ZIPLINE_TOKEN": "your-api-token-here"
+        "ZIPLINE_TOKEN": "your-api-token-here",
+        "ZIPLINE_ENDPOINT": "http://localhost:3000"
       }
     }
   }
@@ -82,6 +84,7 @@ mcpServers:
 - `command`: The executable to run (typically "npx")
 - `args`: Array containing ["zipline-mcp"]
 - `environment.ZIPLINE_TOKEN`: Your Zipline API token
+- `environment.ZIPLINE_ENDPOINT`: The URL of your Zipline server (default is "http://localhost:3000")
 
 ##### Optional Settings
 
@@ -92,7 +95,6 @@ mcpServers:
 
 1. Store API tokens in environment variables, not in config files
 2. Use HTTPS for all connections to Zipline servers
-3. Restrict token permissions to only required scopes
 
 #### Troubleshooting Common Issues
 
@@ -100,7 +102,7 @@ mcpServers:
 
 - Symptom: "Invalid authorization token" errors
 - Solutions:
-  - Verify token validity and permissions
+  - Verify token validity
   - Check for typos in the ZIPLINE_TOKEN value
   - Ensure token is passed via environment variable
 
@@ -340,13 +342,6 @@ Uploads a file to the Zipline server and returns a detailed success message.
 #### `get_upload_url_only`
 
 Uploads a file and returns only the download URL.
-
-- `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
-- `format` (optional): Filename format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words". Defaults to "random".
-
-#### `preview_upload_command`
-
-Generates and previews the curl command that will be used for uploading.
 
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
 - `format` (optional): Filename format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words". Defaults to "random".
