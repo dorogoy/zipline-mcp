@@ -33,19 +33,16 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
+        run: npm ci --prefer-offline
 
       - name: Test
-        run: npm run test:run
+        run: make test
+
+      - name: Format check
+        run: make format-check
 
       - name: Build
-        run: npm run build
+        run: make build
 
       - name: Release
         uses: google-github-actions/release-please-action@v4
