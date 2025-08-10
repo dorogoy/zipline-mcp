@@ -1,8 +1,5 @@
 CHANGELOG.md
 package-lock.json
 package.json
-.eslintrc.json
 .github/*
-.releaserc.json
-tsconfig.json
 .prettierrc
