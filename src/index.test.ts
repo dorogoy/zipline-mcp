@@ -101,17 +101,6 @@ describe('Zipline MCP Server', () => {
     );
   });
 
-  it('should register the preview_upload_command tool', async () => {
-    const { server } = (await import('./index')) as unknown as {
-      server: MockServer;
-    };
-    expect(server.registerTool).toHaveBeenCalledWith(
-      'preview_upload_command',
-      expect.any(Object),
-      expect.any(Function)
-    );
-  });
-
   it('should register the validate_file tool', async () => {
     const { server } = (await import('./index')) as unknown as {
       server: MockServer;
@@ -250,55 +239,6 @@ describe('Zipline MCP Server', () => {
         {}
       );
       expect(!resultAlias.isError).toBe(true); // Should succeed since spawn is now mocked properly
-    });
-  });
-
-  describe('preview_upload_command tool', () => {
-    let server: MockServer;
-
-    beforeEach(async () => {
-      vi.resetModules();
-      Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as {
-        server: MockServer;
-      };
-      server = imported.server;
-    });
-
-    const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi
-        .mocked(server.registerTool)
-        .mock.calls.find((c: unknown[]) => c[0] === toolName);
-      return call?.[2] as ToolHandler | undefined;
-    };
-
-    it('should generate preview command with normalized format', async () => {
-      const handler = getToolHandler('preview_upload_command');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with alias
-      const result1 = await handler(
-        { filePath: '/path/to/file.txt', format: 'gfycat' },
-        {}
-      );
-      expect(!result1.isError).toBe(true);
-      expect(result1.content[0]?.text).toContain("format: 'random-words'");
-
-      // Test with uppercase
-      const result2 = await handler(
-        { filePath: '/path/to/file.txt', format: 'UUID' },
-        {}
-      );
-      expect(!result2.isError).toBe(true);
-      expect(result2.content[0]?.text).toContain("format: 'uuid'");
-
-      // Test with invalid format
-      const result3 = await handler(
-        { filePath: '/path/to/file.txt', format: 'invalid' },
-        {}
-      );
-      expect(result3.isError).toBe(true);
-      expect(result3.content[0]?.text).toContain('Invalid format: invalid');
     });
   });
 });
