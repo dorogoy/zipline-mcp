@@ -5,6 +5,13 @@
 
 * Revert "fix(deps): bump zod from 3.25.76 to 4.0.17" ([#6](https://github.com/dorogoy/zipline-mcp/issues/6)) ([2c286ee](https://github.com/dorogoy/zipline-mcp/commit/2c286eee6c6dafa93a22adb9d457031d13ec7487))
 
+## [1.1.1](https://github.com/dorogoy/zipline-mcp/compare/v1.1.0...v1.1.1) (2025-08-10)
+
+
+### Bug Fixes
+
+* **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
+
 ## [1.1.0](https://github.com/dorogoy/zipline-mcp/compare/v1.0.3...v1.1.0) (2025-08-10)
 
 
