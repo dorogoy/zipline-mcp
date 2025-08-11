@@ -12,6 +12,8 @@ import { uploadFile, UploadOptions } from './httpClient.js';
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
 const ZIPLINE_ENDPOINT =
   process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
+const ZIPLINE_DISABLE_SANDBOXING =
+  process.env.ZIPLINE_DISABLE_SANDBOXING === 'true';
 
 if (!ZIPLINE_TOKEN) {
   throw new Error('Environment variable ZIPLINE_TOKEN is required.');
@@ -103,6 +105,44 @@ function normalizeFormat(format: string): FormatType | null {
 const TMP_DIR = path.join(os.homedir(), '.zipline_tmp');
 const TMP_MAX_READ_SIZE = 1024 * 1024; // 1 MB
 
+// Import crypto for token hashing
+import { createHash } from 'crypto';
+
+// Security logging function for sandbox operations
+function logSandboxOperation(
+  operation: string,
+  filename?: string,
+  details?: string
+): void {
+  const timestamp = new Date().toISOString();
+  const userSandboxPath = getUserSandbox();
+  const sanitizedPath = userSandboxPath.replace(
+    /\/users\/[^/]+$/,
+    '/users/[HASH]'
+  );
+
+  const logMessage = `[${timestamp}] SANDBOX_OPERATION: ${operation}${filename ? ` - ${filename}` : ''} - Path: ${sanitizedPath}${details ? ` - ${details}` : ''}`;
+
+  // Use console.error for security logs to separate from regular output
+  console.error(logMessage);
+}
+
+// Get user sandbox directory based on ZIPLINE_TOKEN hash
+export function getUserSandbox(): string {
+  if (!ZIPLINE_TOKEN) {
+    throw new Error('ZIPLINE_TOKEN is required for sandbox functionality');
+  }
+
+  // If sandboxing is disabled, use the shared TMP_DIR
+  if (ZIPLINE_DISABLE_SANDBOXING) {
+    return TMP_DIR;
+  }
+
+  // Create SHA-256 hash of the token for user identification
+  const tokenHash = createHash('sha256').update(ZIPLINE_TOKEN).digest('hex');
+  return path.join(TMP_DIR, 'users', tokenHash);
+}
+
 function validateFilename(filename: string): string | null {
   if (
     !filename ||
@@ -117,15 +157,278 @@ function validateFilename(filename: string): string | null {
   return null;
 }
 
-function resolveInTmp(filename: string): string {
-  return path.join(TMP_DIR, filename);
-}
-
-async function ensureTmpDir(): Promise<void> {
+// Ensure user sandbox directory exists
+async function ensureUserSandbox(): Promise<string> {
+  const userSandbox = getUserSandbox();
   try {
-    await fs.mkdir(TMP_DIR, { recursive: true, mode: 0o700 });
+    await fs.mkdir(userSandbox, { recursive: true, mode: 0o700 });
   } catch {
     // Ignore if already exists
+  }
+  return userSandbox;
+}
+
+// Resolve filename within user sandbox
+function resolveInUserSandbox(filename: string): string {
+  const userSandbox = getUserSandbox();
+  return path.join(userSandbox, filename);
+}
+
+// Clean up sandboxes older than 24 hours
+export async function cleanupOldSandboxes(): Promise<number> {
+  // Skip cleanup if sandboxing is disabled
+  if (ZIPLINE_DISABLE_SANDBOXING) {
+    return 0;
+  }
+
+  const usersDir = path.join(TMP_DIR, 'users');
+  let cleanedCount = 0;
+
+  try {
+    // Check if users directory exists
+    const userDirs = await fs.readdir(usersDir);
+    const now = Date.now();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    for (const userDir of userDirs) {
+      const userDirPath = path.join(usersDir, userDir);
+
+      try {
+        const stats = await fs.stat(userDirPath);
+
+        // Check if it's a directory and older than 24 hours
+        if (stats.isDirectory() && now - stats.mtime.getTime() > maxAge) {
+          try {
+            await fs.rm(userDirPath, { recursive: true, force: true });
+            cleanedCount++;
+            logSandboxOperation(
+              'SANDBOX_CLEANED',
+              undefined,
+              `Age: ${Math.round((now - stats.mtime.getTime()) / (60 * 60 * 1000))} hours`
+            );
+          } catch (cleanupError) {
+            logSandboxOperation(
+              'SANDBOX_CLEANUP_FAILED',
+              undefined,
+              `Error: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}`
+            );
+            // Continue with other directories even if one fails
+          }
+        }
+      } catch (statError) {
+        logSandboxOperation(
+          'SANDBOX_STAT_FAILED',
+          undefined,
+          `Error: ${statError instanceof Error ? statError.message : 'Unknown error'}`
+        );
+        // Continue with other directories
+      }
+    }
+  } catch (readdirError) {
+    // If users directory doesn't exist, that's fine - nothing to clean
+    if (
+      readdirError instanceof Error &&
+      'code' in readdirError &&
+      readdirError.code !== 'ENOENT'
+    ) {
+      logSandboxOperation(
+        'SANDBOX_CLEANUP_ERROR',
+        undefined,
+        `Error: ${readdirError instanceof Error ? readdirError.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  return cleanedCount;
+}
+
+// Session-based locking mechanism
+const LOCK_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+const LOCK_FILE = '.lock';
+
+interface LockData {
+  timestamp: number;
+  token: string;
+}
+
+// Check if a sandbox is locked
+export async function isSandboxLocked(): Promise<boolean> {
+  // Skip locking if sandboxing is disabled
+  if (ZIPLINE_DISABLE_SANDBOXING) {
+    return false;
+  }
+
+  const userSandbox = getUserSandbox();
+  const lockFilePath = path.join(userSandbox, LOCK_FILE);
+
+  try {
+    await fs.stat(lockFilePath);
+
+    // Check if lock has expired
+    try {
+      const lockDataStr = await fs.readFile(lockFilePath, { encoding: 'utf8' });
+      const lockData: LockData = JSON.parse(lockDataStr) as LockData;
+
+      // If lock is older than timeout, consider it expired
+      if (Date.now() - lockData.timestamp > LOCK_TIMEOUT) {
+        await fs.rm(lockFilePath, { force: true });
+        return false;
+      }
+
+      return true;
+    } catch {
+      // If we can't read or parse the lock file, assume it's invalid and remove it
+      await fs.rm(lockFilePath, { force: true });
+      return false;
+    }
+  } catch {
+    // If lock file doesn't exist, sandbox is not locked
+    return false;
+  }
+}
+
+// Acquire a lock for a user sandbox
+export async function acquireSandboxLock(): Promise<boolean> {
+  // Skip locking if sandboxing is disabled
+  if (ZIPLINE_DISABLE_SANDBOXING) {
+    return true;
+  }
+
+  const userSandbox = getUserSandbox();
+  const lockFilePath = path.join(userSandbox, LOCK_FILE);
+
+  // First check if sandbox is already locked
+  if (await isSandboxLocked()) {
+    logSandboxOperation(
+      'LOCK_ACQUIRE_FAILED',
+      undefined,
+      'Reason: Already locked'
+    );
+    return false;
+  }
+
+  try {
+    // Create lock file with timestamp and token
+    const lockData: LockData = {
+      timestamp: Date.now(),
+      token: ZIPLINE_TOKEN || 'unknown',
+    };
+
+    await fs.writeFile(lockFilePath, JSON.stringify(lockData), {
+      encoding: 'utf8',
+    });
+    logSandboxOperation(
+      'LOCK_ACQUIRED',
+      undefined,
+      `Timeout: ${LOCK_TIMEOUT / 1000 / 60} minutes`
+    );
+
+    // Set up automatic lock release after timeout
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const stillLocked = await isSandboxLocked();
+          if (stillLocked) {
+            // Read the lock file to check if it's our lock
+            try {
+              const lockDataStr = await fs.readFile(lockFilePath, {
+                encoding: 'utf8',
+              });
+              const currentLockData: LockData = JSON.parse(
+                lockDataStr
+              ) as LockData;
+
+              // Only release if it's our lock (same token)
+              if (currentLockData.token === lockData.token) {
+                await fs.rm(lockFilePath, { force: true });
+                logSandboxOperation(
+                  'LOCK_AUTO_RELEASED',
+                  undefined,
+                  'Reason: Timeout expired'
+                );
+              }
+            } catch {
+              // If we can't read the lock file, just remove it
+              await fs.rm(lockFilePath, { force: true });
+              logSandboxOperation(
+                'LOCK_AUTO_RELEASED',
+                undefined,
+                'Reason: Lock file corrupted'
+              );
+            }
+          }
+        } catch (error) {
+          logSandboxOperation(
+            'LOCK_RELEASE_ERROR',
+            undefined,
+            `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })();
+    }, LOCK_TIMEOUT);
+
+    return true;
+  } catch {
+    // If we can't write the lock file, assume someone else acquired it first
+    logSandboxOperation(
+      'LOCK_ACQUIRE_FAILED',
+      undefined,
+      'Reason: Could not write lock file'
+    );
+    return false;
+  }
+}
+
+// Release a lock for a user sandbox
+export async function releaseSandboxLock(): Promise<boolean> {
+  // Skip locking if sandboxing is disabled
+  if (ZIPLINE_DISABLE_SANDBOXING) {
+    return true;
+  }
+
+  const userSandbox = getUserSandbox();
+  const lockFilePath = path.join(userSandbox, LOCK_FILE);
+
+  try {
+    // Check if lock exists and belongs to us
+    try {
+      const lockDataStr = await fs.readFile(lockFilePath, { encoding: 'utf8' });
+      const lockData: LockData = JSON.parse(lockDataStr) as LockData;
+
+      // Only release if it's our lock (same token)
+      if (lockData.token === ZIPLINE_TOKEN) {
+        await fs.rm(lockFilePath, { force: true });
+        logSandboxOperation(
+          'LOCK_RELEASED',
+          undefined,
+          'Reason: Manual release'
+        );
+      } else {
+        logSandboxOperation(
+          'LOCK_RELEASE_FAILED',
+          undefined,
+          'Reason: Token mismatch'
+        );
+      }
+    } catch {
+      // If we can't read the lock file, just remove it
+      await fs.rm(lockFilePath, { force: true });
+      logSandboxOperation(
+        'LOCK_RELEASED',
+        undefined,
+        'Reason: Lock file corrupted'
+      );
+    }
+
+    return true;
+  } catch {
+    // If lock file doesn't exist, that's fine - it's not locked
+    logSandboxOperation(
+      'LOCK_RELEASE_NOT_NEEDED',
+      undefined,
+      'Reason: No lock file exists'
+    );
+    return true;
   }
 }
 
@@ -368,7 +671,7 @@ server.registerTool(
     },
   },
   async (args: { command: string; content?: string | undefined }) => {
-    await ensureTmpDir();
+    const userSandbox = await ensureUserSandbox();
     const { command, content } = args;
     if (!command || typeof command !== 'string') {
       return {
@@ -399,20 +702,30 @@ server.registerTool(
     // LIST
     if (upperCmd === 'LIST') {
       try {
-        const files = await fs.readdir(TMP_DIR, { withFileTypes: true });
+        const files = await fs.readdir(userSandbox, { withFileTypes: true });
         const fileList = files.filter((f) => f.isFile()).map((f) => f.name);
+        logSandboxOperation(
+          'FILE_LIST',
+          undefined,
+          `Files: ${fileList.length}`
+        );
         return {
           content: [
             {
               type: 'text',
               text:
                 fileList.length > 0
-                  ? `Files in ~/.zipline_tmp:\n${fileList.join('\n')}`
-                  : 'No files found in ~/.zipline_tmp.',
+                  ? `Files in your sandbox:\n${fileList.join('\n')}`
+                  : 'No files found in your sandbox.',
             },
           ],
         };
       } catch (e) {
+        logSandboxOperation(
+          'FILE_LIST_FAILED',
+          undefined,
+          `Error: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
         return {
           content: [
             {
@@ -451,10 +764,15 @@ server.registerTool(
           isError: true,
         };
       }
-      const filePath = resolveInTmp(filename);
+      const filePath = resolveInUserSandbox(filename);
       try {
         await fs.writeFile(filePath, content ?? '', { encoding: 'utf8' });
         const stat = await fs.stat(filePath);
+        logSandboxOperation(
+          'FILE_CREATED',
+          filename,
+          `Size: ${formatFileSize(stat.size)}`
+        );
         return {
           content: [
             {
@@ -464,6 +782,11 @@ server.registerTool(
           ],
         };
       } catch (e) {
+        logSandboxOperation(
+          'FILE_CREATE_FAILED',
+          filename,
+          `Error: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
         return {
           content: [
             {
@@ -502,10 +825,15 @@ server.registerTool(
           isError: true,
         };
       }
-      const filePath = resolveInTmp(filename);
+      const filePath = resolveInUserSandbox(filename);
       try {
         const stat = await fs.stat(filePath);
         if (stat.size > TMP_MAX_READ_SIZE) {
+          logSandboxOperation(
+            'FILE_READ_FAILED',
+            filename,
+            `Reason: File too large (${formatFileSize(stat.size)})`
+          );
           return {
             content: [
               {
@@ -517,6 +845,11 @@ server.registerTool(
           };
         }
         const data = await fs.readFile(filePath, { encoding: 'utf8' });
+        logSandboxOperation(
+          'FILE_READ',
+          filename,
+          `Size: ${formatFileSize(stat.size)}`
+        );
         return {
           content: [
             {
@@ -526,6 +859,11 @@ server.registerTool(
           ],
         };
       } catch (e) {
+        logSandboxOperation(
+          'FILE_READ_FAILED',
+          filename,
+          `Error: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
         return {
           content: [
             {
@@ -549,7 +887,7 @@ server.registerTool(
             '  CREATE <filename> (with optional content)\n' +
             '  OPEN <filename>\n' +
             '  READ <filename>\n\n' +
-            'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in ~/.zipline_tmp are allowed.',
+            'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in your sandbox are allowed.',
         },
       ],
       isError: true,

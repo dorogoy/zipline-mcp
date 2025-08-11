@@ -90,6 +90,7 @@ mcpServers:
 
 - `environment.ZIPLINE_FORMAT`: File naming format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words". Defaults to "random".
 - `environment.ZIPLINE_ENDPOINT`: Custom Zipline server URL
+- `environment.ZIPLINE_DISABLE_SANDBOXING`: Disable per-user sandboxing for the tmp_file_manager tool. Set to "true" to disable sandboxing and use the shared `~/.zipline_tmp` directory for all users. Defaults to "false" (sandboxing enabled).
 
 #### Security Best Practices
 
@@ -346,10 +347,10 @@ Checks if a file exists and is suitable for upload.
 
 #### `tmp_file_manager`
 
-Minimal, sandboxed file management in `~/.zipline_tmp`. Only bare filenames are allowed (no subdirectories or path traversal). All operations are strictly limited to this directory.
+Minimal, sandboxed file management with per-user isolation. Each user gets their own sandbox directory based on their ZIPLINE_TOKEN. Only bare filenames are allowed (no subdirectories or path traversal). All operations are strictly limited to the user's sandbox.
 
 - `command`: One of:
-  - `LIST` — List all files in `~/.zipline_tmp`
+  - `LIST` — List all files in the user's sandbox
   - `CREATE <filename>` — Create or overwrite a file (optionally provide `content`)
   - `OPEN <filename>` or `READ <filename>` — Read file content (max 1MB)
 - `content`: (optional) String content for `CREATE`
@@ -361,16 +362,36 @@ Minimal, sandboxed file management in `~/.zipline_tmp`. Only bare filenames are 
 - `OPEN notes.txt`
 - `READ notes.txt`
 
+**Sandboxing Configuration:**
+
+- Per-user sandboxing is enabled by default
+- To disable sandboxing and use the shared `~/.zipline_tmp` directory for all users, set `ZIPLINE_DISABLE_SANDBOXING=true` in your environment
+- When sandboxing is disabled, session locking and TTL cleanup are also disabled
+
+**Per-User Sandboxing (when enabled):**
+
+- Each user gets a unique sandbox directory at `~/.zipline_tmp/users/{hash}` where `hash` is a SHA-256 hash of the user's ZIPLINE_TOKEN
+- Sandboxes are automatically created with 0700 permissions for security
+- All file operations are isolated within the user's sandbox
+- Sandboxes older than 24 hours are automatically cleaned up
+
+**Session Locking (when sandboxing is enabled):**
+
+- Each user's sandbox is locked during operations to prevent concurrent access
+- Locks automatically expire after 30 minutes
+- The system prevents race conditions when multiple clients access the same sandbox
+
 **Safety:**
 
 - Only bare filenames allowed (no `/`, `\`, `..`, or absolute paths)
-- Any attempt to access outside `~/.zipline_tmp` is refused with an explicit error
+- Any attempt to access outside the user's sandbox is refused with an explicit error
 - Files larger than 1MB cannot be read
 - Subdirectories are not supported
+- Each user's sandbox is isolated from others (when sandboxing is enabled)
 
 **Error Example:**
 
-- `CREATE ../evil.txt` → Error: Operation refused. Filenames must not include path separators or dot segments. Only bare filenames in `~/.zipline_tmp` are allowed.
+- `CREATE ../evil.txt` → Error: Operation refused. Filenames must not include path separators or dot segments. Only bare filenames in the user's sandbox are allowed.
 
 ## Development
 
