@@ -184,14 +184,30 @@ function detectMimeType(filePath: string): string {
 
   // Additional common file types for better support
   const otherTypes: Record<string, string> = {
+    txt: 'text/plain',
+    md: 'text/markdown',
+    gpx: 'application/gpx+xml',
+    html: 'text/html',
+    htm: 'text/html',
+    json: 'application/json',
+    xml: 'application/xml',
+    csv: 'text/csv',
+    js: 'application/javascript',
+    ts: 'application/typescript',
+    css: 'text/css',
+    py: 'text/x-python',
+    sh: 'application/x-sh',
+    yaml: 'application/x-yaml',
+    yml: 'application/x-yaml',
+    toml: 'application/toml',
+    pdf: 'application/pdf',
+    zip: 'application/zip',
+    png: 'image/png',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
-    png: 'image/png',
     gif: 'image/gif',
-    pdf: 'application/pdf',
-    txt: 'text/plain',
-    json: 'application/json',
-    zip: 'application/zip',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
   };
 
   // Check video types first (priority), then other types
