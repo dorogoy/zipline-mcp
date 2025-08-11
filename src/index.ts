@@ -409,7 +409,7 @@ server.registerTool(
               type: 'text',
               text:
                 fileList.length > 0
-                  ? `Files in your sandbox:\n${fileList.join('\n')}`
+                  ? `Files in your sandbox, you can retrieve their full path with PATH <filename>:\n${fileList.join('\n')}`
                   : 'No files found in your sandbox.',
             },
           ],
