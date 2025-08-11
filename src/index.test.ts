@@ -1106,4 +1106,104 @@ describe('tmp_file_manager tool', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toMatch(/Usage/);
   });
+
+  describe('PATH command', () => {
+    it('should return absolute path for valid filename', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH test.txt' }, {});
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toMatch(/✅ PATH: test\.txt/);
+      expect(result.content[0]?.text).toMatch(
+        /Absolute path: \/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/test\.txt/
+      );
+    });
+
+    it('should return error for missing filename', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filename is required./
+      );
+    });
+
+    it('should return error for invalid filename with path traversal', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH ../evil.txt' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filenames must not include path separators/
+      );
+    });
+
+    it('should return error for invalid filename with absolute path', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH /etc/passwd' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filenames must not include path separators/
+      );
+    });
+
+    it('should return error for invalid filename with dot segments', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH ./file.txt' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filenames must not include path separators/
+      );
+    });
+
+    it('should return error for empty filename', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH ' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filename is required./
+      );
+    });
+
+    it('should return error for filename starting with dot', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH .hidden' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Filenames must not include path separators/
+      );
+    });
+
+    it('should handle PATH command with case sensitivity', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'path Test.TXT' }, {});
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toMatch(/✅ PATH: Test\.TXT/);
+      expect(result.content[0]?.text).toMatch(
+        /Absolute path: \/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/Test\.TXT/
+      );
+    });
+  });
 });
