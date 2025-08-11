@@ -1,4 +1,11 @@
-import { readFile } from 'fs/promises';
+import { readFile, writeFile, rm } from 'fs/promises';
+import {
+  ensureUserSandbox,
+  resolveSandboxPath,
+  validateFilename,
+  logSandboxOperation,
+} from './sandboxUtils.js';
+import path from 'path';
 
 export interface UploadOptions {
   endpoint: string;
@@ -229,6 +236,153 @@ function extractFirstFileUrl(json: unknown): string | undefined {
   if (!first || typeof first.url !== 'string' || first.url.length === 0)
     return undefined;
   return first.url;
+}
+
+/**
+ * Download utilities and errors
+ */
+
+export class InvalidUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidUrlError';
+  }
+}
+
+export class HttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
+export class FileTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FileTooLargeError';
+  }
+}
+
+/**
+ * Download an external URL into the user sandbox and return the absolute path.
+ *
+ * - Validates URL scheme (only http/https)
+ * - Enforces a max file size (default 100MB)
+ * - Uses AbortController for timeouts
+ * - Writes file to sandbox using a safe filename
+ * - Cleans up partial files on failure
+ */
+export interface DownloadOptions {
+  timeout?: number; // milliseconds
+  maxFileSizeBytes?: number;
+  followRedirects?: boolean;
+}
+
+export async function downloadExternalUrl(
+  urlStr: string,
+  options: DownloadOptions = {}
+): Promise<string> {
+  const timeout = options.timeout ?? 30_000;
+  const maxFileSize = options.maxFileSizeBytes ?? 100 * 1024 * 1024; // 100MB
+
+  let url: URL;
+  try {
+    url = new URL(urlStr);
+  } catch {
+    throw new InvalidUrlError('Invalid URL');
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new InvalidUrlError(`Unsupported scheme: ${url.protocol}`);
+  }
+
+  // Derive filename from URL path
+  const nameFromUrl = path.basename(url.pathname) || 'file';
+  const validationError = validateFilename(nameFromUrl);
+  const filename = validationError ? `download-${Date.now()}` : nameFromUrl;
+
+  // Ensure sandbox exists and resolve final path
+  await ensureUserSandbox();
+  const finalPath = resolveSandboxPath(filename);
+
+  // Setup abort/timeout
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeout);
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+      signal: ac.signal,
+    });
+
+    if (!res.ok) {
+      // Try to include statusText or body
+      let bodyText = '';
+      try {
+        bodyText = await res.text();
+      } catch {
+        // ignore
+      }
+      const msg = bodyText
+        ? `: ${bodyText}`
+        : ` ${res.status} ${res.statusText || ''}`;
+      throw new HttpError(res.status, `HTTP ${res.status}${msg}`);
+    }
+
+    // Check content-length header if present
+    const cl = res.headers?.get?.('content-length');
+    if (cl) {
+      const declared = Number(cl);
+      if (!Number.isNaN(declared) && declared > maxFileSize) {
+        throw new FileTooLargeError(
+          `Remote file size ${declared} bytes exceeds limit of ${maxFileSize} bytes (100MB)`
+        );
+      }
+    }
+
+    // Read body as ArrayBuffer (may throw on network errors / abort)
+    const ab = await res.arrayBuffer();
+    const buf = new Uint8Array(ab);
+
+    if (buf.byteLength > maxFileSize) {
+      throw new FileTooLargeError(
+        `Downloaded file size ${buf.byteLength} bytes exceeds limit of ${maxFileSize} bytes (100MB)`
+      );
+    }
+
+    // Write to sandbox (Uint8Array writes binary data directly)
+    await writeFile(finalPath, buf);
+
+    logSandboxOperation(
+      'DOWNLOAD_SUCCESS',
+      filename,
+      `Bytes: ${buf.byteLength} - URL: ${urlStr}`
+    );
+
+    return finalPath;
+  } catch (err) {
+    // Attempt cleanup of partial file
+    try {
+      await rm(finalPath, { force: true });
+    } catch {
+      // ignore cleanup failures
+    }
+
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.toLowerCase().includes('abort') ||
+      message.toLowerCase().includes('timeout')
+    ) {
+      throw new Error('Download aborted or timeout exceeded');
+    }
+
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Header validation functions

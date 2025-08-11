@@ -31,6 +31,9 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 // Mock the httpClient module
 vi.mock('./httpClient', () => ({
   uploadFile: vi.fn().mockResolvedValue('https://example.com/file.txt'),
+  downloadExternalUrl: vi
+    .fn()
+    .mockResolvedValue('/home/user/.zipline_tmp/users/hash/downloaded.txt'),
 }));
 
 const fsMock = {

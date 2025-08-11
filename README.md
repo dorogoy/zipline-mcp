@@ -391,6 +391,51 @@ Minimal, sandboxed file management with per-user isolation. Each user gets their
 - Subdirectories are not supported
 - Each user's sandbox is isolated from others (when sandboxing is enabled)
 
+### download_external_url
+
+A new tool has been added: `download_external_url`. It lets the MCP server (and therefore models) download an external HTTP(S) URL into the caller's sandbox and returns the absolute filesystem path to the saved file.
+
+- Tool name: `download_external_url`
+- Purpose: Download an external HTTP(S) resource into the per-user sandbox and return the absolute path where the file was stored.
+- Input schema:
+  - `url` (string) — required — HTTP or HTTPS URL to download
+  - `timeoutMs` (number) — optional — request timeout in milliseconds (default: 30000)
+  - `maxFileSizeBytes` (number) — optional — maximum allowed file size in bytes (default: 100 _ 1024 _ 1024 = 100 MB)
+- Behavior:
+  - Validates the provided URL and only allows `http:` and `https:` schemes.
+  - Uses an AbortController to enforce the configured timeout.
+  - Checks the `Content-Length` header when present and rejects downloads that declare a size larger than the configured maximum.
+  - Downloads into the user's sandbox directory (same sandbox used by the `tmp_file_manager` tool) and returns the absolute path, e.g. `/home/user/.zipline_tmp/users/<hash>/file.ext`.
+  - If the remote resource does not provide a filename, a safe deterministic name is used.
+  - Partial files are cleaned up on failure to avoid leaving incomplete artifacts in the sandbox.
+  - Structured logs are emitted via the existing sandbox logging facility for observability.
+
+Usage example (MCP tool call)
+
+- Example input:
+  {
+  "url": "https://example.com/files/document.pdf",
+  "timeoutMs": 30000,
+  "maxFileSizeBytes": 104857600
+  }
+- Example successful response content:
+  "✅ DOWNLOAD COMPLETE\n\nLocal path: /home/user/.zipline_tmp/users/abc123/document.pdf"
+
+Security & safety considerations
+
+- Only `http` and `https` are accepted. Other schemes (ftp, file, etc.) are rejected.
+- Default file size limit: 100 MB. You can override via `maxFileSizeBytes` but be cautious.
+- The downloader follows redirects but enforces the maximum redirect behavior in code (to avoid redirect loops).
+- All downloads are saved inside the per-user sandbox; filenames are validated and sanitized using the same rules as `tmp_file_manager` (no path separators, no dot segments, no absolute paths).
+- The server logs download activity with sanitized paths (user portion masked) for observability; secrets (such as tokens) are never logged.
+- If you require domain allow-listing to restrict where the server can download from, consider adding a hostname whitelist at the MCP server configuration level before enabling this tool for production usage.
+
+Notes for integrators
+
+- This tool is exported by the MCP server and can be invoked programmatically by MCP clients or models.
+- The implementation lives in [`src/httpClient.ts`](src/httpClient.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
+- Tests were added under `src/download.test.ts` and `src/download.integration.test.ts` to exercise validation, timeout, size limits, and cleanup behavior.
+
 ### Sandbox Path Resolution
 
 The `tmp_file_manager` tool uses a secure path resolution mechanism to ensure all file operations stay within sandbox boundaries. This is implemented through the `resolveSandboxPath` function which provides the following security guarantees:
