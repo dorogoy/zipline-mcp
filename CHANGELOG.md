@@ -5,6 +5,13 @@
 
 * **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
+## [1.3.0](https://github.com/dorogoy/zipline-mcp/compare/v1.2.0...v1.3.0) (2025-08-11)
+
+
+### Features
+
+* **httpClient:** implement downloadExternalUrl ([5ef4e0e](https://github.com/dorogoy/zipline-mcp/commit/5ef4e0e6eb68c436758c885aacdbbc14ce4a878f))
+
 ## [1.2.0](https://github.com/dorogoy/zipline-mcp/compare/v1.1.1...v1.2.0) (2025-08-11)
 
 
