@@ -273,7 +273,7 @@ server.registerTool(
               `❌ UPLOAD FAILED!\n\nError: ${errorMessage}\n\n` +
               'Possible solutions:\n' +
               '• Check if the file exists and is accessible\n' +
-              '• Verify your authorization token is correct\n' +
+              '• Verify the file path\n' +
               '• Ensure the server https://files.etereo.cloud is reachable\n' +
               '• Confirm the file type is supported',
           },
@@ -351,12 +351,12 @@ server.registerTool(
   {
     title: 'Minimal Temporary File Manager',
     description:
-      'Perform minimal file management in ~/.zipline_tmp. Allowed commands: LIST, CREATE <filename>, OPEN <filename>, READ <filename>. Only bare filenames allowed. CREATE overwrites existing files.',
+      'Perform minimal file management in ~/.zipline_tmp or the sandbox. Allowed commands: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>. Only bare filenames allowed. CREATE overwrites existing files. PATH resolves to the absolute path and must be always used before uploads.',
     inputSchema: {
       command: z
         .string()
         .describe(
-          'Command: LIST, CREATE <filename>, OPEN <filename>, READ <filename>'
+          'Command: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>'
         ),
       content: z
         .string()
@@ -548,7 +548,7 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `✅ ${upperCmd}: ${filename}\nSize: ${formatFileSize(stat.size)}\n\n${data}`,
+              text: `✅ ${upperCmd}: ${filename}\nPath: ${resolveSandboxPath(filename)}\nSize: ${formatFileSize(stat.size)}\n\n${data}`,
             },
           ],
         };
@@ -570,6 +570,61 @@ server.registerTool(
       }
     }
 
+    // PATH
+    if (upperCmd === 'PATH') {
+      if (argsArr.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ PATH refused: Filename is required.',
+            },
+          ],
+          isError: true,
+        };
+      }
+      const filename = argsArr[0]!;
+      const err = validateFilename(filename);
+      if (err) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ PATH refused: ${err}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      try {
+        const filePath = resolveSandboxPath(filename);
+        logSandboxOperation('FILE_PATH', filename);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ PATH: ${filename}\nAbsolute path: ${filePath}`,
+            },
+          ],
+        };
+      } catch (e) {
+        logSandboxOperation(
+          'FILE_PATH_FAILED',
+          filename,
+          `Error: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ PATH failed: ${(e as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Invalid command or usage
     return {
       content: [
@@ -580,7 +635,8 @@ server.registerTool(
             '  LIST\n' +
             '  CREATE <filename> (with optional content)\n' +
             '  OPEN <filename>\n' +
-            '  READ <filename>\n\n' +
+            '  READ <filename>\n' +
+            '  PATH <filename>\n\n' +
             'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in your sandbox are allowed.',
         },
       ],
