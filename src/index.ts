@@ -6,7 +6,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { uploadFile, UploadOptions } from './httpClient.js';
+import { uploadFile, UploadOptions, DownloadOptions } from './httpClient.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -642,6 +642,73 @@ server.registerTool(
       ],
       isError: true,
     };
+  }
+);
+
+// Register download_external_url tool: download a remote file into the user sandbox and return absolute path
+server.registerTool(
+  'download_external_url',
+  {
+    title: 'Download External URL',
+    description:
+      'Download an external HTTP(S) URL into the user sandbox and return the absolute filesystem path',
+    inputSchema: {
+      url: z.string().describe('HTTP or HTTPS URL to download'),
+      timeoutMs: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Timeout in milliseconds (optional)'),
+      maxFileSizeBytes: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Max allowed file size in bytes (optional)'),
+    },
+  },
+  async (args: unknown) => {
+    // Validate and coerce incoming args safely (avoid using `any`)
+    const a = args as Record<string, unknown>;
+    const urlVal = typeof a.url === 'string' ? a.url : undefined;
+    const timeoutMs = typeof a.timeoutMs === 'number' ? a.timeoutMs : 30_000;
+    const maxFileSizeBytes =
+      typeof a.maxFileSizeBytes === 'number' ? a.maxFileSizeBytes : undefined;
+    try {
+      if (!urlVal || !isValidUrl(urlVal)) {
+        throw new Error('Invalid URL');
+      }
+
+      // Import downloader
+      const { downloadExternalUrl } = await import('./httpClient.js');
+
+      const opts: DownloadOptions = { timeout: timeoutMs };
+      if (typeof maxFileSizeBytes === 'number')
+        opts.maxFileSizeBytes = maxFileSizeBytes;
+      const pathResult = await downloadExternalUrl(urlVal, opts);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ DOWNLOAD COMPLETE\n\nLocal path: ${pathResult}`,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Download failed: ${message}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ DOWNLOAD FAILED\n\nError: ${message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   }
 );
 
