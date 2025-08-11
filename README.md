@@ -389,9 +389,63 @@ Minimal, sandboxed file management with per-user isolation. Each user gets their
 - Subdirectories are not supported
 - Each user's sandbox is isolated from others (when sandboxing is enabled)
 
-**Error Example:**
+### Sandbox Path Resolution
 
-- `CREATE ../evil.txt` → Error: Operation refused. Filenames must not include path separators or dot segments. Only bare filenames in the user's sandbox are allowed.
+The `tmp_file_manager` tool uses a secure path resolution mechanism to ensure all file operations stay within sandbox boundaries. This is implemented through the `resolveSandboxPath` function which provides the following security guarantees:
+
+**Path Validation:**
+
+- **Filename Validation**: All filenames are validated to prevent path traversal attacks
+- **Absolute Path Resolution**: Converts relative filenames to absolute paths within the sandbox
+- **Boundary Enforcement**: Ensures resolved paths cannot escape the sandbox directory
+- **Error Handling**: Throws `SandboxPathError` for any violation with clear error messages
+
+**Security Features:**
+
+- **Input Sanitization**: Rejects filenames containing path separators (`/`, `\`), dot segments (`..`), or absolute paths
+- **Path Normalization**: Resolves paths to their canonical form to prevent symbolic link attacks
+- **Containment Verification**: Verifies that the final resolved path is within the sandbox boundaries
+- **Audit Logging**: All sandbox operations are logged with sanitized paths for security monitoring
+
+**Implementation Details:**
+
+```typescript
+// Example of secure path resolution
+function resolveSandboxPath(filename: string): string {
+  const userSandbox = getUserSandbox();
+
+  // Validate filename first
+  const validationError = validateFilename(filename);
+  if (validationError) {
+    throw new SandboxPathError(validationError);
+  }
+
+  const resolved = path.resolve(userSandbox, filename);
+
+  // Security: Ensure resolved path is within sandbox
+  if (!resolved.startsWith(userSandbox)) {
+    throw new SandboxPathError(`Path traversal attempt: ${filename}`);
+  }
+
+  return resolved;
+}
+```
+
+**Error Examples:**
+
+- `CREATE ../evil.txt` → Error: Filenames must not include path separators, dot segments, or be empty. Only bare filenames in ~/.zipline_tmp are allowed.
+- `OPEN /etc/passwd` → Error: Filenames must not include path separators, dot segments, or be empty. Only bare filenames in ~/.zipline_tmp are allowed.
+- `READ ../../system/file` → Error: Path traversal attempt: ../../system/file
+
+**Logging and Auditing:**
+
+All sandbox operations are logged with security-sensitive information sanitized:
+
+```
+[2025-01-15T10:30:45.123Z] SANDBOX_OPERATION: FILE_CREATED - notes.txt - Path: /home/user/.zipline_tmp/users/[HASH] - Size: 42 bytes
+```
+
+User-specific paths are masked with `[HASH]` to prevent token leakage in logs while maintaining traceability.
 
 ## Development
 
