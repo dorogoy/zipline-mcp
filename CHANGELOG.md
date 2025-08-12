@@ -5,6 +5,14 @@
 
 * **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
+## [1.4.0](https://github.com/dorogoy/zipline-mcp/compare/v1.3.0...v1.4.0) (2025-08-12)
+
+
+### Features
+
+* **config:** add env override for extensions ([a8caaf0](https://github.com/dorogoy/zipline-mcp/commit/a8caaf0e4ddd4598fe2c314dfac967ad04ca136e))
+* **http:** use mime-types for mime type detection ([3d769fb](https://github.com/dorogoy/zipline-mcp/commit/3d769fb2c3b7ba0f71d6d92bf428c7fcf16efebc))
+
 ## [1.3.0](https://github.com/dorogoy/zipline-mcp/compare/v1.2.0...v1.3.0) (2025-08-11)
 
 
