@@ -91,6 +91,7 @@ mcpServers:
 - `environment.ZIPLINE_FORMAT`: File naming format. Supported values: "random", "uuid", "date", "name", "gfycat" (alias for "random-words"), "random-words". Defaults to "random".
 - `environment.ZIPLINE_ENDPOINT`: Custom Zipline server URL
 - `environment.ZIPLINE_DISABLE_SANDBOXING`: Disable per-user sandboxing for the tmp_file_manager tool. Set to "true" to disable sandboxing and use the shared `~/.zipline_tmp` directory for all users. Defaults to "false" (sandboxing enabled).
+- `environment.ALLOWED_EXTENSIONS`: **Override the list of allowed file extensions for upload and validation.** Provide a comma-separated list (e.g., `.txt,.md,.pdf,.docx`). If set, this will replace the default list of allowed extensions. Useful for restricting or expanding supported file types in your deployment.
 
 #### Security Best Practices
 
