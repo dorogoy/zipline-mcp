@@ -5,6 +5,13 @@
 
 * **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
+## [1.4.1](https://github.com/dorogoy/zipline-mcp/compare/v1.4.0...v1.4.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* **deps:** bump esbuild and vitest ([#20](https://github.com/dorogoy/zipline-mcp/issues/20)) ([a87ded9](https://github.com/dorogoy/zipline-mcp/commit/a87ded934be3fad8de102700b73d8405008a8435))
+
 ## [1.4.0](https://github.com/dorogoy/zipline-mcp/compare/v1.3.0...v1.4.0) (2025-08-12)
 
 
