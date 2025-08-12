@@ -6,6 +6,7 @@ import {
   logSandboxOperation,
 } from './sandboxUtils.js';
 import path from 'path';
+import mime from 'mime-types';
 
 export interface UploadOptions {
   endpoint: string;
@@ -174,51 +175,9 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
 }
 
 function detectMimeType(filePath: string): string {
-  // Extract file extension and map to MIME type
-  // Prioritize video formats as requested
-  const ext = filePath.split('.').pop()?.toLowerCase();
-
-  // If no extension found, return fallback
-  if (!ext) return 'application/octet-stream';
-
-  // Video format mappings with priority
-  const videoTypes: Record<string, string> = {
-    mp4: 'video/mp4',
-    mkv: 'video/x-matroska',
-    webm: 'video/webm',
-    avi: 'video/avi',
-  };
-
-  // Additional common file types for better support
-  const otherTypes: Record<string, string> = {
-    txt: 'text/plain',
-    md: 'text/markdown',
-    gpx: 'application/gpx+xml',
-    html: 'text/html',
-    htm: 'text/html',
-    json: 'application/json',
-    xml: 'application/xml',
-    csv: 'text/csv',
-    js: 'application/javascript',
-    ts: 'application/typescript',
-    css: 'text/css',
-    py: 'text/x-python',
-    sh: 'application/x-sh',
-    yaml: 'application/x-yaml',
-    yml: 'application/x-yaml',
-    toml: 'application/toml',
-    pdf: 'application/pdf',
-    zip: 'application/zip',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    webp: 'image/webp',
-    svg: 'image/svg+xml',
-  };
-
-  // Check video types first (priority), then other types
-  return videoTypes[ext] || otherTypes[ext] || 'application/octet-stream';
+  // Use mime-types library to detect MIME type by file extension
+  const mimeType = mime.lookup(filePath);
+  return typeof mimeType === 'string' ? mimeType : 'application/octet-stream';
 }
 
 function inferFilename(p: string): string {

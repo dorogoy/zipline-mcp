@@ -94,11 +94,27 @@ const ALLOWED_EXTENSIONS = [
   '.yaml',
   '.yml',
   '.toml',
+  '.pdf',
+  '.zip',
+  // Microsoft Office formats
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  // LibreOffice/OpenDocument formats
+  '.odt',
+  '.ods',
+  '.odp',
+  '.odg',
   // Common video files
   '.mp4',
   '.mkv',
   '.webm',
   '.avi',
+  '.flv',
+  '.mov',
   // Common web image types
   '.png',
   '.jpg',
