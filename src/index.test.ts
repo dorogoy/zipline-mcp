@@ -1,20 +1,20 @@
 // Set required environment variables for tests
 process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Dirent } from 'fs';
 
 // Define types for the mock
 interface MockServer {
-  registerTool: ReturnType<typeof vi.fn<unknown[], unknown>>;
-  connect: ReturnType<typeof vi.fn>;
+  registerTool: Mock;
+  connect: Mock;
 }
 
 // Mock the McpServer and its methods
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
   const McpServer = vi.fn().mockImplementation((): MockServer => {
-    const registerToolMock = vi.fn<unknown[], unknown>();
+    const registerToolMock = vi.fn();
     registerToolMock.mockImplementation(() => {});
     return {
       registerTool: registerToolMock,
@@ -131,10 +131,11 @@ describe('Zipline MCP Server', () => {
     });
 
     const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi
-        .mocked(server.registerTool)
-        .mock.calls.find((c: unknown[]) => c[0] === toolName);
-      return call?.[2] as ToolHandler | undefined;
+      const calls = server.registerTool.mock.calls as Array<
+        [string, unknown, ToolHandler]
+      >;
+      const call = calls.find((c) => c[0] === toolName);
+      return call?.[2];
     };
 
     it('should validate and normalize format correctly', async () => {
@@ -1012,10 +1013,11 @@ describe('tmp_file_manager tool', () => {
   });
 
   const getToolHandler = (toolName: string): ToolHandler | undefined => {
-    const call = vi
-      .mocked(server.registerTool)
-      .mock.calls.find((c: unknown[]) => c[0] === toolName);
-    return call?.[2] as ToolHandler | undefined;
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
   };
 
   it('should list files (empty)', async () => {
