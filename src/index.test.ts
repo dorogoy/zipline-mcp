@@ -1,7 +1,7 @@
 // Set required environment variables for tests
 process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Dirent } from 'fs';
 
@@ -131,9 +131,8 @@ describe('Zipline MCP Server', () => {
     });
 
     const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const call = vi
-        .mocked(server.registerTool)
-        .mock.calls.find((c: unknown[]) => c[0] === toolName);
+      const calls = (server.registerTool as Mock).mock.calls;
+      const call = calls.find((c: unknown[]) => c[0] === toolName);
       return call?.[2] as ToolHandler | undefined;
     };
 
@@ -1012,9 +1011,8 @@ describe('tmp_file_manager tool', () => {
   });
 
   const getToolHandler = (toolName: string): ToolHandler | undefined => {
-    const call = vi
-      .mocked(server.registerTool)
-      .mock.calls.find((c: unknown[]) => c[0] === toolName);
+    const calls = (server.registerTool as Mock).mock.calls;
+    const call = calls.find((c: unknown[]) => c[0] === toolName);
     return call?.[2] as ToolHandler | undefined;
   };
 

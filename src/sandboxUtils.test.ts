@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 import {
   getUserSandbox,
   validateFilename,
@@ -17,10 +17,7 @@ import path from 'path';
 import os from 'os';
 
 // Mock console.error for testing logSandboxOperation
-import type { MockInstance } from 'vitest';
-let consoleErrorSpy:
-  | MockInstance<[message?: unknown, ...optionalParams: unknown[]], void>
-  | undefined;
+let consoleErrorSpy: MockInstance | undefined;
 
 describe('Sandbox Utils', () => {
   beforeEach(() => {
