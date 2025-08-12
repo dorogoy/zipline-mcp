@@ -77,7 +77,7 @@ const ALLOWED_FORMATS = [
 ] as const;
 type FormatType = (typeof ALLOWED_FORMATS)[number];
 
-const ALLOWED_EXTENSIONS = [
+const DEFAULT_ALLOWED_EXTENSIONS = [
   '.txt',
   '.md',
   '.gpx',
@@ -123,6 +123,13 @@ const ALLOWED_EXTENSIONS = [
   '.webp',
   '.svg',
 ];
+
+// Allow override of allowed extensions via environment variable (comma-separated, e.g. ".txt,.md,.pdf")
+const ALLOWED_EXTENSIONS = process.env.ALLOWED_EXTENSIONS
+  ? process.env.ALLOWED_EXTENSIONS.split(',').map((ext) =>
+      ext.trim().startsWith('.') ? ext.trim() : `.${ext.trim()}`
+    )
+  : DEFAULT_ALLOWED_EXTENSIONS;
 
 function normalizeFormat(format: string): FormatType | null {
   const lower = format.toLowerCase();
