@@ -1,7 +1,6 @@
 {
     "bootstrap-sha": "858206d9a32b648abbca395f8c317228acb271e0",
     "release-type": "node",
-    "version-file": "src/index.ts",
     "extra-files": [
         {
             "path": "src/index.ts",
