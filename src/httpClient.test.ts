@@ -610,6 +610,49 @@ describe('Header Validation', () => {
       expect(headers['x-zipline-password']).toBeUndefined();
       expect(headers['x-zipline-max-views']).toBeUndefined();
       expect(headers['x-zipline-folder']).toBeUndefined();
+      expect(headers['x-zipline-original-name']).toBeUndefined();
+    });
+
+    it('includes x-zipline-original-name header when provided', async () => {
+      fsMock.readFile.mockResolvedValue(sampleContent);
+
+      const { uploadFile } = await import('./httpClient');
+
+      const url = await uploadFile({
+        endpoint,
+        token,
+        filePath: samplePath,
+        format,
+        originalName: 'original-file.txt',
+      });
+
+      expect(url).toBe('https://files.example.com/u/abc');
+
+      // Validate fetch call includes the new header
+      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      expect(headers['x-zipline-original-name']).toBe('original-file.txt');
+      expect(headers['authorization']).toBe(token);
+      expect(headers['x-zipline-format']).toBe(format);
+    });
+
+    it('rejects upload with invalid originalName header before making request', async () => {
+      fsMock.readFile.mockResolvedValue(sampleContent);
+
+      const { uploadFile } = await import('./httpClient');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'invalid/name.txt',
+        })
+      ).rejects.toThrow('originalName cannot contain path separators');
+
+      // Ensure fetch was not called due to validation failure
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 });
