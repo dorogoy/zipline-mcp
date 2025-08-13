@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock fs/promises.readFile used by the http client
@@ -7,7 +7,7 @@ const fsMock = {
 };
 vi.mock('fs/promises', () => ({
   readFile: (...args: unknown[]) =>
-    (fsMock.readFile as unknown as Function)(...args),
+    (fsMock.readFile as unknown as (...args: unknown[]) => unknown)(...args),
 }));
 
 // Use Node 18+ global fetch/FormData/Blob/AbortController
@@ -40,7 +40,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
     const g = globalThis as any;
     fetchSpy = vi
       .spyOn(g, 'fetch')
-      .mockImplementation(async (_input: any, _init?: any): Promise<any> => {
+      .mockImplementation((_input: any, _init?: any): Promise<any> => {
         // Default happy path mock
         const body = {
           files: [{ url: 'https://files.example.com/u/abc' }],
@@ -48,8 +48,8 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
         const res = {
           ok: true,
           status: 200,
-          json: async () => body,
-          text: async () => JSON.stringify(body),
+          json: () => Promise.resolve(body),
+          text: () => Promise.resolve(JSON.stringify(body)),
         };
         return res as any;
       });
@@ -78,7 +78,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
 
     // Validate fetch call
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [calledUrl, init] = fetchSpy.mock.calls[0] as [any, any];
+    const [calledUrl, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
     expect(String(calledUrl)).toBe(`${endpoint}/api/upload`);
     expect(init?.method).toBe('POST');
     // Content-Type is set automatically by FormData with boundary; ensure we set required headers
@@ -95,8 +95,8 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({ error: 'Internal error' }),
-      text: async () => 'Internal error',
+      json: () => Promise.resolve({ error: 'Internal error' }),
+      text: () => Promise.resolve('Internal error'),
     } as any);
 
     const { uploadFile } = await import('./httpClient');
@@ -116,8 +116,8 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
     fetchSpy.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ files: [] }),
-      text: async () => JSON.stringify({ files: [] }),
+      json: () => Promise.resolve({ files: [] }),
+      text: () => Promise.resolve(JSON.stringify({ files: [] })),
     } as any);
 
     const { uploadFile } = await import('./httpClient');
@@ -153,9 +153,10 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       MockAbortController as unknown as typeof AbortController;
 
     // Simulate fetch that hangs until aborted
-    fetchSpy.mockImplementation(async (_input: any, init?: any) => {
+    fetchSpy.mockImplementation((_input: any, init?: any) => {
+      const requestInit = init as RequestInit;
       return new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
+        requestInit.signal?.addEventListener('abort', () => {
           reject(new Error('The operation was aborted.'));
         });
       }) as any;
@@ -174,7 +175,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
     ).rejects.toThrow(/aborted|timeout/i);
 
     // Ensure fetch was called and had a signal
-    const [, init] = fetchSpy.mock.calls[0] as [any, any];
+    const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
@@ -182,19 +183,21 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
     fsMock.readFile.mockResolvedValue(sampleContent);
 
     // Capture the body to ensure it is a FormData instance with "file" field
-    fetchSpy.mockImplementation(async (_input: any, init?: any) => {
-      const body = init?.body as any;
+    fetchSpy.mockImplementation((_input: any, init?: any) => {
+      const body = (init as RequestInit).body;
       expect(body).toBeDefined();
       const res: FetchResponse = {
         ok: true,
         status: 200,
-        json: async () => ({
+        json: () => Promise.resolve({
           files: [{ url: 'https://files.example.com/u/xyz' }],
         }),
-        text: async () =>
-          JSON.stringify({
-            files: [{ url: 'https://files.example.com/u/xyz' }],
-          }),
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              files: [{ url: 'https://files.example.com/u/xyz' }],
+            }),
+          ),
       };
       return res as any;
     });
@@ -367,7 +370,7 @@ describe('Header Validation', () => {
       const g = globalThis as any;
       fetchSpy = vi
         .spyOn(g, 'fetch')
-        .mockImplementation(async (_input: any, _init?: any): Promise<any> => {
+        .mockImplementation((_input: any, _init?: any): Promise<any> => {
           // Default happy path mock
           const body = {
             files: [{ url: 'https://files.example.com/u/abc' }],
@@ -375,8 +378,8 @@ describe('Header Validation', () => {
           const res = {
             ok: true,
             status: 200,
-            json: async () => body,
-            text: async () => JSON.stringify(body),
+            json: () => Promise.resolve(body),
+            text: () => Promise.resolve(JSON.stringify(body)),
           };
           return res as any;
         });
@@ -404,7 +407,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes the new header
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-deletes-at']).toBe('1d');
       expect(headers['authorization']).toBe(token);
@@ -427,7 +430,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes the new header
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-password']).toBe('secret123');
       expect(headers['authorization']).toBe(token);
@@ -450,7 +453,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes the new header
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-max-views']).toBe('10');
       expect(headers['authorization']).toBe(token);
@@ -473,7 +476,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes the new header
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-folder']).toBe('folder123');
       expect(headers['authorization']).toBe(token);
@@ -499,7 +502,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes all new headers
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-deletes-at']).toBe('2h');
       expect(headers['x-zipline-password']).toBe('secret123');
@@ -602,7 +605,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes only original headers
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['authorization']).toBe(token);
       expect(headers['x-zipline-format']).toBe(format);
@@ -629,7 +632,7 @@ describe('Header Validation', () => {
       expect(url).toBe('https://files.example.com/u/abc');
 
       // Validate fetch call includes the new header
-      const [, init] = fetchSpy.mock.calls[0] as [any, any];
+      const [, init] = fetchSpy.mock.calls[0] as [any, RequestInit];
       const headers = (init?.headers ?? {}) as Record<string, string>;
       expect(headers['x-zipline-original-name']).toBe('original-file.txt');
       expect(headers['authorization']).toBe(token);
