@@ -15,6 +15,7 @@ export interface UploadOptions {
   format: string;
   timeoutMs?: number;
   filenameOverride?: string;
+  originalName?: string | undefined;
   metadata?: {
     originalFileName: string;
     mimeType: string;
@@ -36,6 +37,7 @@ export interface ZiplineUploadResponse {
  * - Automatically detects file MIME type based on extension (prioritizing video formats)
  * - Includes metadata (originalFileName, mimeType, size) for Zipline identification
  * - Supports optional enhanced headers for file expiration, password protection, view limits, and folder placement
+ * - Supports optional original filename header for download preservation
  * - Validates all headers locally before making HTTP request
  * - Follows redirects
  * - Supports timeout via AbortController
@@ -57,6 +59,11 @@ export interface ZiplineUploadResponse {
  *   - Must be a non-empty alphanumeric string.
  *   - Special characters and whitespace are rejected.
  *   - If the specified folder doesn't exist, the upload will fail.
+ * - originalName: Original filename to preserve during download.
+ *   - Sent as the "x-zipline-original-name" header to the Zipline server.
+ *   - The original filename will be used when downloading the file, not when storing it.
+ *   - Must be a non-empty string without path separators.
+ *   - Path separators (/ and \) are rejected for security reasons.
  */
 export async function uploadFile(opts: UploadOptions): Promise<string> {
   const {
@@ -66,6 +73,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     format,
     timeoutMs = 30000,
     filenameOverride,
+    originalName,
     deletesAt,
     password,
     maxViews,
@@ -82,6 +90,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   if (password !== undefined) validatePassword(password);
   if (maxViews !== undefined) validateMaxViews(maxViews);
   if (folder !== undefined) validateFolder(folder);
+  if (originalName !== undefined) validateOriginalName(originalName);
 
   // Read file content
   const data = await readFile(filePath);
@@ -126,6 +135,8 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     if (maxViews !== undefined)
       headers['x-zipline-max-views'] = maxViews.toString();
     if (folder !== undefined) headers['x-zipline-folder'] = folder;
+    if (originalName !== undefined)
+      headers['x-zipline-original-name'] = originalName;
 
     const res = await fetch(`${endpoint}/api/upload`, {
       method: 'POST',
@@ -422,5 +433,21 @@ export function validateFolder(folder: string): void {
   // Check for valid characters (alphanumeric only)
   if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
     throw new Error('folder header must contain only alphanumeric characters');
+  }
+}
+
+export function validateOriginalName(originalName: string): void {
+  if (!originalName || typeof originalName !== 'string') {
+    throw new Error('originalName must be a non-empty string');
+  }
+
+  const trimmed = originalName.trim();
+  if (!trimmed) {
+    throw new Error('originalName cannot be empty or whitespace only');
+  }
+
+  // Check for path separators
+  if (/[\\/]/.test(trimmed)) {
+    throw new Error('originalName cannot contain path separators');
   }
 }

@@ -177,6 +177,10 @@ const uploadFileInputSchema = {
     .string()
     .optional()
     .describe('Target folder ID (alphanumeric, must exist)'),
+  originalName: z
+    .string()
+    .optional()
+    .describe('Original filename to preserve during download'),
 };
 
 server.registerTool(
@@ -193,6 +197,7 @@ server.registerTool(
     password = undefined,
     maxViews = undefined,
     folder = undefined,
+    originalName = undefined,
   }: {
     filePath: string;
     format?: FormatType | undefined;
@@ -200,6 +205,7 @@ server.registerTool(
     password?: string | undefined;
     maxViews?: number | undefined;
     folder?: string | undefined;
+    originalName?: string | undefined;
   }) => {
     try {
       // Validate and normalize format
@@ -234,6 +240,7 @@ server.registerTool(
         maxViews,
         folder,
         deletesAt,
+        originalName,
       };
 
       const url = await uploadFile(uploadOptions);

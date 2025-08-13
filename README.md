@@ -339,6 +339,7 @@ This server provides the following tools:
 Uploads a file to the Zipline server and returns a detailed success message.
 
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
+- `originalName`: (optional) Original filename to preserve during download. This parameter is sent as the `x-zipline-original-name` header to the Zipline server. The original filename will be used when downloading the file, not when storing it. Must be a non-empty string without path separators.
 
 #### `validate_file`
 
