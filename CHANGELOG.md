@@ -5,6 +5,13 @@
 
 * **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
+## [1.5.0](https://github.com/dorogoy/zipline-mcp/compare/v1.4.1...v1.5.0) (2025-08-13)
+
+
+### Features
+
+* **http:** add support for originalName header ([16d2f62](https://github.com/dorogoy/zipline-mcp/commit/16d2f62db78ffa1eee6a233f0990aaa56bd89938))
+
 ## [1.4.1](https://github.com/dorogoy/zipline-mcp/compare/v1.4.0...v1.4.1) (2025-08-12)
 
 
