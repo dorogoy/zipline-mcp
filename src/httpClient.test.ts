@@ -189,14 +189,15 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       const res: FetchResponse = {
         ok: true,
         status: 200,
-        json: () => Promise.resolve({
-          files: [{ url: 'https://files.example.com/u/xyz' }],
-        }),
+        json: () =>
+          Promise.resolve({
+            files: [{ url: 'https://files.example.com/u/xyz' }],
+          }),
         text: () =>
           Promise.resolve(
             JSON.stringify({
               files: [{ url: 'https://files.example.com/u/xyz' }],
-            }),
+            })
           ),
       };
       return res as any;

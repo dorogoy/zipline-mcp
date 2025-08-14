@@ -439,7 +439,7 @@ server.registerTool(
               type: 'text',
               text:
                 fileList.length > 0
-                  ? `Files in your sandbox, you can retrieve their full path with PATH <filename>:\n${fileList.join('\n')}`
+                  ? `Files in your sandbox:\n${fileList.map((f) => `${resolveSandboxPath(f)}`).join('\n')}`
                   : 'No files found in your sandbox.',
             },
           ],
@@ -501,7 +501,7 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `✅ Created/Overwritten: ${filename}\nSize: ${formatFileSize(stat.size)}`,
+              text: `✅ Created/Overwritten: ${filename}\nPath: ${filePath}\nSize: ${formatFileSize(stat.size)}`,
             },
           ],
         };

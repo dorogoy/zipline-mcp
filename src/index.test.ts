@@ -1211,4 +1211,91 @@ describe('tmp_file_manager tool', () => {
       );
     });
   });
+  describe('tmp_file_manager path return tests', () => {
+    let server: MockServer;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      const imported = (await import('./index')) as unknown as {
+        server: MockServer;
+      };
+      server = imported.server;
+    });
+
+    const getToolHandler = (toolName: string): ToolHandler | undefined => {
+      const calls = server.registerTool.mock.calls as Array<
+        [string, unknown, ToolHandler]
+      >;
+      const call = calls.find((c) => c[0] === toolName);
+      return call?.[2];
+    };
+
+    it('should return full path for CREATE command', async () => {
+      fsMock.writeFile.mockResolvedValue(undefined);
+      fsMock.stat.mockResolvedValue({ size: 42 });
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler(
+        { command: 'CREATE test.txt', content: 'abc' },
+        {}
+      );
+      expect(result.content[0]?.text).toMatch(
+        /Created\/Overwritten: test\.txt/
+      );
+      // This test will initially fail because the current implementation doesn't return the full path
+      expect(result.content[0]?.text).toMatch(
+        /Path: \/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/test\.txt/
+      );
+    });
+
+    it('should return full path for OPEN command', async () => {
+      fsMock.stat.mockResolvedValue({ size: 10 });
+      fsMock.readFile.mockResolvedValue('hello');
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'OPEN foo.txt' }, {});
+      expect(result.content[0]?.text).toMatch(/OPEN: foo\.txt/);
+      expect(result.content[0]?.text).toMatch(/hello/);
+      // This test will initially fail because the current implementation doesn't return the full path
+      expect(result.content[0]?.text).toMatch(
+        /Path: \/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/foo\.txt/
+      );
+    });
+
+    it('should return full path for READ command', async () => {
+      fsMock.stat.mockResolvedValue({ size: 10 });
+      fsMock.readFile.mockResolvedValue('hello');
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'READ foo.txt' }, {});
+      expect(result.content[0]?.text).toMatch(/READ: foo\.txt/);
+      expect(result.content[0]?.text).toMatch(/hello/);
+      // This test will initially fail because the current implementation doesn't return the full path
+      expect(result.content[0]?.text).toMatch(
+        /Path: \/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/foo\.txt/
+      );
+    });
+
+    it('should return list of full paths for LIST command', async () => {
+      fsMock.readdir.mockResolvedValue([
+        { isFile: () => true, name: 'foo.txt' },
+        { isFile: () => false, name: 'bar' },
+        { isFile: () => true, name: 'baz.md' },
+      ] as Dirent[]);
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'LIST' }, {});
+      expect(result.content[0]?.text).toMatch(/foo\.txt/);
+      expect(result.content[0]?.text).toMatch(/baz\.md/);
+      expect(result.content[0]?.text).not.toMatch(/bar/);
+      // This test will initially fail because the current implementation doesn't return full paths
+      expect(result.content[0]?.text).toMatch(
+        /\/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/foo\.txt/
+      );
+      expect(result.content[0]?.text).toMatch(
+        /\/home\/[^/]+\/\.zipline_tmp\/users\/[a-f0-9]+\/baz\.md/
+      );
+    });
+  });
 });

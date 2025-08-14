@@ -15,10 +15,10 @@ graph LR
 
 1. **MCP Client**: Initiates file upload requests (e.g., Claude Desktop).
 2. **MCP Server**:
-    - Validates files locally.
-    - Generates upload commands.
-    - Handles authentication with Zipline.
-    - Manages temporary files in a sandboxed environment using `tmp_file_manager` and downloads external URLs using `download_external_url`.
+   - Validates files locally.
+   - Generates upload commands.
+   - Handles authentication with Zipline.
+   - Manages temporary files in a sandboxed environment using `tmp_file_manager` and downloads external URLs using `download_external_url`.
 3. **Zipline API**: Processes upload requests and returns URLs.
 4. **Zipline Storage**: Persistent file storage system.
 
