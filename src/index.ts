@@ -381,12 +381,12 @@ server.registerTool(
   {
     title: 'Minimal Temporary File Manager',
     description:
-      'Perform minimal file management in ~/.zipline_tmp or the sandbox. Allowed commands: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>. Only bare filenames allowed. CREATE overwrites existing files. PATH resolves to the absolute path and must be always used before uploads.',
+      'Perform minimal file management in ~/.zipline_tmp or the sandbox. Allowed commands: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>, DELETE <filename>. Only bare filenames allowed. CREATE overwrites existing files. PATH resolves to the absolute path and must be always used before uploads.',
     inputSchema: {
       command: z
         .string()
         .describe(
-          'Command: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>'
+          'Command: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>, DELETE <filename>'
         ),
       content: z
         .string()
@@ -655,6 +655,73 @@ server.registerTool(
       }
     }
 
+    // DELETE
+    if (upperCmd === 'DELETE') {
+      if (argsArr.length !== 1) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ DELETE refused: Filename is required.',
+            },
+          ],
+          isError: true,
+        };
+      }
+      const filename = argsArr[0];
+      if (!filename) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ DELETE refused: Filename is required.',
+            },
+          ],
+          isError: true,
+        };
+      }
+      const err = validateFilename(filename);
+      if (err) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ DELETE refused: ${err}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      const filePath = resolveSandboxPath(filename);
+      try {
+        await fs.unlink(filePath);
+        logSandboxOperation('FILE_DELETED', filename);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ DELETE: ${filename}\nPath: ${filePath}\nFile deleted successfully`,
+            },
+          ],
+        };
+      } catch (e) {
+        logSandboxOperation(
+          'FILE_DELETE_FAILED',
+          filename,
+          `Error: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ DELETE failed: ${filename}\nError: ${(e as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Invalid command or usage
     return {
       content: [
@@ -666,7 +733,8 @@ server.registerTool(
             '  CREATE <filename> (with optional content)\n' +
             '  OPEN <filename>\n' +
             '  READ <filename>\n' +
-            '  PATH <filename>\n\n' +
+            '  PATH <filename>\n' +
+            '  DELETE <filename>\n\n' +
             'Filenames must not include path separators, dot segments, or be empty. Only bare filenames in your sandbox are allowed.',
         },
       ],

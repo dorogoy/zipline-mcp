@@ -356,6 +356,7 @@ Minimal, sandboxed file management with per-user isolation. Each user gets their
   - `CREATE <filename>` — Create or overwrite a file (optionally provide `content`)
   - `OPEN <filename>` or `READ <filename>` — Read file content (max 1MB)
   - `PATH <filename>` — Get the absolute path of a file in the sandbox
+  - `DELETE <filename>` — Delete a file from the sandbox
 - `content`: (optional) String content for `CREATE`
 
 **Examples:**
@@ -365,6 +366,7 @@ Minimal, sandboxed file management with per-user isolation. Each user gets their
 - `OPEN notes.txt`
 - `READ notes.txt`
 - `PATH notes.txt`
+- `DELETE notes.txt`
 
 **Sandboxing Configuration:**
 

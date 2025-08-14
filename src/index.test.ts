@@ -43,6 +43,7 @@ const fsMock = {
   readdir: vi.fn(),
   mkdir: vi.fn(),
   rm: vi.fn(),
+  unlink: vi.fn(),
 };
 vi.mock('fs/promises', () => ({
   ...fsMock,
@@ -1107,7 +1108,7 @@ describe('tmp_file_manager tool', () => {
   it('should return usage for invalid command', async () => {
     const handler = getToolHandler('tmp_file_manager');
     if (!handler) throw new Error('Handler not found');
-    const result = await handler({ command: 'DELETE foo.txt' }, {});
+    const result = await handler({ command: 'INVALID_COMMAND foo.txt' }, {});
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toMatch(/Usage/);
   });
@@ -1211,6 +1212,82 @@ describe('tmp_file_manager tool', () => {
       );
     });
   });
+
+  describe('DELETE command', () => {
+    it('should delete an existing file', async () => {
+      fsMock.stat.mockResolvedValue({ size: 10 });
+      fsMock.unlink.mockResolvedValue(undefined);
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'DELETE test.txt' }, {});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toMatch(/✅ DELETE: test\.txt/);
+      expect(result.content[0]?.text).toMatch(/File deleted successfully/);
+    });
+
+    it('should return error when deleting non-existent file', async () => {
+      fsMock.unlink.mockRejectedValue(
+        new Error('ENOENT: no such file or directory')
+      );
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'DELETE nonexistent.txt' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ DELETE failed: nonexistent\.txt/
+      );
+      expect(result.content[0]?.text).toMatch(/no such file or directory/);
+    });
+
+    it('should refuse DELETE with invalid filename', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'DELETE ../evil.txt' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ DELETE refused: Filenames must not include path separators/
+      );
+    });
+
+    it('should verify file is removed from LIST after deletion', async () => {
+      // First, list files before deletion
+      fsMock.readdir.mockResolvedValue([
+        { isFile: () => true, name: 'test.txt' },
+        { isFile: () => true, name: 'other.txt' },
+      ] as Dirent[]);
+
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const listResultBefore = await handler({ command: 'LIST' }, {});
+      expect(listResultBefore.content[0]?.text).toMatch(/test\.txt/);
+      expect(listResultBefore.content[0]?.text).toMatch(/other\.txt/);
+
+      // Delete the file
+      fsMock.unlink.mockResolvedValue(undefined);
+      const deleteResult = await handler({ command: 'DELETE test.txt' }, {});
+      expect(deleteResult.isError).toBeUndefined();
+
+      // List files after deletion
+      fsMock.readdir.mockResolvedValue([
+        { isFile: () => true, name: 'other.txt' },
+      ] as Dirent[]);
+      const listResultAfter = await handler({ command: 'LIST' }, {});
+      expect(listResultAfter.content[0]?.text).not.toMatch(/test\.txt/);
+      expect(listResultAfter.content[0]?.text).toMatch(/other\.txt/);
+    });
+
+    it('should return error for DELETE with empty filename', async () => {
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+      const result = await handler({ command: 'DELETE' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ DELETE refused: Filename is required/
+      );
+    });
+  });
+
   describe('tmp_file_manager path return tests', () => {
     let server: MockServer;
 
