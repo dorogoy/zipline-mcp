@@ -5,6 +5,14 @@
 
 * **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
+## [1.6.0](https://github.com/dorogoy/zipline-mcp/compare/v1.5.0...v1.6.0) (2025-08-14)
+
+
+### Features
+
+* **sandbox:** return full sandbox paths in outputs ([bf1aee4](https://github.com/dorogoy/zipline-mcp/commit/bf1aee4654436e220aa7f0f4c438552cbe495d1e))
+* **tmp_file_manager:** add DELETE command ([dbd2afe](https://github.com/dorogoy/zipline-mcp/commit/dbd2afe7fba3ad86856bd662c62584a5c0073963))
+
 ## [1.5.0](https://github.com/dorogoy/zipline-mcp/compare/v1.4.1...v1.5.0) (2025-08-13)
 
 
