@@ -1,10 +1,3 @@
-## [1.1.1](https://github.com/dorogoy/zipline-mcp/compare/v1.1.0...v1.1.1) (2025-08-10)
-
-
-### Bug Fixes
-
-* **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
-
 ## [1.7.0](https://github.com/dorogoy/zipline-mcp/compare/v1.6.0...v1.7.0) (2025-08-15)
 
 
@@ -59,6 +52,13 @@
 * **sandbox:** add per-user sandboxing ([f8e2bc3](https://github.com/dorogoy/zipline-mcp/commit/f8e2bc30848ac141ea0ec939c3335b3a75ddce79))
 * **sandbox:** introduce sandboxUtils module and integrate ([ca11a6e](https://github.com/dorogoy/zipline-mcp/commit/ca11a6ef20300f28a9481090bd16609206900cd9))
 * **tmp_file_manager:** add PATH command ([ec098df](https://github.com/dorogoy/zipline-mcp/commit/ec098df7e1649db3a5dd8277fe525e3cc7b6050f))
+
+## [1.1.1](https://github.com/dorogoy/zipline-mcp/compare/v1.1.0...v1.1.1) (2025-08-10)
+
+
+### Bug Fixes
+
+* **config:** track version in src/index.ts ([dd8ac2a](https://github.com/dorogoy/zipline-mcp/commit/dd8ac2a5802e955ad6a9ee2e2478a2cd0c19e4b4))
 
 ## [1.1.0](https://github.com/dorogoy/zipline-mcp/compare/v1.0.3...v1.1.0) (2025-08-10)
 

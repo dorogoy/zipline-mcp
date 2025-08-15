@@ -62,3 +62,10 @@ Key dependencies listed in `package.json`:
 - **Formatting**: `npm run format` (uses `prettier`)
 - **Development Server**: `npm run dev` (uses `tsx watch`)
 - **Makefile Integration**: `make` commands abstract `npm run` scripts for convenience.
+
+## Security Best Practices
+
+- Maintain current security practices
+- Continue using ALLOWED_EXTENSIONS whitelist approach
+- Keep sandbox validation as the first line of defense
+- Monitor for new file type requirements that might introduce risks

@@ -53,7 +53,7 @@ if (!ZIPLINE_TOKEN) {
   throw new Error('Environment variable ZIPLINE_TOKEN is required.');
 }
 
-export const RELEASE_VERSION = '1.1.1';
+export const RELEASE_VERSION = '1.7.0';
 const server = new McpServer({
   name: 'zipline-upload-server',
   version: RELEASE_VERSION,
@@ -1225,7 +1225,9 @@ server.registerTool(
     inputSchema: {
       id: z
         .string()
-        .describe('The unique ID of the file to delete. If not provided, you must retrieve its full information first.'),
+        .describe(
+          'The unique ID of the file to delete. If not provided, you must retrieve its full information first.'
+        ),
     },
   },
   async (args: unknown) => {
