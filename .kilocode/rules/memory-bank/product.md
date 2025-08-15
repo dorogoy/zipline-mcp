@@ -12,6 +12,7 @@ The project bridges MCP clients with Zipline's file hosting service, providing a
 - **Secure File Handling**: Offers features like sandboxed temporary file management for secure operations.
 - **Advanced Management**: Provides tools for setting expiration dates, passwords, view limits, and specific folders for uploaded files, enhancing control over hosted content.
 - **Validation**: Ensures files are suitable for upload before transmission, reducing errors and server load.
+- **User File Management**: Enables listing and searching of previously uploaded files, allowing users to easily locate and manage their hosted content.
 
 ## How it should work
 
@@ -21,6 +22,7 @@ The server exposes MCP tools that client applications can call to:
 - Validate file suitability (`validate_file`)
 - Manage temporary files in a sandboxed environment (`tmp_file_manager`)
 - Download external URLs into the sandbox (`download_external_url`)
+- List and search user files stored on the Zipline server (`list_user_files`)
 
 It handles authentication with Zipline using provided environment variables (`ZIPLINE_TOKEN`, `ZIPLINE_ENDPOINT`) and manages file naming formats and advanced upload options.
 
