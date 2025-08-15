@@ -342,11 +342,27 @@ Uploads a file to the Zipline server and returns a detailed success message.
 - `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
 - `originalName`: (optional) Original filename to preserve during download. This parameter is sent as the `x-zipline-original-name` header to the Zipline server. The original filename will be used when downloading the file, not when storing it. Must be a non-empty string without path separators.
 
+**Example Prompts for Users:**
+
+- "Upload the file '/path/to/document.pdf' to Zipline"
+- "Upload my file at '/home/user/images/photo.jpg' and preserve the original name"
+- "I want to upload '/path/to/data.csv' with the original name 'sales-data.csv'"
+- "Upload file '/path/to/script.py' to Zipline"
+- "Can you upload '/path/to/report.docx' for me?"
+
 #### `validate_file`
 
 Checks if a file exists and is suitable for upload.
 
 - `filePath`: Path to the file to validate. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
+
+**Example Prompts for Users:**
+
+- "Check if '/path/to/document.pdf' is valid for upload"
+- "Validate the file at '/home/user/images/photo.jpg'"
+- "Is '/path/to/data.csv' suitable for uploading to Zipline?"
+- "Can you validate '/path/to/script.py' for me?"
+- "Check if '/path/to/report.docx' can be uploaded"
 
 #### `list_user_files`
 
@@ -359,6 +375,18 @@ Lists and searches files that you have previously uploaded to the Zipline server
 - `filter`: (optional) Filter by file type or other criteria
 - `sort`: (optional) Sort field (e.g., "createdAt", "size", "name")
 - `order`: (optional) Sort order ("asc" or "desc", default: "desc")
+
+**Example Prompts for Users:**
+
+- "List all my files on Zipline"
+- "Show me the first page of my uploaded files"
+- "Search for files with 'document' in the name"
+- "Find all PDF files that I've uploaded"
+- "List my files sorted by creation date, newest first"
+- "Show me 10 files per page, page 2"
+- "Search for files with 'report' in the original name"
+- "List my files sorted by size, largest first"
+- "Find all image files I've uploaded"
 
 #### `tmp_file_manager`
 
@@ -380,6 +408,19 @@ Minimal, sandboxed file management with per-user isolation. Each user gets their
 - `READ notes.txt`
 - `PATH notes.txt`
 - `DELETE notes.txt`
+
+**Example Prompts for Users:**
+
+- "List all files in my sandbox"
+- "Create a file named 'notes.txt' with content 'Meeting notes from today'"
+- "Read the content of 'config.json'"
+- "Get the absolute path of 'data.csv'"
+- "Delete the file 'temp.txt'"
+- "Show me all files in my temporary directory"
+- "Create a new file called 'draft.md' with some content"
+- "Open and read the 'settings.json' file"
+- "What's the full path to 'output.txt'?"
+- "Remove 'old_file.txt' from my sandbox"
 
 **Sandboxing Configuration:**
 
@@ -446,6 +487,16 @@ Security & safety considerations
 - All downloads are saved inside the per-user sandbox; filenames are validated and sanitized using the same rules as `tmp_file_manager` (no path separators, no dot segments, no absolute paths).
 - The server logs download activity with sanitized paths (user portion masked) for observability; secrets (such as tokens) are never logged.
 - If you require domain allow-listing to restrict where the server can download from, consider adding a hostname whitelist at the MCP server configuration level before enabling this tool for production usage.
+
+**Example Prompts for Users:**
+
+- "Download the PDF from 'https://example.com/document.pdf' to my sandbox"
+- "Download 'https://example.com/data.csv' with a timeout of 60 seconds"
+- "Download the image from 'https://example.com/image.jpg' with a max file size of 50MB"
+- "Download the file from 'https://example.com/report.pdf' and save it to my sandbox"
+- "Can you download 'https://example.com/config.json' for me?"
+- "Download 'https://example.com/archive.zip' with a custom timeout of 45 seconds"
+- "I need to download 'https://example.com/data.json' with a max size of 10MB"
 
 ### list_user_files
 
@@ -536,6 +587,162 @@ Notes for integrators
 - This tool is exported by the MCP server and can be invoked programmatically by MCP clients or models.
 - The implementation lives in [`src/userFiles.ts`](src/userFiles.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
 - Tests were added under `src/userFiles.test.ts` to exercise pagination, searching, filtering, sorting, and error handling.
+
+### get_user_file
+
+A new tool has been added: `get_user_file`. It allows you to retrieve detailed information about a specific file stored on the Zipline server.
+
+- Tool name: `get_user_file`
+- Purpose: Get detailed information about a specific file stored on the Zipline server
+- Input schema:
+  - `id` (string) — required — File ID or filename to retrieve information for
+- Behavior:
+  - Fetches file information from the Zipline API using the file ID or filename
+  - Returns comprehensive file metadata including size, type, views, favorites status, and more
+  - Handles URL encoding of special characters in file IDs
+
+Usage example (MCP tool call)
+
+- Example input:
+  ```json
+  {
+    "id": "file123"
+  }
+  ```
+- Example successful response content:
+
+  ```
+  📁 FILE INFORMATION
+
+  📁 document.pdf
+  🆔 ID: file123
+  📅 Created: 1/15/2025
+  📊 Size: 1.2 MB
+  🏷️ Type: application/pdf
+  👁️ Views: 5
+  🔗 URL: http://localhost:3000/u/file123
+
+  📄 Original Name: my-document.pdf
+  🏷️ Tags: tag1, tag2
+  📁 Folder ID: folder123
+  ```
+
+**Example Prompts for Users:**
+
+- "Get detailed information about the file with ID 'abc123'"
+- "Show me the details for file 'document.pdf'"
+- "I need to see the metadata for file 'xyz789'"
+- "What are the properties of the file named 'my-image.jpg'?"
+- "Get information about the file with ID 'file123'"
+
+### update_user_file
+
+A new tool has been added: `update_user_file`. It allows you to update properties of a specific file stored on the Zipline server.
+
+- Tool name: `update_user_file`
+- Purpose: Update properties of a specific file stored on the Zipline server
+- Input schema:
+  - `id` (string) — required — File ID or filename to update
+  - `favorite` (boolean) — optional — Set/unset as favorite
+  - `maxViews` (number) — optional — Maximum allowed views (>= 0)
+  - `password` (string | null) — optional — Set password (string), remove password (null)
+  - `originalName` (string) — optional — Set or update the original filename
+  - `type` (string) — optional — Set or update the file MIME type
+  - `tags` (string[]) — optional — Array of tag IDs to set for this file
+  - `name` (string) — optional — Rename the file
+- Behavior:
+  - Updates file properties using PATCH request to the Zipline API
+  - Only updates fields that are explicitly provided (undefined fields are ignored)
+  - Supports setting or removing passwords by passing string or null
+  - Returns the updated file information
+
+Usage example (MCP tool call)
+
+- Example input:
+  ```json
+  {
+    "id": "file123",
+    "favorite": true,
+    "maxViews": 10,
+    "password": "secret123"
+  }
+  ```
+- Example successful response content:
+
+  ```
+  ✅ FILE UPDATED SUCCESSFULLY!
+
+  ⭐🔒 document.pdf
+  🆔 ID: file123
+  📅 Created: 1/15/2025
+  📊 Size: 1.2 MB
+  🏷️ Type: application/pdf
+  👁️ Views: 5/10
+  🔗 URL: http://localhost:3000/u/file123
+
+  📄 Original Name: my-document.pdf
+  🏷️ Tags: tag1, tag2
+  📁 Folder ID: folder123
+  ```
+
+**Example Prompts for Users:**
+
+- "Set file 'abc123' as a favorite"
+- "Update file 'document.pdf' to have a maximum of 10 views"
+- "Add password protection to file 'xyz789' with password 'secret123'"
+- "Remove the password from file 'file123'"
+- "Change the original name of file 'abc123' to 'my-updated-document.pdf'"
+- "Rename file 'xyz789' to 'new-name.pdf'"
+- "Set the MIME type of file 'file123' to 'application/pdf'"
+- "Add tags ['tag1', 'tag2'] to file 'abc123'"
+- "Update file 'xyz789' to be a favorite with maxViews of 5 and password 'secure'"
+
+### delete_user_file
+
+A new tool has been added: `delete_user_file`. It allows you to delete a specific file stored on the Zipline server.
+
+- Tool name: `delete_user_file`
+- Purpose: Delete a specific file stored on the Zipline server
+- Input schema:
+  - `id` (string) — required — File ID or filename to delete
+- Behavior:
+  - Deletes the file using DELETE request to the Zipline API
+  - Returns the file information that was deleted (for confirmation)
+  - Handles URL encoding of special characters in file IDs
+
+Usage example (MCP tool call)
+
+- Example input:
+  ```json
+  {
+    "id": "file123"
+  }
+  ```
+- Example successful response content:
+
+  ```
+  ✅ FILE DELETED SUCCESSFULLY!
+
+  ⭐🔒 document.pdf
+  🆔 ID: file123
+  📅 Created: 1/15/2025
+  📊 Size: 1.2 MB
+  🏷️ Type: application/pdf
+  👁️ Views: 5/10
+  🔗 URL: http://localhost:3000/u/file123
+
+  📄 Original Name: my-document.pdf
+  🏷️ Tags: tag1, tag2
+  📁 Folder ID: folder123
+  ```
+
+**Example Prompts for Users:**
+
+- "Delete file with ID 'abc123'"
+- "Remove file 'document.pdf' from the server"
+- "Delete the file named 'my-image.jpg'"
+- "Permanently delete file 'xyz789'"
+- "I want to delete the file with ID 'file123'"
 
 ### Sandbox Path Resolution
 
