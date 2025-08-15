@@ -7,7 +7,16 @@ import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { uploadFile, UploadOptions, DownloadOptions } from './httpClient.js';
-import { listUserFiles, ListUserFilesOptions } from './userFiles.js';
+import {
+  listUserFiles,
+  ListUserFilesOptions,
+  getUserFile,
+  GetUserFileOptions,
+  updateUserFile,
+  UpdateUserFileOptions,
+  deleteUserFile,
+  DeleteUserFileOptions,
+} from './userFiles.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -961,6 +970,313 @@ server.registerTool(
           {
             type: 'text',
             text: `❌ LIST USER FILES FAILED\n\nError: ${message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Register get_user_file tool: get information about a specific file
+server.registerTool(
+  'get_user_file',
+  {
+    title: 'Get User File',
+    description:
+      'Get detailed information about a specific file stored on the Zipline server',
+    inputSchema: {
+      id: z
+        .string()
+        .describe('File ID or filename to retrieve information for'),
+    },
+  },
+  async (args: unknown) => {
+    // Validate and coerce incoming args safely
+    const a = args as Record<string, unknown>;
+    const id = typeof a.id === 'string' ? a.id : undefined;
+
+    try {
+      if (!id) {
+        throw new Error('File ID is required');
+      }
+
+      const options: GetUserFileOptions = {
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        id,
+      };
+
+      const file = await getUserFile(options);
+
+      // Format the response for better readability
+      const isFavorite = file.favorite ? '⭐' : '';
+      const hasPassword = file.password ? '🔒' : '';
+      const expires = file.deletesAt
+        ? `⏰ ${new Date(file.deletesAt).toLocaleDateString()}`
+        : '';
+
+      let response =
+        `📁 FILE INFORMATION\n\n` +
+        `${isFavorite}${hasPassword} ${file.name}\n` +
+        `🆔 ID: ${file.id}\n` +
+        `📅 Created: ${new Date(file.createdAt).toLocaleDateString()}\n` +
+        `📊 Size: ${formatFileSize(file.size)}\n` +
+        `🏷️ Type: ${file.type}\n` +
+        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
+        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+
+      if (file.originalName) {
+        response += `\n📄 Original Name: ${file.originalName}`;
+      }
+
+      if (file.tags.length > 0) {
+        response += `\n🏷️ Tags: ${file.tags.join(', ')}`;
+      }
+
+      if (file.folderId) {
+        response += `\n📁 Folder ID: ${file.folderId}`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: response,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Get user file failed: ${message}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ GET USER FILE FAILED\n\nError: ${message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Register update_user_file tool: update file properties
+server.registerTool(
+  'update_user_file',
+  {
+    title: 'Update User File',
+    description:
+      'Update properties of a specific file stored on the Zipline server',
+    inputSchema: {
+      id: z.string().describe('File ID or filename to update'),
+      favorite: z.boolean().optional().describe('Set/unset as favorite'),
+      maxViews: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe('Maximum allowed views (>= 0)'),
+      password: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('Set password (string), remove password (null)'),
+      originalName: z
+        .string()
+        .optional()
+        .describe('Set or update the original filename'),
+      type: z.string().optional().describe('Set or update the file MIME type'),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe('Array of tag IDs to set for this file'),
+      name: z.string().optional().describe('Rename the file'),
+    },
+  },
+  async (args: unknown) => {
+    // Validate and coerce incoming args safely
+    const a = args as Record<string, unknown>;
+    const id = typeof a.id === 'string' ? a.id : undefined;
+    const favorite = typeof a.favorite === 'boolean' ? a.favorite : undefined;
+    const maxViews = typeof a.maxViews === 'number' ? a.maxViews : undefined;
+    const password =
+      typeof a.password === 'string' || a.password === null
+        ? a.password
+        : undefined;
+    const originalName =
+      typeof a.originalName === 'string' ? a.originalName : undefined;
+    const type = typeof a.type === 'string' ? a.type : undefined;
+    const tags = Array.isArray(a.tags)
+      ? a.tags
+          .map((tag) => (typeof tag === 'string' ? tag : ''))
+          .filter(Boolean)
+      : undefined;
+    const name = typeof a.name === 'string' ? a.name : undefined;
+
+    try {
+      if (!id) {
+        throw new Error('File ID is required');
+      }
+
+      // Check that at least one field to update is provided
+      const hasUpdateFields = [
+        favorite,
+        maxViews,
+        password,
+        originalName,
+        type,
+        tags,
+        name,
+      ].some((field) => field !== undefined);
+
+      if (!hasUpdateFields) {
+        throw new Error('At least one field to update is required');
+      }
+
+      // Only include properties that are not undefined
+      const options: UpdateUserFileOptions = {
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        id,
+        ...(favorite !== undefined && { favorite }),
+        ...(maxViews !== undefined && { maxViews }),
+        ...(password !== undefined && { password }),
+        ...(originalName !== undefined && { originalName }),
+        ...(type !== undefined && { type }),
+        ...(tags !== undefined && { tags }),
+        ...(name !== undefined && { name }),
+      };
+
+      const file = await updateUserFile(options);
+
+      // Format the response for better readability
+      const isFavorite = file.favorite ? '⭐' : '';
+      const hasPassword = file.password ? '🔒' : '';
+      const expires = file.deletesAt
+        ? `⏰ ${new Date(file.deletesAt).toLocaleDateString()}`
+        : '';
+
+      let response =
+        `✅ FILE UPDATED SUCCESSFULLY!\n\n` +
+        `${isFavorite}${hasPassword} ${file.name}\n` +
+        `🆔 ID: ${file.id}\n` +
+        `📅 Created: ${new Date(file.createdAt).toLocaleDateString()}\n` +
+        `📊 Size: ${formatFileSize(file.size)}\n` +
+        `🏷️ Type: ${file.type}\n` +
+        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
+        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+
+      if (file.originalName) {
+        response += `\n📄 Original Name: ${file.originalName}`;
+      }
+
+      if (file.tags.length > 0) {
+        response += `\n🏷️ Tags: ${file.tags.join(', ')}`;
+      }
+
+      if (file.folderId) {
+        response += `\n📁 Folder ID: ${file.folderId}`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: response,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Update user file failed: ${message}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ UPDATE USER FILE FAILED\n\nError: ${message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Register delete_user_file tool: delete a file
+server.registerTool(
+  'delete_user_file',
+  {
+    title: 'Delete User File',
+    description: 'Delete a specific file stored on the Zipline server',
+    inputSchema: {
+      id: z.string().describe('File ID or filename to delete'),
+    },
+  },
+  async (args: unknown) => {
+    // Validate and coerce incoming args safely
+    const a = args as Record<string, unknown>;
+    const id = typeof a.id === 'string' ? a.id : undefined;
+
+    try {
+      if (!id) {
+        throw new Error('File ID is required');
+      }
+
+      const options: DeleteUserFileOptions = {
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        id,
+      };
+
+      const file = await deleteUserFile(options);
+
+      // Format the response for better readability
+      const isFavorite = file.favorite ? '⭐' : '';
+      const hasPassword = file.password ? '🔒' : '';
+      const expires = file.deletesAt
+        ? `⏰ ${new Date(file.deletesAt).toLocaleDateString()}`
+        : '';
+
+      let response =
+        `✅ FILE DELETED SUCCESSFULLY!\n\n` +
+        `${isFavorite}${hasPassword} ${file.name}\n` +
+        `🆔 ID: ${file.id}\n` +
+        `📅 Created: ${new Date(file.createdAt).toLocaleDateString()}\n` +
+        `📊 Size: ${formatFileSize(file.size)}\n` +
+        `🏷️ Type: ${file.type}\n` +
+        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
+        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+
+      if (file.originalName) {
+        response += `\n📄 Original Name: ${file.originalName}`;
+      }
+
+      if (file.tags.length > 0) {
+        response += `\n🏷️ Tags: ${file.tags.join(', ')}`;
+      }
+
+      if (file.folderId) {
+        response += `\n📁 Folder ID: ${file.folderId}`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: response,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Delete user file failed: ${message}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ DELETE USER FILE FAILED\n\nError: ${message}`,
           },
         ],
         isError: true,

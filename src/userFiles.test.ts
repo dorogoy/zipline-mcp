@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listUserFiles } from './userFiles.js';
+import {
+  listUserFiles,
+  getUserFile,
+  updateUserFile,
+  deleteUserFile,
+} from './userFiles.js';
 
 // Mock the global fetch
 const mockFetch = vi.fn();
@@ -192,5 +197,444 @@ describe('listUserFiles', () => {
       ),
       expect.any(Object)
     );
+  });
+});
+
+describe('getUserFile', () => {
+  beforeEach(() => {
+    mockFetch.mockClear();
+  });
+
+  it('should get a single file by ID', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'GET',
+        headers: {
+          authorization: 'test-token',
+        },
+      }
+    );
+
+    expect(result).toEqual(mockFile);
+  });
+
+  it('should URL encode file IDs with special characters', async () => {
+    const mockFile = {
+      id: 'file-with-special-chars',
+      name: 'test.png',
+      originalName: null,
+      size: 1024,
+      type: 'image/png',
+      views: 0,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file with spaces & special chars!',
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file%20with%20spaces%20%26%20special%20chars!',
+      expect.any(Object)
+    );
+  });
+
+  it('should handle API errors', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve('File not found'),
+    });
+
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'nonexistent',
+      })
+    ).rejects.toThrow('HTTP 404: File not found');
+  });
+
+  it('should handle network errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('Network error');
+  });
+
+  it('should validate required parameters', async () => {
+    await expect(
+      getUserFile({
+        endpoint: '',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('endpoint is required');
+
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: '',
+        id: 'file123',
+      })
+    ).rejects.toThrow('token is required');
+
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '',
+      })
+    ).rejects.toThrow('id is required');
+  });
+
+  it('should validate response format', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ invalid: 'response' }),
+    });
+
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('Invalid response format from Zipline server');
+  });
+});
+
+describe('updateUserFile', () => {
+  beforeEach(() => {
+    mockFetch.mockClear();
+  });
+
+  it('should update file properties', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'updated.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: 100,
+      favorite: true,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: ['tag1', 'tag2'],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      favorite: true,
+      maxViews: 100,
+      originalName: 'updated.png',
+      tags: ['tag1', 'tag2'],
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          favorite: true,
+          maxViews: 100,
+          originalName: 'updated.png',
+          tags: ['tag1', 'tag2'],
+        }),
+      }
+    );
+
+    expect(result).toEqual(mockFile);
+  });
+
+  it('should handle removing password by setting to null', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: null,
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      password: null,
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password: null,
+        }),
+      }
+    );
+  });
+
+  it('should require at least one field to update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('At least one field to update is required');
+  });
+
+  it('should handle API errors', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve('Invalid request'),
+    });
+
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        favorite: true,
+      })
+    ).rejects.toThrow('HTTP 400: Invalid request');
+  });
+
+  it('should validate required parameters', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: '',
+        token: 'test-token',
+        id: 'file123',
+        favorite: true,
+      })
+    ).rejects.toThrow('endpoint is required');
+
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: '',
+        id: 'file123',
+        favorite: true,
+      })
+    ).rejects.toThrow('token is required');
+
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '',
+        favorite: true,
+      })
+    ).rejects.toThrow('id is required');
+  });
+});
+
+describe('deleteUserFile', () => {
+  beforeEach(() => {
+    mockFetch.mockClear();
+  });
+
+  it('should delete a file', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await deleteUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'DELETE',
+        headers: {
+          authorization: 'test-token',
+        },
+      }
+    );
+
+    expect(result).toEqual(mockFile);
+  });
+
+  it('should handle API errors', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve('File not found'),
+    });
+
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'nonexistent',
+      })
+    ).rejects.toThrow('HTTP 404: File not found');
+  });
+
+  it('should handle network errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('Network error');
+  });
+
+  it('should validate required parameters', async () => {
+    await expect(
+      deleteUserFile({
+        endpoint: '',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('endpoint is required');
+
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: '',
+        id: 'file123',
+      })
+    ).rejects.toThrow('token is required');
+
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '',
+      })
+    ).rejects.toThrow('id is required');
+  });
+
+  it('should validate response format', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ invalid: 'response' }),
+    });
+
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+      })
+    ).rejects.toThrow('Invalid response format from Zipline server');
   });
 });

@@ -141,3 +141,208 @@ export async function listUserFiles(
 
   return data as ListUserFilesResponse;
 }
+
+export interface GetUserFileOptions {
+  endpoint: string;
+  token: string;
+  id: string;
+}
+
+export async function getUserFile(
+  options: GetUserFileOptions
+): Promise<FileModel> {
+  const { endpoint, token, id } = options;
+
+  if (!endpoint) {
+    throw new Error('endpoint is required');
+  }
+  if (!token) {
+    throw new Error('token is required');
+  }
+  if (!id) {
+    throw new Error('id is required');
+  }
+
+  const url = `${endpoint}/api/user/files/${encodeURIComponent(id)}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      authorization: token,
+    },
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const text = await response.text();
+      if (text) {
+        errorMessage += `: ${text}`;
+      }
+    } catch {
+      // Ignore if we can't read the response text
+    }
+    throw new Error(errorMessage);
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Failed to parse JSON response');
+  }
+
+  // Validate response structure
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !(data as Record<string, unknown>).id
+  ) {
+    throw new Error('Invalid response format from Zipline server');
+  }
+
+  return data as FileModel;
+}
+
+export interface UpdateUserFileOptions {
+  endpoint: string;
+  token: string;
+  id: string;
+  favorite?: boolean;
+  maxViews?: number;
+  password?: string | null;
+  originalName?: string;
+  type?: string;
+  tags?: string[];
+  name?: string;
+}
+
+export async function updateUserFile(
+  options: UpdateUserFileOptions
+): Promise<FileModel> {
+  const { endpoint, token, id, ...updateFields } = options;
+
+  if (!endpoint) {
+    throw new Error('endpoint is required');
+  }
+  if (!token) {
+    throw new Error('token is required');
+  }
+  if (!id) {
+    throw new Error('id is required');
+  }
+
+  // Filter out undefined fields
+  const body = Object.fromEntries(
+    Object.entries(updateFields).filter(([, value]) => value !== undefined)
+  );
+
+  // If no fields to update, throw error
+  if (Object.keys(body).length === 0) {
+    throw new Error('At least one field to update is required');
+  }
+
+  const url = `${endpoint}/api/user/files/${encodeURIComponent(id)}`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      authorization: token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const text = await response.text();
+      if (text) {
+        errorMessage += `: ${text}`;
+      }
+    } catch {
+      // Ignore if we can't read the response text
+    }
+    throw new Error(errorMessage);
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Failed to parse JSON response');
+  }
+
+  // Validate response structure
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !(data as Record<string, unknown>).id
+  ) {
+    throw new Error('Invalid response format from Zipline server');
+  }
+
+  return data as FileModel;
+}
+
+export interface DeleteUserFileOptions {
+  endpoint: string;
+  token: string;
+  id: string;
+}
+
+export async function deleteUserFile(
+  options: DeleteUserFileOptions
+): Promise<FileModel> {
+  const { endpoint, token, id } = options;
+
+  if (!endpoint) {
+    throw new Error('endpoint is required');
+  }
+  if (!token) {
+    throw new Error('token is required');
+  }
+  if (!id) {
+    throw new Error('id is required');
+  }
+
+  const url = `${endpoint}/api/user/files/${encodeURIComponent(id)}`;
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      authorization: token,
+    },
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const text = await response.text();
+      if (text) {
+        errorMessage += `: ${text}`;
+      }
+    } catch {
+      // Ignore if we can't read the response text
+    }
+    throw new Error(errorMessage);
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Failed to parse JSON response');
+  }
+
+  // Validate response structure
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !(data as Record<string, unknown>).id
+  ) {
+    throw new Error('Invalid response format from Zipline server');
+  }
+
+  return data as FileModel;
+}
