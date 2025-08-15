@@ -8,6 +8,7 @@ An MCP (Model Context Protocol) server that allows you to upload files to a Zipl
 - Validate files before uploading
 - Preview upload commands
 - Get only the download URL after upload
+- List and search user files stored on the Zipline server
 - Support for multiple file types, including:
   - Text/code: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml
   - Images: png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
@@ -347,6 +348,18 @@ Checks if a file exists and is suitable for upload.
 
 - `filePath`: Path to the file to validate. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
 
+#### `list_user_files`
+
+Lists and searches files that you have previously uploaded to the Zipline server.
+
+- `page`: (optional) Page number for pagination (default: 1)
+- `perPage`: (optional) Number of items per page (default: 20)
+- `searchField`: (optional) Field to search in (e.g., "name", "originalName", "type")
+- `searchQuery`: (optional) Search query string
+- `filter`: (optional) Filter by file type or other criteria
+- `sort`: (optional) Sort field (e.g., "createdAt", "size", "name")
+- `order`: (optional) Sort order ("asc" or "desc", default: "desc")
+
 #### `tmp_file_manager`
 
 Minimal, sandboxed file management with per-user isolation. Each user gets their own sandbox directory based on their ZIPLINE_TOKEN. Only bare filenames are allowed (no subdirectories or path traversal). All operations are strictly limited to the user's sandbox.
@@ -434,11 +447,95 @@ Security & safety considerations
 - The server logs download activity with sanitized paths (user portion masked) for observability; secrets (such as tokens) are never logged.
 - If you require domain allow-listing to restrict where the server can download from, consider adding a hostname whitelist at the MCP server configuration level before enabling this tool for production usage.
 
+### list_user_files
+
+A new tool has been added: `list_user_files`. It allows you to list and search files that you have previously uploaded to the Zipline server.
+
+- Tool name: `list_user_files`
+- Purpose: List and search user files stored on the Zipline server with support for pagination, filtering, sorting, and searching.
+- Input schema:
+  - `page` (number) — optional — Page number for pagination (default: 1)
+  - `perPage` (number) — optional — Number of items per page (default: 20)
+  - `searchField` (string) — optional — Field to search in (e.g., "name", "originalName", "type")
+  - `searchQuery` (string) — optional — Search query string
+  - `filter` (string) — optional — Filter by file type or other criteria
+  - `sort` (string) — optional — Sort field (e.g., "createdAt", "size", "name")
+  - `order` (string) — optional — Sort order ("asc" or "desc", default: "desc")
+- Behavior:
+  - Fetches files from the Zipline API with the specified parameters
+  - Supports pagination to handle large numbers of files
+  - Allows searching within specific fields using searchField and searchQuery
+  - Supports filtering and sorting of results
+  - Returns a structured response with file information and pagination metadata
+
+Usage example (MCP tool call)
+
+- Example input:
+  ```json
+  {
+    "page": 1,
+    "perPage": 10,
+    "searchField": "name",
+    "searchQuery": "document",
+    "sort": "createdAt",
+    "order": "desc"
+  }
+  ```
+- Example successful response content:
+  ```json
+  {
+    "files": [
+      {
+        "id": "file123",
+        "name": "random-string",
+        "originalName": "document.pdf",
+        "size": 1024,
+        "type": "application/pdf",
+        "url": "https://zipline.example.com/file123",
+        "createdAt": "2025-01-15T10:30:45.123Z",
+        "expiresAt": null,
+        "maxViews": null,
+        "views": 5
+      }
+    ],
+    "total": 25,
+    "page": 1,
+    "pages": 3
+  }
+  ```
+
+File Model
+
+The tool returns files with the following structure:
+
+- `id`: Unique identifier for the file
+- `name`: The filename as stored on the server
+- `originalName`: The original filename when uploaded
+- `size`: File size in bytes
+- `type`: MIME type of the file
+- `url`: Direct URL to access the file
+- `createdAt`: When the file was uploaded (ISO 8601 format)
+- `expiresAt`: When the file will expire (if applicable)
+- `maxViews`: Maximum view limit (if applicable)
+- `views`: Current view count
+
+Search and Filter Options
+
+The tool provides powerful search and filtering capabilities:
+
+- **Search**: Use `searchField` and `searchQuery` to search within specific fields
+  - Supported search fields: "name", "originalName", "type"
+  - Search is case-insensitive and supports partial matches
+- **Filter**: Use the `filter` parameter to filter by file type or other criteria
+- **Sort**: Use `sort` and `order` to sort results by any field
+  - Supported sort fields: "createdAt", "size", "name", "views"
+  - Order can be "asc" (ascending) or "desc" (descending)
+
 Notes for integrators
 
 - This tool is exported by the MCP server and can be invoked programmatically by MCP clients or models.
-- The implementation lives in [`src/httpClient.ts`](src/httpClient.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
-- Tests were added under `src/download.test.ts` and `src/download.integration.test.ts` to exercise validation, timeout, size limits, and cleanup behavior.
+- The implementation lives in [`src/userFiles.ts`](src/userFiles.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
+- Tests were added under `src/userFiles.test.ts` to exercise pagination, searching, filtering, sorting, and error handling.
 
 ### Sandbox Path Resolution
 

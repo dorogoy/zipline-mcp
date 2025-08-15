@@ -35,7 +35,8 @@ graph LR
 - `src/index.ts`: Main entry point, registers MCP tools, handles server startup.
 - `src/httpClient.ts`: Contains `uploadFile` and `downloadExternalUrl` functions for interacting with the Zipline API and external URLs.
 - `src/sandboxUtils.ts`: Provides utilities for managing the secure, per-user temporary file sandbox.
-- `src/download.test.ts`, `src/download.integration.test.ts`, `src/httpClient.test.ts`, `src/index.test.ts`, `src/sandboxUtils.test.ts`: Test files for various modules.
+- `src/userFiles.ts`: Contains functionality for listing and searching user files stored on the Zipline server, including FileModel interface and listUserFiles function.
+- `src/download.test.ts`, `src/download.integration.test.ts`, `src/httpClient.test.ts`, `src/index.test.ts`, `src/sandboxUtils.test.ts`, `src/userFiles.test.ts`: Test files for various modules.
 
 ## Key Technical Decisions
 
@@ -55,6 +56,7 @@ graph LR
 
 ## Component Relationships
 
-- `index.ts` orchestrates the registration of tools that leverage `httpClient.ts` and `sandboxUtils.ts`.
+- `index.ts` orchestrates the registration of tools that leverage `httpClient.ts`, `sandboxUtils.ts`, and `userFiles.ts`.
 - `httpClient.ts` depends on `sandboxUtils.ts` for downloading external URLs into the sandbox.
+- `userFiles.ts` provides standalone functionality for listing and searching user files on the Zipline server.
 - Tests are structured to mirror the source code, ensuring comprehensive coverage.

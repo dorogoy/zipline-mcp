@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { uploadFile, UploadOptions, DownloadOptions } from './httpClient.js';
+import { listUserFiles, ListUserFilesOptions } from './userFiles.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -802,6 +803,164 @@ server.registerTool(
           {
             type: 'text',
             text: `❌ DOWNLOAD FAILED\n\nError: ${message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Register list_user_files tool: list and search user files
+server.registerTool(
+  'list_user_files',
+  {
+    title: 'List User Files',
+    description: 'List and search files stored on the Zipline server',
+    inputSchema: {
+      page: z
+        .number()
+        .int()
+        .positive()
+        .describe('Page number to retrieve (1-based)'),
+      perpage: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Number of files per page (default: 15)'),
+      filter: z
+        .enum(['dashboard', 'all', 'none'])
+        .optional()
+        .describe(
+          'Filter by file type/favorite: dashboard (media/text), all, none'
+        ),
+      favorite: z
+        .boolean()
+        .optional()
+        .describe('If true, only return favorite files'),
+      sortBy: z
+        .enum([
+          'id',
+          'createdAt',
+          'updatedAt',
+          'deletesAt',
+          'name',
+          'originalName',
+          'size',
+          'type',
+          'views',
+          'favorite',
+        ])
+        .optional()
+        .describe('Field to sort by (default: createdAt)'),
+      order: z
+        .enum(['asc', 'desc'])
+        .optional()
+        .describe('Sort order (default: desc)'),
+      searchField: z
+        .enum(['name', 'originalName', 'type', 'tags', 'id'])
+        .optional()
+        .describe('Field to search in (default: name)'),
+      searchQuery: z
+        .string()
+        .optional()
+        .describe('Search string (will be URL encoded)'),
+    },
+  },
+  async (args: unknown) => {
+    // Validate and coerce incoming args safely
+    const a = args as Record<string, unknown>;
+    const page = typeof a.page === 'number' ? a.page : 1;
+    const perpage = typeof a.perpage === 'number' ? a.perpage : undefined;
+    const filter =
+      typeof a.filter === 'string'
+        ? (a.filter as 'dashboard' | 'all' | 'none')
+        : undefined;
+    const favorite = typeof a.favorite === 'boolean' ? a.favorite : undefined;
+    const sortBy =
+      typeof a.sortBy === 'string'
+        ? (a.sortBy as
+            | 'id'
+            | 'createdAt'
+            | 'updatedAt'
+            | 'deletesAt'
+            | 'name'
+            | 'originalName'
+            | 'size'
+            | 'type'
+            | 'views'
+            | 'favorite')
+        : undefined;
+    const order =
+      typeof a.order === 'string' ? (a.order as 'asc' | 'desc') : undefined;
+    const searchField =
+      typeof a.searchField === 'string'
+        ? (a.searchField as 'name' | 'originalName' | 'type' | 'tags' | 'id')
+        : undefined;
+    const searchQuery =
+      typeof a.searchQuery === 'string' ? a.searchQuery : undefined;
+
+    try {
+      const options: ListUserFilesOptions = {
+        endpoint: ZIPLINE_ENDPOINT,
+        token: ZIPLINE_TOKEN,
+        page,
+        perpage,
+        filter,
+        favorite,
+        sortBy,
+        order,
+        searchField,
+        searchQuery,
+      };
+
+      const result = await listUserFiles(options);
+
+      // Format the response for better readability
+      const fileList = result.page
+        .map((file, index) => {
+          const isFavorite = file.favorite ? '⭐' : '';
+          const hasPassword = file.password ? '🔒' : '';
+          const expires = file.deletesAt
+            ? `⏰ ${new Date(file.deletesAt).toLocaleDateString()}`
+            : '';
+
+          return `${index + 1}. ${isFavorite}${hasPassword} ${file.name}
+   📅 Created: ${new Date(file.createdAt).toLocaleDateString()}
+   📊 Size: ${formatFileSize(file.size)}
+   🏷️ Type: ${file.type}
+   👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}
+   🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+        })
+        .join('\n\n');
+
+      const header = `📁 USER FILES (Page ${page}${result.total ? ` of ${result.pages}` : ''})\n\n`;
+      const footer = result.total
+        ? `\n\nTotal files: ${result.total} | Showing: ${result.page.length}`
+        : '';
+
+      let searchInfo = '';
+      if (result.search) {
+        searchInfo = `\n🔍 Search: ${result.search.field} = "${result.search.query}"\n`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: header + searchInfo + fileList + footer,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`List user files failed: ${message}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ LIST USER FILES FAILED\n\nError: ${message}`,
           },
         ],
         isError: true,
