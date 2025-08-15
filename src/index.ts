@@ -197,8 +197,9 @@ server.registerTool(
   'upload_file_to_zipline',
   {
     title: 'Upload File to Zipline',
-    description: 'Upload a file to Zipline server and get the download URL',
-    inputSchema: uploadFileInputSchema,
+    description:
+      'Upload a file to the Zipline server and retrieve the download URL.',
+    inputSchema: uploadFileInputSchema, // Schema already defined separately
   },
   async ({
     filePath,
@@ -328,9 +329,9 @@ server.registerTool(
   'validate_file',
   {
     title: 'Validate File',
-    description: 'Check if a file exists and is suitable for upload',
+    description: 'Check if a file exists and is suitable for upload.',
     inputSchema: {
-      filePath: z.string().describe('Path to the file to validate'),
+      filePath: z.string().describe('Absolute path to the file to validate.'),
     },
   },
   async ({ filePath }: { filePath: string }) => {
@@ -391,17 +392,17 @@ server.registerTool(
   {
     title: 'Minimal Temporary File Manager',
     description:
-      'Perform minimal file management in ~/.zipline_tmp or the sandbox. Allowed commands: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>, DELETE <filename>. Only bare filenames allowed. CREATE overwrites existing files. PATH resolves to the absolute path and must be always used before uploads.',
+      'Perform basic file management operations in the sandbox. Supported commands include PATH, LIST, CREATE, OPEN, READ, and DELETE.',
     inputSchema: {
       command: z
         .string()
         .describe(
-          'Command: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>, DELETE <filename>'
+          'Command to execute. Supported commands: PATH <filename>, LIST, CREATE <filename>, OPEN <filename>, READ <filename>, DELETE <filename>. Only bare filenames are allowed.'
         ),
       content: z
         .string()
         .optional()
-        .describe('File content for CREATE (optional)'),
+        .describe('Optional content for the CREATE command.'),
     },
   },
   async (args: { command: string; content?: string | undefined }) => {
@@ -759,21 +760,25 @@ server.registerTool(
   {
     title: 'Download External URL',
     description:
-      'Download an external HTTP(S) URL into the user sandbox and return the absolute filesystem path',
+      'Download a file from an external HTTP(S) URL into the sandbox and return its absolute path.',
     inputSchema: {
-      url: z.string().describe('HTTP or HTTPS URL to download'),
+      url: z
+        .string()
+        .describe('The HTTP or HTTPS URL of the file to download.'),
       timeoutMs: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Timeout in milliseconds (optional)'),
+        .describe(
+          'Optional timeout in milliseconds for the download operation.'
+        ),
       maxFileSizeBytes: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Max allowed file size in bytes (optional)'),
+        .describe('Optional maximum allowed file size in bytes.'),
     },
   },
   async (args: unknown) => {
@@ -825,29 +830,29 @@ server.registerTool(
   'list_user_files',
   {
     title: 'List User Files',
-    description: 'List and search files stored on the Zipline server',
+    description: 'Retrieve and search files stored on the Zipline server.',
     inputSchema: {
       page: z
         .number()
         .int()
         .positive()
-        .describe('Page number to retrieve (1-based)'),
+        .describe('The page number to retrieve (1-based).'),
       perpage: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Number of files per page (default: 15)'),
+        .describe('The number of files to display per page (default: 15).'),
       filter: z
         .enum(['dashboard', 'all', 'none'])
         .optional()
         .describe(
-          'Filter by file type/favorite: dashboard (media/text), all, none'
+          'Filter files by type: dashboard (media/text), all, or none.'
         ),
       favorite: z
         .boolean()
         .optional()
-        .describe('If true, only return favorite files'),
+        .describe('If true, only return files marked as favorite.'),
       sortBy: z
         .enum([
           'id',
@@ -862,23 +867,22 @@ server.registerTool(
           'favorite',
         ])
         .optional()
-        .describe('Field to sort by (default: createdAt)'),
+        .describe('The field to sort files by (default: createdAt).'),
       order: z
         .enum(['asc', 'desc'])
         .optional()
-        .describe('Sort order (default: desc)'),
+        .describe('The sort order: ascending (asc) or descending (desc).'),
       searchField: z
         .enum(['name', 'originalName', 'type', 'tags', 'id'])
         .optional()
-        .describe('Field to search in (default: name)'),
+        .describe('The field to search within (default: name).'),
       searchQuery: z
         .string()
         .optional()
-        .describe('Search string (will be URL encoded)'),
+        .describe('The search string to query files.'),
     },
   },
   async (args: unknown) => {
-    // Validate and coerce incoming args safely
     const a = args as Record<string, unknown>;
     const page = typeof a.page === 'number' ? a.page : 1;
     const perpage = typeof a.perpage === 'number' ? a.perpage : undefined;
@@ -926,7 +930,6 @@ server.registerTool(
 
       const result = await listUserFiles(options);
 
-      // Format the response for better readability
       const fileList = result.page
         .map((file, index) => {
           const isFavorite = file.favorite ? '⭐' : '';
@@ -984,11 +987,11 @@ server.registerTool(
   {
     title: 'Get User File',
     description:
-      'Get detailed information about a specific file stored on the Zipline server',
+      'Retrieve detailed information about a specific file stored on the Zipline server.',
     inputSchema: {
       id: z
         .string()
-        .describe('File ID or filename to retrieve information for'),
+        .describe('The unique ID or filename of the file to retrieve.'),
     },
   },
   async (args: unknown) => {
@@ -1068,31 +1071,40 @@ server.registerTool(
   {
     title: 'Update User File',
     description:
-      'Update properties of a specific file stored on the Zipline server',
+      'Modify properties of a specific file stored on the Zipline server.',
     inputSchema: {
-      id: z.string().describe('File ID or filename to update'),
-      favorite: z.boolean().optional().describe('Set/unset as favorite'),
+      id: z
+        .string()
+        .describe('The unique ID or filename of the file to update.'),
+      favorite: z
+        .boolean()
+        .optional()
+        .describe('Mark or unmark the file as a favorite.'),
       maxViews: z
         .number()
         .int()
         .nonnegative()
         .optional()
-        .describe('Maximum allowed views (>= 0)'),
+        .describe(
+          'Set the maximum number of views allowed for the file (>= 0).'
+        ),
       password: z
         .string()
         .nullable()
         .optional()
-        .describe('Set password (string), remove password (null)'),
+        .describe(
+          'Set a password for the file or remove it by setting to null.'
+        ),
       originalName: z
         .string()
         .optional()
-        .describe('Set or update the original filename'),
-      type: z.string().optional().describe('Set or update the file MIME type'),
+        .describe('Update the original filename of the file.'),
+      type: z.string().optional().describe('Update the MIME type of the file.'),
       tags: z
         .array(z.string())
         .optional()
-        .describe('Array of tag IDs to set for this file'),
-      name: z.string().optional().describe('Rename the file'),
+        .describe('Set or update tags associated with the file.'),
+      name: z.string().optional().describe('Rename the file.'),
     },
   },
   async (args: unknown) => {
@@ -1209,9 +1221,11 @@ server.registerTool(
   'delete_user_file',
   {
     title: 'Delete User File',
-    description: 'Delete a specific file stored on the Zipline server',
+    description: 'Remove a specific file stored on the Zipline server.',
     inputSchema: {
-      id: z.string().describe('File ID or filename to delete'),
+      id: z
+        .string()
+        .describe('The unique ID of the file to delete. If not provided, you must retrieve its full information first.'),
     },
   },
   async (args: unknown) => {
