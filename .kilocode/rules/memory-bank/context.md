@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Completed upgrade of UserFiles feature with advanced file management capabilities for the Zipline MCP Server.
+Completed URL normalization improvements for UserFiles feature in the Zipline MCP Server.
 
 ## Recent Changes
 
@@ -23,7 +23,14 @@ Completed upgrade of UserFiles feature with advanced file management capabilitie
   - Added comprehensive unit tests for all new functions covering success cases, error handling, and edge cases
   - Updated README.md with detailed documentation for the new tools
   - All tests pass with proper URL encoding and error handling
+- Implemented URL normalization improvements:
+  - Added `normalizeUrl` function in `src/userFiles.ts` for safe URL construction
+  - Updated `listUserFiles` to return normalized URLs in responses
+  - Updated `getUserFile` to return normalized URLs in responses
+  - Removed URL fields from `updateUserFile` and `deleteUserFile` responses
+  - Updated all test cases to reflect these changes
+  - Updated README.md documentation to explain URL normalization behavior
 
 ## Next Steps
 
-- User file management feature upgrade is complete. Ready for production use.
+- URL normalization improvements are complete. Ready for production use.

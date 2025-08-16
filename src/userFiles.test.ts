@@ -4,11 +4,55 @@ import {
   getUserFile,
   updateUserFile,
   deleteUserFile,
+  normalizeUrl,
 } from './userFiles.js';
 
 // Mock the global fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+describe('normalizeUrl', () => {
+  it('should handle base URL without trailing slash and path with leading slash', () => {
+    const result = normalizeUrl('https://example.com', '/u/file123');
+    expect(result).toBe('https://example.com/u/file123');
+  });
+
+  it('should handle base URL with trailing slash and path with leading slash', () => {
+    const result = normalizeUrl('https://example.com/', '/u/file123');
+    expect(result).toBe('https://example.com/u/file123');
+  });
+
+  it('should handle base URL without trailing slash and path without leading slash', () => {
+    const result = normalizeUrl('https://example.com', 'u/file123');
+    expect(result).toBe('https://example.com/u/file123');
+  });
+
+  it('should handle base URL with trailing slash and path without leading slash', () => {
+    const result = normalizeUrl('https://example.com/', 'u/file123');
+    expect(result).toBe('https://example.com/u/file123');
+  });
+
+  it('should handle base URL with complex path and trailing slash', () => {
+    const result = normalizeUrl('https://example.com/api/', '/u/file123');
+    expect(result).toBe('https://example.com/api/u/file123');
+  });
+
+  it('should handle base URL with complex path without trailing slash', () => {
+    const result = normalizeUrl('https://example.com/api', '/u/file123');
+    expect(result).toBe('https://example.com/api/u/file123');
+  });
+
+  it('should handle base URL without protocol', () => {
+    const result = normalizeUrl('example.com', '/u/file123');
+    expect(result).toBe('https://example.com/u/file123');
+  });
+
+  it('should handle fallback for invalid URL', () => {
+    // This will trigger the fallback path (URL with spaces is invalid)
+    const result = normalizeUrl('invalid url with spaces', '/u/file123');
+    expect(result).toBe('invalid url with spaces/u/file123');
+  });
+});
 
 describe('listUserFiles', () => {
   beforeEach(() => {
@@ -56,7 +100,10 @@ describe('listUserFiles', () => {
       }
     );
 
-    expect(result).toEqual(mockResponse);
+    // Check that the URL is normalized in the response
+    expect(result.page?.[0]?.url).toBe(
+      'https://zipline.example.com/u/test.png'
+    );
   });
 
   it('should handle search parameters', async () => {
@@ -111,7 +158,10 @@ describe('listUserFiles', () => {
       }
     );
 
-    expect(result).toEqual(mockResponse);
+    // Check that the URL is normalized in the response
+    expect(result.page?.[0]?.url).toBe(
+      'https://zipline.example.com/u/search-result.png'
+    );
   });
 
   it('should handle filtering and sorting', async () => {
@@ -246,7 +296,8 @@ describe('getUserFile', () => {
       }
     );
 
-    expect(result).toEqual(mockFile);
+    // Check that the URL is normalized in the response
+    expect(result.url).toBe('https://zipline.example.com/u/test.png');
   });
 
   it('should URL encode file IDs with special characters', async () => {
@@ -413,7 +464,8 @@ describe('updateUserFile', () => {
       }
     );
 
-    expect(result).toEqual(mockFile);
+    // Check that the URL is not included in the response
+    expect(result.url).toBeUndefined();
   });
 
   it('should handle removing password by setting to null', async () => {
@@ -566,7 +618,8 @@ describe('deleteUserFile', () => {
       }
     );
 
-    expect(result).toEqual(mockFile);
+    // Check that the URL is not included in the response
+    expect(result.url).toBeUndefined();
   });
 
   it('should handle API errors', async () => {

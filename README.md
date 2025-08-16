@@ -564,6 +564,8 @@ Usage example (MCP tool call)
   Total files: 25 | Showing: 3
   ```
 
+  **Note:** The URLs in the response are normalized to ensure proper formatting regardless of the ZIPLINE_ENDPOINT configuration. The normalization handles trailing slashes and ensures consistent URL construction.
+
 File Model
 
 The tool returns files with the following structure:
@@ -636,6 +638,8 @@ Usage example (MCP tool call)
   📁 Folder ID: folder123
   ```
 
+  **Note:** The URL in the response is normalized to ensure proper formatting regardless of the ZIPLINE_ENDPOINT configuration. The normalization handles trailing slashes and ensures consistent URL construction.
+
 **Example Prompts for Users:**
 
 - "Get detailed information about the file with ID 'abc123'"
@@ -687,12 +691,13 @@ Usage example (MCP tool call)
   📊 Size: 1.2 MB
   🏷️ Type: application/pdf
   👁️ Views: 5/10
-  🔗 URL: http://localhost:3000/u/file123
 
   📄 Original Name: my-document.pdf
   🏷️ Tags: tag1, tag2
   📁 Folder ID: folder123
   ```
+
+  **Note:** The response does not include the URL field. To get the updated file information with the URL, use the `get_user_file` tool.
 
 **Example Prompts for Users:**
 
@@ -738,12 +743,13 @@ Usage example (MCP tool call)
   📊 Size: 1.2 MB
   🏷️ Type: application/pdf
   👁️ Views: 5/10
-  🔗 URL: http://localhost:3000/u/file123
 
   📄 Original Name: my-document.pdf
   🏷️ Tags: tag1, tag2
   📁 Folder ID: folder123
   ```
+
+  **Note:** The response does not include the URL field since the file has been deleted.
 
 **Example Prompts for Users:**
 

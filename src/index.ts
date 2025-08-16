@@ -16,6 +16,7 @@ import {
   UpdateUserFileOptions,
   deleteUserFile,
   DeleteUserFileOptions,
+  normalizeUrl,
 } from './userFiles.js';
 import {
   getUserSandbox,
@@ -945,7 +946,7 @@ server.registerTool(
    📊 Size: ${formatFileSize(file.size)}
    🏷️ Type: ${file.type}
    👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}
-   🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+   🔗 URL: ${normalizeUrl(ZIPLINE_ENDPOINT, file.url)} ${expires}`.trim();
         })
         .join('\n\n');
 
@@ -1031,7 +1032,7 @@ server.registerTool(
         `📊 Size: ${formatFileSize(file.size)}\n` +
         `🏷️ Type: ${file.type}\n` +
         `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
-        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+        `🔗 URL: ${normalizeUrl(file.url + '/u', file.name)} ${expires}`.trim();
 
       if (file.originalName) {
         response += `\n📄 Original Name: ${file.originalName}`;
@@ -1183,8 +1184,7 @@ server.registerTool(
         `📅 Created: ${new Date(file.createdAt).toLocaleDateString()}\n` +
         `📊 Size: ${formatFileSize(file.size)}\n` +
         `🏷️ Type: ${file.type}\n` +
-        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
-        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''} ${expires}`.trim();
 
       if (file.originalName) {
         response += `\n📄 Original Name: ${file.originalName}`;
@@ -1269,8 +1269,7 @@ server.registerTool(
         `📅 Created: ${new Date(file.createdAt).toLocaleDateString()}\n` +
         `📊 Size: ${formatFileSize(file.size)}\n` +
         `🏷️ Type: ${file.type}\n` +
-        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''}\n` +
-        `🔗 URL: ${ZIPLINE_ENDPOINT}${file.url} ${expires}`.trim();
+        `👁️ Views: ${file.views}${file.maxViews ? `/${file.maxViews}` : ''} ${expires}`.trim();
 
       if (file.originalName) {
         response += `\n📄 Original Name: ${file.originalName}`;

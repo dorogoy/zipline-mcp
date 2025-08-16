@@ -1,3 +1,34 @@
+// URL normalization utility to safely join URLs like Python's os.path.join
+function normalizeUrl(base: string, path: string): string {
+  try {
+    if (!path) {
+      return base;
+    }
+    // If base is not a valid URL, assume it's a base URL without protocol
+    const baseUrl = base.startsWith('http') ? base : `https://${base}`;
+    const url = new URL(baseUrl);
+
+    // Remove leading slash from path if present
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+    // Join the base URL with the path
+    url.pathname = url.pathname.endsWith('/')
+      ? `${url.pathname}${cleanPath}`
+      : `${url.pathname}/${cleanPath}`;
+
+    return url.toString();
+  } catch {
+    // Fallback to simple concatenation if URL parsing fails
+    // This handles cases where the base is truly invalid (e.g., contains spaces)
+    const cleanBase = base.endsWith('/') ? base : `${base}/`;
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return `${cleanBase}${cleanPath}`;
+  }
+}
+
+// Export the normalizeUrl function for use in index.ts
+export { normalizeUrl };
+
 export interface FileModel {
   id: string;
   name: string;
@@ -139,7 +170,13 @@ export async function listUserFiles(
     throw new Error('Invalid response format from Zipline server');
   }
 
-  return data as ListUserFilesResponse;
+  // Apply URL normalization to each file in the response
+  const listResponse = data as ListUserFilesResponse;
+  listResponse.page = listResponse.page.map((file: FileModel) => ({
+    ...file,
+    url: normalizeUrl(endpoint, file.url),
+  }));
+  return listResponse;
 }
 
 export interface GetUserFileOptions {
@@ -201,7 +238,10 @@ export async function getUserFile(
     throw new Error('Invalid response format from Zipline server');
   }
 
-  return data as FileModel;
+  // Apply URL normalization to the file
+  const file = data as FileModel;
+  file.url = normalizeUrl(endpoint, file.url);
+  return file;
 }
 
 export interface UpdateUserFileOptions {
@@ -282,7 +322,11 @@ export async function updateUserFile(
     throw new Error('Invalid response format from Zipline server');
   }
 
-  return data as FileModel;
+  // Remove URL field from response as requested
+  const file = data as FileModel;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { url: _url, ...fileWithoutUrl } = file;
+  return fileWithoutUrl as FileModel;
 }
 
 export interface DeleteUserFileOptions {
@@ -344,5 +388,9 @@ export async function deleteUserFile(
     throw new Error('Invalid response format from Zipline server');
   }
 
-  return data as FileModel;
+  // Remove URL field from response as requested
+  const file = data as FileModel;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { url: _url, ...fileWithoutUrl } = file;
+  return fileWithoutUrl as FileModel;
 }
