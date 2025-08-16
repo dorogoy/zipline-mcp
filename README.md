@@ -366,7 +366,7 @@ Checks if a file exists and is suitable for upload.
 
 #### `list_user_files`
 
-Lists and searches files that you have previously uploaded to the Zipline server.
+Lists and searches files that you have previously uploaded to the Zipline server. Use this tool to find file IDs that can then be used with `get_user_file`, `update_user_file`, and `delete_user_file` tools. You can also obtain file IDs by using `get_user_file` if you already know the file name.
 
 - `page`: (optional) Page number for pagination (default: 1)
 - `perPage`: (optional) Number of items per page (default: 20)
@@ -533,33 +533,42 @@ Usage example (MCP tool call)
   }
   ```
 - Example successful response content:
-  ```json
-  {
-    "files": [
-      {
-        "id": "file123",
-        "name": "random-string",
-        "originalName": "document.pdf",
-        "size": 1024,
-        "type": "application/pdf",
-        "url": "https://zipline.example.com/file123",
-        "createdAt": "2025-01-15T10:30:45.123Z",
-        "expiresAt": null,
-        "maxViews": null,
-        "views": 5
-      }
-    ],
-    "total": 25,
-    "page": 1,
-    "pages": 3
-  }
+
+  ```
+  📁 USER FILES (Page 1 of 3)
+
+  1. ⭐ document.pdf
+     🆔 ID: file123
+     📅 Created: 1/15/2025
+     📊 Size: 1.2 MB
+     🏷️ Type: application/pdf
+     👁️ Views: 5
+     🔗 URL: https://zipline.example.com/u/file123
+
+  2. image.png
+     🆔 ID: img456
+     📅 Created: 1/14/2025
+     📊 Size: 2.1 MB
+     🏷️ Type: image/png
+     👁️ Views: 12
+     🔗 URL: https://zipline.example.com/u/img456
+
+  3. data.csv
+     🆔 ID: csv789
+     📅 Created: 1/13/2025
+     📊 Size: 500.0 KB
+     🏷️ Type: text/csv
+     👁️ Views: 3
+     🔗 URL: https://zipline.example.com/u/csv789
+
+  Total files: 25 | Showing: 3
   ```
 
 File Model
 
 The tool returns files with the following structure:
 
-- `id`: Unique identifier for the file
+- `id`: Unique identifier for the file (used for operations like get_user_file, update_user_file, and delete_user_file)
 - `name`: The filename as stored on the server
 - `originalName`: The original filename when uploaded
 - `size`: File size in bytes
@@ -590,14 +599,14 @@ Notes for integrators
 
 ### get_user_file
 
-A new tool has been added: `get_user_file`. It allows you to retrieve detailed information about a specific file stored on the Zipline server.
+Information about the tool: `get_user_file`. It allows you to retrieve detailed information about a specific file stored on the Zipline server. Use `list_user_files` or the file name to find the file ID you need for this tool.
 
 - Tool name: `get_user_file`
 - Purpose: Get detailed information about a specific file stored on the Zipline server
 - Input schema:
-  - `id` (string) — required — File ID or filename to retrieve information for
+  - `id` (string) — required — File ID to retrieve information for. Obtain this from the `list_user_files` tool.
 - Behavior:
-  - Fetches file information from the Zipline API using the file ID or filename
+  - Fetches file information from the Zipline API using the file ID
   - Returns comprehensive file metadata including size, type, views, favorites status, and more
   - Handles URL encoding of special characters in file IDs
 
@@ -637,12 +646,12 @@ Usage example (MCP tool call)
 
 ### update_user_file
 
-A new tool has been added: `update_user_file`. It allows you to update properties of a specific file stored on the Zipline server.
+Information about the tool: `update_user_file`. It allows you to update properties of a specific file stored on the Zipline server. Use `list_user_files` or the file name to find the file ID you need for this tool.
 
 - Tool name: `update_user_file`
 - Purpose: Update properties of a specific file stored on the Zipline server
 - Input schema:
-  - `id` (string) — required — File ID or filename to update
+  - `id` (string) — required — File ID to update. Obtain this from the `list_user_files` tool.
   - `favorite` (boolean) — optional — Set/unset as favorite
   - `maxViews` (number) — optional — Maximum allowed views (>= 0)
   - `password` (string | null) — optional — Set password (string), remove password (null)
@@ -699,12 +708,12 @@ Usage example (MCP tool call)
 
 ### delete_user_file
 
-A new tool has been added: `delete_user_file`. It allows you to delete a specific file stored on the Zipline server.
+A new tool has been added: `delete_user_file`. It allows you to delete a specific file stored on the Zipline server. Use `list_user_files` or the file name to find the file ID you need for this tool.
 
 - Tool name: `delete_user_file`
 - Purpose: Delete a specific file stored on the Zipline server
 - Input schema:
-  - `id` (string) — required — File ID or filename to delete
+  - `id` (string) — required — File ID to delete. Obtain this from the `list_user_files` tool.
 - Behavior:
   - Deletes the file using DELETE request to the Zipline API
   - Returns the file information that was deleted (for confirmation)
@@ -715,7 +724,7 @@ Usage example (MCP tool call)
 - Example input:
   ```json
   {
-    "id": "file123"
+    "id": "uniqueid123"
   }
   ```
 - Example successful response content:
@@ -724,7 +733,7 @@ Usage example (MCP tool call)
   ✅ FILE DELETED SUCCESSFULLY!
 
   ⭐🔒 document.pdf
-  🆔 ID: file123
+  🆔 ID: uniqueid123
   📅 Created: 1/15/2025
   📊 Size: 1.2 MB
   🏷️ Type: application/pdf

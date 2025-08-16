@@ -830,7 +830,8 @@ server.registerTool(
   'list_user_files',
   {
     title: 'List User Files',
-    description: 'Retrieve and search files stored on the Zipline server.',
+    description:
+      'Retrieve and search files stored on the Zipline server. Use this tool to find file IDs for use with get_user_file, update_user_file, and delete_user_file tools. You can also obtain file IDs by using get_user_file if you already know the file name.',
     inputSchema: {
       page: z
         .number()
@@ -939,6 +940,7 @@ server.registerTool(
             : '';
 
           return `${index + 1}. ${isFavorite}${hasPassword} ${file.name}
+   🆔 ID: ${file.id}
    📅 Created: ${new Date(file.createdAt).toLocaleDateString()}
    📊 Size: ${formatFileSize(file.size)}
    🏷️ Type: ${file.type}
@@ -987,11 +989,13 @@ server.registerTool(
   {
     title: 'Get User File',
     description:
-      'Retrieve detailed information about a specific file stored on the Zipline server.',
+      'Retrieve detailed information about a specific file stored on the Zipline server. Use only the file name to do the search.',
     inputSchema: {
       id: z
         .string()
-        .describe('The unique ID or filename of the file to retrieve.'),
+        .describe(
+          'Obtain the name of the file from either the user or the list_user_files tool.'
+        ),
     },
   },
   async (args: unknown) => {
@@ -1071,11 +1075,13 @@ server.registerTool(
   {
     title: 'Update User File',
     description:
-      'Modify properties of a specific file stored on the Zipline server.',
+      'Modify properties of a specific file stored on the Zipline server. Use list_user_files or the file name with get_user_file to find the file ID you need for this tool.',
     inputSchema: {
       id: z
         .string()
-        .describe('The unique ID or filename of the file to update.'),
+        .describe(
+          'The unique ID of the file to update. Only use the ID, the filename does not work.'
+        ),
       favorite: z
         .boolean()
         .optional()
@@ -1221,12 +1227,13 @@ server.registerTool(
   'delete_user_file',
   {
     title: 'Delete User File',
-    description: 'Remove a specific file stored on the Zipline server.',
+    description:
+      'Remove a specific file stored on the Zipline server. Use list_user_files or the file name to find the file ID you need for this tool.',
     inputSchema: {
       id: z
         .string()
         .describe(
-          'The unique ID of the file to delete. If not provided, you must retrieve its full information first.'
+          'The unique ID of the file to delete. Only use the ID, the filename does not work.'
         ),
     },
   },

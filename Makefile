@@ -39,7 +39,7 @@ clean:
 lint:
 	npm run lint
 
-finish-task: test build format
+finish-task: format test build
 
 # Publish to npm
 publish: clean build format-check test
