@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.7.2](https://github.com/dorogoy/zipline-mcp/compare/v1.7.1...v1.7.2) (2025-08-16)
+
+
+### Bug Fixes
+
+* update model information related to user files and IDs ([8563751](https://github.com/dorogoy/zipline-mcp/commit/8563751e100d34d76afe899a572f5ff21c5b85fa))
+
 ## [1.7.1](https://github.com/dorogoy/zipline-mcp/compare/v1.7.0...v1.7.1) (2025-08-15)
 
 
