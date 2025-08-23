@@ -36,7 +36,8 @@ graph LR
 - `src/httpClient.ts`: Contains `uploadFile` and `downloadExternalUrl` functions for interacting with the Zipline API and external URLs.
 - `src/sandboxUtils.ts`: Provides utilities for managing the secure, per-user temporary file sandbox.
 - `src/userFiles.ts`: Contains functionality for listing and searching user files stored on the Zipline server, including FileModel interface, listUserFiles function, and the normalizeUrl utility for consistent URL construction.
-- `src/download.test.ts`, `src/download.integration.test.ts`, `src/httpClient.test.ts`, `src/index.test.ts`, `src/sandboxUtils.test.ts`, `src/userFiles.test.ts`: Test files for various modules.
+- `src/remoteFolders.ts`: Contains functionality for listing remote folders on the Zipline server, including Folder interface and listFolders function.
+- `src/download.test.ts`, `src/download.integration.test.ts`, `src/httpClient.test.ts`, `src/index.test.ts`, `src/sandboxUtils.test.ts`, `src/userFiles.test.ts`, `src/remoteFolders.test.ts`: Test files for various modules.
 
 ## Key Technical Decisions
 
@@ -58,9 +59,11 @@ graph LR
 
 ## Component Relationships
 
-- `index.ts` orchestrates the registration of tools that leverage `httpClient.ts`, `sandboxUtils.ts`, and `userFiles.ts`.
+- `index.ts` orchestrates the registration of tools that leverage `httpClient.ts`, `sandboxUtils.ts`, `userFiles.ts`, and `remoteFolders.ts`.
 - `httpClient.ts` depends on `sandboxUtils.ts` for downloading external URLs into the sandbox.
 - `userFiles.ts` provides standalone functionality for listing and searching user files on the Zipline server, with URL normalization handled by the `normalizeUrl` utility.
+- `remoteFolders.ts` provides standalone functionality for listing remote folders on the Zipline server, with proper error handling and validation.
 - The `list_user_files` and `get_user_file` tools return normalized URLs for consistent access to files.
 - The `update_user_file` and `delete_user_file` tools exclude URL fields from their responses for cleaner API design.
+- The `remote_folder_manager` tool returns folder information with optional IDs, handling cases where IDs may not be present.
 - Tests are structured to mirror the source code, ensuring comprehensive coverage.
