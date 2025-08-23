@@ -9,6 +9,7 @@ An MCP (Model Context Protocol) server that allows you to upload files to a Zipl
 - Preview upload commands
 - Get only the download URL after upload
 - List and search user files stored on the Zipline server
+- List and manage remote folders on the Zipline server
 - Support for multiple file types, including:
   - Text/code: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml
   - Images: png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
@@ -758,6 +759,71 @@ Usage example (MCP tool call)
 - "Delete the file named 'my-image.jpg'"
 - "Permanently delete file 'xyz789'"
 - "I want to delete the file with ID 'file123'"
+
+### remote_folder_manager
+
+A new tool has been added: `remote_folder_manager`. It allows you to list and manage remote folders on the Zipline server.
+
+- Tool name: `remote_folder_manager`
+- Purpose: List and manage remote folders on the Zipline server
+- Input schema:
+  - `command` (string) — required — Command to execute. Currently supports:
+    - `LIST` — List all folders on the Zipline server
+- Behavior:
+  - Fetches folders from the Zipline API
+  - Returns a structured response with folder information including name and ID (when available)
+  - Supports pagination through the Zipline API
+  - Handles cases where folders may not have IDs
+
+Usage example (MCP tool call)
+
+- Example input:
+  ```json
+  {
+    "command": "LIST"
+  }
+  ```
+- Example successful response content:
+
+  ```
+  📁 REMOTE FOLDERS
+
+  1. Documents
+     🆔 ID: folder123
+     📂 Type: folder
+
+  2. Images
+     🆔 ID: folder456
+     📂 Type: folder
+
+  3. Public
+     🆔 ID: No ID
+     📂 Type: folder
+
+  Total folders: 3
+  ```
+
+  **Note:** Some folders may not have IDs if the Zipline server doesn't assign them. The tool gracefully handles this case by displaying "No ID" for folders without IDs.
+
+Folder Model
+
+The tool returns folders with the following structure:
+
+- `id`: Unique identifier for the folder (optional, may not be present for all folders)
+- `name`: The folder name
+
+Notes for integrators
+
+- This tool is exported by the MCP server and can be invoked programmatically by MCP clients or models.
+- The implementation lives in [`src/remoteFolders.ts`](src/remoteFolders.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
+- Tests were added under `src/remoteFolders.test.ts` to exercise success cases, pagination, error handling, and edge cases.
+
+**Example Prompts for Users:**
+
+- "List all folders on my Zipline server"
+- "Show me the available folders"
+- "What folders do I have on the server?"
+- "List all remote folders"
 
 ### Sandbox Path Resolution
 

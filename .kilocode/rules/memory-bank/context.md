@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Completed URL normalization improvements for UserFiles feature in the Zipline MCP Server.
+Implemented remote folder management functionality for the Zipline MCP Server.
 
 ## Recent Changes
 
@@ -30,7 +30,15 @@ Completed URL normalization improvements for UserFiles feature in the Zipline MC
   - Removed URL fields from `updateUserFile` and `deleteUserFile` responses
   - Updated all test cases to reflect these changes
   - Updated README.md documentation to explain URL normalization behavior
+- Implemented remote folder management functionality:
+  - Created `src/remoteFolders.ts` module with Folder interface and listFolders function
+  - Added comprehensive unit tests in `src/remoteFolders.test.ts`
+  - Registered new MCP tool `remote_folder_manager` in `src/index.ts`
+  - Implemented LIST command for listing remote folders on the Zipline server
+  - Added proper error handling and validation for folder operations
+  - Updated README.md with detailed documentation for the new tool
+  - All tests pass with proper error handling and API integration
 
 ## Next Steps
 
-- URL normalization improvements are complete. Ready for production use.
+- Remote folder management functionality is complete. Ready for production use.

@@ -18,6 +18,7 @@ import {
   DeleteUserFileOptions,
   normalizeUrl,
 } from './userFiles.js';
+import { listFolders } from './remoteFolders.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -1304,6 +1305,101 @@ server.registerTool(
         isError: true,
       };
     }
+  }
+);
+
+// Register remote_folder_manager tool: manage remote folders on Zipline
+server.registerTool(
+  'remote_folder_manager',
+  {
+    title: 'Remote Folder Manager',
+    description:
+      'Manage folders on the Zipline server. Currently supports LIST command to retrieve all user folders with their names and IDs.',
+    inputSchema: {
+      command: z
+        .string()
+        .describe('Command to execute. Currently supported: LIST'),
+    },
+  },
+  async (args: { command: string }) => {
+    const { command } = args;
+
+    if (!command || typeof command !== 'string') {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ Command is required.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const upperCmd = command.trim().toUpperCase();
+
+    // LIST
+    if (upperCmd === 'LIST') {
+      try {
+        const folders = await listFolders({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+        });
+
+        if (folders.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '📂 No folders found on the Zipline server.',
+              },
+            ],
+          };
+        }
+
+        const folderList = folders
+          .map((folder, index) => {
+            const id = folder.id ? `🆔 ${folder.id}` : '🆔 (no ID)';
+            return `${index + 1}. 📁 ${folder.name}\n   ${id}`;
+          })
+          .join('\n\n');
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `📂 REMOTE FOLDERS\n\n${folderList}`,
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error(`List folders failed: ${errorMessage}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ LIST FOLDERS FAILED\n\nError: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    // Invalid command
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            '❌ Invalid command.\n\nCurrently supported commands:\n' +
+            '  LIST - List all user folders with their names and IDs',
+        },
+      ],
+      isError: true,
+    };
   }
 );
 
