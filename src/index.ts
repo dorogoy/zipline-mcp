@@ -200,7 +200,12 @@ server.registerTool(
   {
     title: 'Upload File to Zipline',
     description:
-      'Upload a file to the Zipline server and retrieve the download URL.',
+      'Upload a file to the Zipline server with advanced options and retrieve the download URL. ' +
+      'Prerequisites: Depends on validate_file (recommended for pre-validation). Can use files from tmp_file_manager or download_external_url. Can use folder IDs from remote_folder_manager. Requires Zipline authentication. ' +
+      'Usage: upload_file_to_zipline { "filePath": "/path/to/file.txt", "format": "random", "deletesAt": "1d", "password": "secret", "maxViews": 10, "folder": "folder123", "originalName": "original.txt" } ' +
+      'Data Contracts: Input: { filePath: string, format?: string, deletesAt?: string, password?: string, maxViews?: number, folder?: string, originalName?: string }, Output: Text content with URLs and file information. ' +
+      'Format types: random, uuid, date, name, random-words. Supported file types: Various including text, images, documents, videos. ' +
+      'Error Handling: Common failures: File validation errors, upload failures, authentication issues, invalid parameters. Recovery: Validate file first, check Zipline server accessibility, verify parameters.',
     inputSchema: uploadFileInputSchema, // Schema already defined separately
   },
   async ({
@@ -331,7 +336,13 @@ server.registerTool(
   'validate_file',
   {
     title: 'Validate File',
-    description: 'Check if a file exists and is suitable for upload.',
+    description:
+      'Validate if a file exists and is suitable for upload to Zipline by checking file existence, readability, and supported file types. ' +
+      'Prerequisites: No dependencies on other tools. Must be run before upload_file_to_zipline to ensure file compatibility. ' +
+      'Usage: validate_file { "filePath": "/absolute/path/to/file.txt" } ' +
+      'Data Contracts: Input: { filePath: string }, Output: Text content with validation report. ' +
+      'Supported file extensions: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, Microsoft Office formats, LibreOffice formats, common video files, and web image types. ' +
+      'Error Handling: Common failures include file not found, permission denied, path errors. Recovery: Check file path, verify permissions, ensure file exists.',
     inputSchema: {
       filePath: z.string().describe('Absolute path to the file to validate.'),
     },
@@ -394,7 +405,13 @@ server.registerTool(
   {
     title: 'Minimal Temporary File Manager',
     description:
-      'Perform basic file management operations in the sandbox. Supported commands include PATH, LIST, CREATE, OPEN, READ, and DELETE.',
+      'Perform basic file management operations in a secure, per-user sandbox environment for temporary files. ' +
+      'Prerequisites: No dependencies on other tools. Creates files that can be used with upload_file_to_zipline. ' +
+      'Usage: tmp_file_manager { "command": "LIST" } or with CREATE: { "command": "CREATE filename.txt", "content": "file content here" } ' +
+      'Supported commands: LIST, CREATE <filename>, READ <filename>, PATH <filename>, DELETE <filename>. ' +
+      'Data Contracts: Input: { command: string, content?: string }, Output: Text content with operation results. ' +
+      'File size limits: 1MB max for READ operations. Filename validation: No path separators, no dot segments, bare filenames only. ' +
+      'Error Handling: Common failures: Invalid command, filename validation errors, file too large, file not found. Recovery: Use valid commands, check filename rules, use smaller files.',
     inputSchema: {
       command: z
         .string()
@@ -762,7 +779,12 @@ server.registerTool(
   {
     title: 'Download External URL',
     description:
-      'Download a file from an external HTTP(S) URL into the sandbox and return its absolute path.',
+      "Download a file from an external HTTP(S) URL into the user's sandbox and return the local path. " +
+      'Prerequisites: No dependencies on other tools. Output file can be used with validate_file and upload_file_to_zipline. Requires internet access. ' +
+      'Usage: download_external_url { "url": "https://example.com/file.pdf", "timeoutMs": 30000, "maxFileSizeBytes": 104857600 } ' +
+      'Data Contracts: Input: { url: string, timeoutMs?: number, maxFileSizeBytes?: number }, Output: Text content with local file path. ' +
+      'File size limit: 100MB default maximum. URL validation: Must be valid HTTP/HTTPS URL. ' +
+      'Error Handling: Common failures: Invalid URL, network timeout, file too large, download failure. Recovery: Check URL validity, adjust timeout/size limits, verify network connectivity.',
     inputSchema: {
       url: z
         .string()
@@ -833,7 +855,12 @@ server.registerTool(
   {
     title: 'List User Files',
     description:
-      'Retrieve and search files stored on the Zipline server. Use this tool to find file IDs for use with get_user_file, update_user_file, and delete_user_file tools. You can also obtain file IDs by using get_user_file if you already know the file name.',
+      'Retrieve and search files stored on the Zipline server with pagination, filtering, and sorting. ' +
+      'Prerequisites: No dependencies on other tools. Provides file IDs for get_user_file, update_user_file, delete_user_file. Requires Zipline authentication. ' +
+      'Usage: list_user_files { "page": 1, "perpage": 15, "filter": "dashboard", "favorite": true, "sortBy": "createdAt", "order": "desc", "searchField": "name", "searchQuery": "report" } ' +
+      'Data Contracts: Input: { page: number, perpage?: number, filter?: string, favorite?: boolean, sortBy?: string, order?: string, searchField?: string, searchQuery?: string }, Output: Text content with formatted file list. ' +
+      'URL normalization: Consistent URL formatting. File metadata includes: id, name, createdAt, size, type, views, maxViews, favorite, password, deletesAt, originalName, tags, folderId. ' +
+      'Error Handling: Common failures: API errors, authentication issues, invalid parameters. Recovery: Check authentication, verify parameter values, ensure server accessibility.',
     inputSchema: {
       page: z
         .number()
@@ -991,7 +1018,12 @@ server.registerTool(
   {
     title: 'Get User File',
     description:
-      'Retrieve detailed information about a specific file stored on the Zipline server. Use only the file name to do the search.',
+      'Retrieve detailed information about a specific file stored on the Zipline server. ' +
+      'Prerequisites: Depends on list_user_files (to obtain file IDs) or user-provided file names. Requires file ID or name for lookup. Requires Zipline authentication. ' +
+      'Usage: get_user_file { "id": "file123" } ' +
+      'Data Contracts: Input: { id: string }, Output: Text content with comprehensive file details. URL normalization: Consistent URL formatting. ' +
+      'Includes all metadata: id, name, createdAt, size, type, views, maxViews, favorite, password, deletesAt, originalName, tags, folderId. ' +
+      'Error Handling: Common failures: File not found, invalid ID, API errors. Recovery: Verify file ID exists, use list_user_files to find correct ID, check authentication.',
     inputSchema: {
       id: z
         .string()
@@ -1077,7 +1109,12 @@ server.registerTool(
   {
     title: 'Update User File',
     description:
-      'Modify properties of a specific file stored on the Zipline server. Use list_user_files or the file name with get_user_file to find the file ID you need for this tool.',
+      'Modify properties of a specific file stored on the Zipline server. ' +
+      'Prerequisites: Depends on list_user_files or get_user_file (to obtain file ID). Requires exact file ID (not filename). Requires Zipline authentication. ' +
+      'Usage: update_user_file { "id": "file123", "favorite": true, "maxViews": 5, "password": null, "originalName": "new_name.txt", "type": "text/plain", "tags": ["important", "report"], "name": "updated_name" } ' +
+      'Data Contracts: Input: { id: string, favorite?: boolean, maxViews?: number, password?: string | null, originalName?: string, type?: string, tags?: string[], name?: string }, Output: Text content with updated file details (no URL fields). ' +
+      'At least one update field must be provided. ' +
+      'Error Handling: Common failures: Invalid ID, no update fields provided, API errors. Recovery: Ensure valid file ID, provide at least one update field, verify authentication.',
     inputSchema: {
       id: z
         .string()
@@ -1229,7 +1266,11 @@ server.registerTool(
   {
     title: 'Delete User File',
     description:
-      'Remove a specific file stored on the Zipline server. Use list_user_files or the file name to find the file ID you need for this tool.',
+      'Remove a specific file from the Zipline server. ' +
+      'Prerequisites: Depends on list_user_files or get_user_file (to obtain file ID). Requires exact file ID (not filename). Requires Zipline authentication. ' +
+      'Usage: delete_user_file { "id": "file123" } ' +
+      'Data Contracts: Input: { id: string }, Output: Text content with deleted file details (no URL fields). Permanent operation: Files cannot be recovered after deletion. ' +
+      'Error Handling: Common failures: Invalid ID, file not found, API errors. Recovery: Verify file ID exists, confirm deletion intent, check authentication.',
     inputSchema: {
       id: z
         .string()
@@ -1314,7 +1355,11 @@ server.registerTool(
   {
     title: 'Remote Folder Manager',
     description:
-      'Manage folders on the Zipline server. Currently supports LIST command to retrieve all user folders with their names and IDs.',
+      'Manage folders on the Zipline server (currently supports listing folders). ' +
+      'Prerequisites: No dependencies on other tools. Provides folder IDs for use with upload_file_to_zipline. Requires Zipline authentication. ' +
+      'Usage: remote_folder_manager { "command": "LIST" } ' +
+      'Data Contracts: Input: { command: string }, Output: Text content with folder list. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
+      'Error Handling: Common failures: Invalid command, API communication errors. Recovery: Use valid commands, check authentication, verify server accessibility.',
     inputSchema: {
       command: z
         .string()
