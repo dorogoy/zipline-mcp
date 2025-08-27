@@ -1,14 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   listFolders,
   Folder,
   ListFoldersOptions,
   createFolder,
   CreateFolderOptions,
+  editFolder,
+  EditFolderOptions,
+  EditFolderPropertiesRequestSchema,
+  AddFileToFolderRequestSchema,
+  getFolder,
+  deleteFolder,
 } from './remoteFolders';
 
 // Mock fetch function
-global.fetch = vi.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('listFolders', () => {
   const mockEndpoint = 'https://zipline.example.com';
@@ -664,5 +671,494 @@ describe('createFolder', () => {
       },
       body: JSON.stringify({ name: 'New Folder', isPublic: false }),
     });
+  });
+});
+
+// Add tests for editFolder function
+describe('editFolder', () => {
+  const mockEndpoint = 'https://zipline.example.com';
+  const mockToken = 'test-token';
+  const mockFolderId = 'folder123';
+  const mockFolder: Folder = { id: mockFolderId, name: 'Test Folder' };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  describe('PATCH - Update folder properties', () => {
+    it('should update folder name', async () => {
+      // Arrange
+      const updatedFolder = { ...mockFolder, name: 'Updated Folder Name' };
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(updatedFolder),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValueOnce(mockResponse);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+      };
+
+      // Act
+      const result = await editFolder(options);
+
+      // Assert
+      expect(result).toEqual(updatedFolder);
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${mockFolderId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: 'Updated Folder Name' }),
+        }
+      );
+    });
+
+    it('should update folder isPublic property', async () => {
+      // Arrange
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(mockFolder),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValueOnce(mockResponse);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        isPublic: true,
+      };
+
+      // Act
+      await editFolder(options);
+
+      // Assert
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${mockFolderId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ isPublic: true }),
+        }
+      );
+    });
+
+    it('should update folder allowUploads property', async () => {
+      // Arrange
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(mockFolder),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValueOnce(mockResponse);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        allowUploads: true,
+      };
+
+      // Act
+      await editFolder(options);
+
+      // Assert
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${mockFolderId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ allowUploads: true }),
+        }
+      );
+    });
+
+    it('should update multiple folder properties', async () => {
+      // Arrange
+      const updatedFolder = { ...mockFolder, name: 'Updated Folder Name' };
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(updatedFolder),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValueOnce(mockResponse);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+        isPublic: true,
+        allowUploads: false,
+      };
+
+      // Act
+      await editFolder(options);
+
+      // Assert
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${mockFolderId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'Updated Folder Name',
+            isPublic: true,
+            allowUploads: false,
+          }),
+        }
+      );
+    });
+
+    it('should throw an error when API response is not OK', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toThrow(
+        'Failed to edit folder: 404 Not Found'
+      );
+    });
+
+    it('should throw a validation error when folder name is empty', async () => {
+      // Arrange
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: '', // Empty name
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toThrow(
+        'Folder name is required'
+      );
+    });
+  });
+
+  describe('PUT - Add file to folder', () => {
+    it('should add a file to a folder', async () => {
+      // Arrange
+      const mockFileId = 'file456';
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(mockFolder),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValueOnce(mockResponse);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: mockFileId,
+      };
+
+      // Act
+      const result = await editFolder(options);
+
+      // Assert
+      expect(result).toEqual(mockFolder);
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${mockFolderId}`,
+        {
+          method: 'PUT',
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: mockFileId }),
+        }
+      );
+    });
+
+    it('should throw an error when API response is not OK', async () => {
+      // Arrange
+      const mockFileId = 'file456';
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: mockFileId,
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toThrow(
+        'Failed to add file to folder: 404 Not Found'
+      );
+    });
+
+    it('should throw a validation error when file ID is empty', async () => {
+      // Arrange
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: '', // Empty file ID
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toThrow('File ID is required');
+    });
+  });
+
+  describe('Request validation schemas', () => {
+    it('should validate EditFolderPropertiesRequestSchema', () => {
+      // Valid request
+      const validRequest = {
+        name: 'Test Folder',
+        isPublic: true,
+        allowUploads: false,
+      };
+      expect(() =>
+        EditFolderPropertiesRequestSchema.parse(validRequest)
+      ).not.toThrow();
+
+      // Invalid request (empty name)
+      const invalidRequest = {
+        name: '',
+        isPublic: true,
+      };
+      expect(() =>
+        EditFolderPropertiesRequestSchema.parse(invalidRequest)
+      ).toThrow('Folder name is required');
+    });
+
+    it('should validate AddFileToFolderRequestSchema', () => {
+      // Valid request
+      const validRequest = { id: 'file123' };
+      expect(() =>
+        AddFileToFolderRequestSchema.parse(validRequest)
+      ).not.toThrow();
+
+      // Invalid request (empty ID)
+      const invalidRequest = { id: '' };
+      expect(() => AddFileToFolderRequestSchema.parse(invalidRequest)).toThrow(
+        'File ID is required'
+      );
+    });
+  });
+});
+
+// Add tests for getFolder function
+describe('getFolder', () => {
+  const ZIPLINE_ENDPOINT = 'http://localhost:3000';
+  const ZIPLINE_TOKEN = 'test-token';
+
+  beforeEach(() => {
+    vi.stubEnv('ZIPLINE_ENDPOINT', ZIPLINE_ENDPOINT);
+    vi.stubEnv('ZIPLINE_TOKEN', ZIPLINE_TOKEN);
+    mockFetch.mockClear();
+  });
+
+  afterEach(() => {
+    mockFetch.mockClear();
+  });
+
+  it('should fetch a single folder by ID', async () => {
+    const folderId = 'test-folder-id';
+    const mockFolder = {
+      id: folderId,
+      name: 'Test Folder',
+      public: false,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+      files: [
+        {
+          id: 'file1',
+          name: 'file1.txt',
+          originalName: 'file1.txt',
+          size: 1024,
+          type: 'text/plain',
+          url: 'https://zipline.example.com/file1',
+          createdAt: '2023-01-01T00:00:00Z',
+          maxViews: null,
+          views: 0,
+          favorite: false,
+          tags: [],
+        },
+      ],
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFolder),
+    } as Response);
+
+    const result = await getFolder(folderId);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${ZIPLINE_ENDPOINT}/api/user/folders/${folderId}`,
+      {
+        headers: {
+          authorization: ZIPLINE_TOKEN,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    expect(result).toEqual({
+      id: folderId,
+      name: 'Test Folder',
+      public: false,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+      files: ['file1'],
+    });
+  });
+
+  it('should throw an error if the folder is not found', async () => {
+    const folderId = 'non-existent-folder-id';
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    } as Response);
+
+    await expect(getFolder(folderId)).rejects.toThrow(
+      `Failed to get folder: 404`
+    );
+  });
+
+  it('should throw an error if the API request fails', async () => {
+    const folderId = 'test-folder-id';
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response);
+
+    await expect(getFolder(folderId)).rejects.toThrow(
+      `Failed to get folder: 500`
+    );
+  });
+});
+
+// Add tests for deleteFolder function
+describe('deleteFolder', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
+    process.env.ZIPLINE_TOKEN = 'test-token';
+  });
+
+  it('should call the correct API endpoint to delete a folder', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: true,
+      json: async () => {
+        await Promise.resolve(); // Add await expression
+        return {
+          id: folderId,
+          name: 'Test Folder',
+          public: false,
+          createdAt: '2025-01-15T10:30:45.123Z',
+          updatedAt: '2025-01-20T14:45:30.456Z',
+        };
+      },
+    } as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    const result = await deleteFolder(folderId);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `http://localhost:3000/api/user/folders/${folderId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          authorization: process.env.ZIPLINE_TOKEN,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ delete: 'folder' }),
+      }
+    );
+    expect(result).toEqual({
+      id: folderId,
+      name: 'Test Folder',
+      public: false,
+      createdAt: '2025-01-15T10:30:45.123Z',
+      updatedAt: '2025-01-20T14:45:30.456Z',
+    });
+  });
+
+  it('should throw an error if the API request fails', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: async () => {
+        await Promise.resolve(); // Add await expression
+        return { message: 'Folder not found' };
+      },
+    } as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await expect(deleteFolder(folderId)).rejects.toThrow(
+      'Failed to delete folder: 404 Not Found'
+    );
+  });
+
+  it('should throw an error if ZIPLINE_ENDPOINT is not set', async () => {
+    delete process.env.ZIPLINE_ENDPOINT;
+    process.env.ZIPLINE_TOKEN = 'test-token';
+
+    await expect(deleteFolder('folder123')).rejects.toThrow(
+      'ZIPLINE_ENDPOINT environment variable is not set'
+    );
+  });
+
+  it('should throw an error if ZIPLINE_TOKEN is not set', async () => {
+    process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
+    delete process.env.ZIPLINE_TOKEN;
+
+    await expect(deleteFolder('folder123')).rejects.toThrow(
+      'ZIPLINE_TOKEN environment variable is not set'
+    );
   });
 });
