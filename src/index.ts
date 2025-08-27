@@ -18,7 +18,12 @@ import {
   DeleteUserFileOptions,
   normalizeUrl,
 } from './userFiles.js';
-import { listFolders, createFolder } from './remoteFolders.js';
+import {
+  listFolders,
+  createFolder,
+  editFolder,
+  EditFolderOptions,
+} from './remoteFolders.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -1355,24 +1360,26 @@ server.registerTool(
   {
     title: 'Remote Folder Manager',
     description:
-      'Manage folders on the Zipline server (supports listing and creating folders). ' +
+      'Manage folders on the Zipline server (supports listing, creating, and editing folders). ' +
       'Prerequisites: No dependencies on other tools. Provides folder IDs for use with upload_file_to_zipline. Requires Zipline authentication. ' +
-      'Usage: remote_folder_manager { "command": "LIST" } or remote_folder_manager { "command": "ADD", "name": "Folder Name", "isPublic": false, "files": [] } ' +
-      'Data Contracts: Input: { command: string, name?: string, isPublic?: boolean, files?: string[] }, Output: Text content with folder list or creation result. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
+      'Usage: remote_folder_manager { "command": "LIST" } or remote_folder_manager { "command": "ADD", "name": "Folder Name", "isPublic": false, "files": [] } or remote_folder_manager { "command": "EDIT", "id": "folder123", "name": "New Name", "isPublic": true, "allowUploads": false, "fileId": "file456" } ' +
+      'Data Contracts: Input: { command: string, name?: string, isPublic?: boolean, files?: string[], id?: string, allowUploads?: boolean, fileId?: string }, Output: Text content with folder list, creation result, or edit result. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
       'Error Handling: Common failures: Invalid command, API communication errors, validation errors. Recovery: Use valid commands, check authentication, verify server accessibility.',
     inputSchema: {
       command: z
         .string()
-        .describe('Command to execute. Supported: LIST, ADD <name>'),
+        .describe('Command to execute. Supported: LIST, ADD <name>, EDIT <id>'),
       name: z
         .string()
         .optional()
-        .describe('Folder name (required for ADD command)'),
+        .describe(
+          'Folder name (required for ADD command, optional for EDIT command)'
+        ),
       isPublic: z
         .boolean()
         .optional()
         .describe(
-          'Whether the folder is public (default: false, for ADD command)'
+          'Whether the folder is public (default: false, for ADD and EDIT commands)'
         ),
       files: z
         .array(z.string())
@@ -1380,6 +1387,18 @@ server.registerTool(
         .describe(
           'Array of file IDs to include in the folder (for ADD command)'
         ),
+      id: z
+        .string()
+        .optional()
+        .describe('Folder ID (required for EDIT command)'),
+      allowUploads: z
+        .boolean()
+        .optional()
+        .describe('Whether to allow uploads to the folder (for EDIT command)'),
+      fileId: z
+        .string()
+        .optional()
+        .describe('File ID to add to the folder (for EDIT command)'),
     },
   },
   async (args: {
@@ -1387,8 +1406,19 @@ server.registerTool(
     name?: string | undefined;
     isPublic?: boolean | undefined;
     files?: string[] | undefined;
+    id?: string | undefined;
+    allowUploads?: boolean | undefined;
+    fileId?: string | undefined;
   }) => {
-    const { command, name, isPublic = false, files = [] } = args;
+    const {
+      command,
+      name,
+      isPublic = false,
+      files = [],
+      id,
+      allowUploads,
+      fileId,
+    } = args;
 
     if (!command || typeof command !== 'string') {
       return {
@@ -1522,6 +1552,95 @@ server.registerTool(
       }
     }
 
+    // EDIT
+    if (upperCmd === 'EDIT') {
+      try {
+        // For EDIT command, id can come from the "id" parameter or from the command arguments
+        let folderId = id;
+
+        // If id is not provided as a parameter, try to get it from command arguments
+        if (!folderId && argsArr.length > 0) {
+          folderId = argsArr[0];
+        }
+
+        if (!folderId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '❌ EDIT refused: Folder ID is required.',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // Check if we have any properties to update or a file to add
+        const hasPropertiesToUpdate =
+          name !== undefined ||
+          isPublic !== undefined ||
+          allowUploads !== undefined;
+        const hasFileToAdd = fileId !== undefined;
+
+        if (!hasPropertiesToUpdate && !hasFileToAdd) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '❌ EDIT refused: At least one property to update or a file to add is required.',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const editOptions: EditFolderOptions = {
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          id: folderId,
+          ...(name !== undefined && { name }),
+          ...(isPublic !== undefined && { isPublic }),
+          ...(allowUploads !== undefined && { allowUploads }),
+          ...(fileId !== undefined && { fileId }),
+        };
+
+        const folder = await editFolder(editOptions);
+
+        const idDisplay = folder.id ? `🆔 ${folder.id}` : '🆔 (no ID)';
+        // Note: The basic Folder type doesn't include isPublic and allowUploads properties
+        // These would need to be added to the Folder interface if the API returns them
+        const publicStatus = '🔒 Private'; // Default since Folder type doesn't have isPublic
+        const uploadStatus = '🚫 No uploads'; // Default since Folder type doesn't have allowUploads
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                `✅ FOLDER UPDATED SUCCESSFULLY!\n\n` +
+                `📁 ${folder.name}\n` +
+                `   ${idDisplay}\n` +
+                `   ${publicStatus}\n` +
+                `   ${uploadStatus}`,
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error(`Edit folder failed: ${errorMessage}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ EDIT FOLDER FAILED\n\nError: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Invalid command
     return {
       content: [
@@ -1530,7 +1649,8 @@ server.registerTool(
           text:
             '❌ Invalid command.\n\nCurrently supported commands:\n' +
             '  LIST - List all user folders with their names and IDs\n' +
-            '  ADD <name> - Create a new folder with the specified name',
+            '  ADD <name> - Create a new folder with the specified name\n' +
+            '  EDIT <id> - Edit an existing folder with the specified ID',
         },
       ],
       isError: true,

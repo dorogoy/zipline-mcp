@@ -177,3 +177,141 @@ export async function createFolder(
 
   return folder;
 }
+
+/**
+ * Request schema for editing a folder (PATCH)
+ */
+export const EditFolderPropertiesRequestSchema = z.object({
+  name: z.string().min(1, 'Folder name is required').optional(),
+  isPublic: z.boolean().optional(),
+  allowUploads: z.boolean().optional(),
+});
+
+export type EditFolderPropertiesRequest = z.infer<
+  typeof EditFolderPropertiesRequestSchema
+>;
+
+/**
+ * Request schema for adding a file to a folder (PUT)
+ */
+export const AddFileToFolderRequestSchema = z.object({
+  id: z.string().min(1, 'File ID is required'),
+});
+
+export type AddFileToFolderRequest = z.infer<
+  typeof AddFileToFolderRequestSchema
+>;
+
+/**
+ * Options for editing a folder
+ */
+export interface EditFolderOptions {
+  /** The Zipline API endpoint */
+  endpoint: string;
+  /** The authentication token */
+  token: string;
+  /** The ID of the folder to edit */
+  id: string;
+  /** The new name of the folder (optional) */
+  name?: string;
+  /** Whether the folder should be public (optional) */
+  isPublic?: boolean;
+  /** Whether to allow anonymous uploads to the folder (optional) */
+  allowUploads?: boolean;
+  /** The ID of the file to add to the folder (optional) */
+  fileId?: string;
+}
+
+/**
+ * Edits a folder in Zipline (updates properties or adds a file)
+ * @param options - The options for editing a folder
+ * @returns A promise that resolves to the edited folder
+ * @throws Error if the API request fails
+ */
+export async function editFolder(options: EditFolderOptions): Promise<Folder> {
+  const { endpoint, token, id, name, isPublic, allowUploads, fileId } = options;
+
+  if (fileId !== undefined) {
+    // Add file to folder using PUT
+    const requestBody: AddFileToFolderRequest = {
+      id: fileId,
+    };
+
+    // Validate the request body before sending
+    AddFileToFolderRequestSchema.parse(requestBody);
+
+    const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
+      method: 'PUT',
+      headers: {
+        authorization: token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to add file to folder: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = (await response.json()) as unknown;
+
+    // Validate the response data
+    const validatedData = CreateFolderResponseSchema.parse(data);
+
+    // Return the folder with proper typing
+    const folder: Folder = {
+      id: validatedData.id,
+      name: validatedData.name,
+    };
+
+    return folder;
+  } else {
+    // Update folder properties using PATCH
+    const requestBody: Partial<EditFolderPropertiesRequest> = {};
+
+    if (name !== undefined) {
+      requestBody.name = name;
+    }
+
+    if (isPublic !== undefined) {
+      requestBody.isPublic = isPublic;
+    }
+
+    if (allowUploads !== undefined) {
+      requestBody.allowUploads = allowUploads;
+    }
+
+    // Validate the request body before sending
+    EditFolderPropertiesRequestSchema.parse(requestBody);
+
+    const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
+      method: 'PATCH',
+      headers: {
+        authorization: token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to edit folder: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = (await response.json()) as unknown;
+
+    // Validate the response data
+    const validatedData = CreateFolderResponseSchema.parse(data);
+
+    // Return the folder with proper typing
+    const folder: Folder = {
+      id: validatedData.id,
+      name: validatedData.name,
+    };
+
+    return folder;
+  }
+}
