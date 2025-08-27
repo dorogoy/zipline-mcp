@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listFolders, Folder, ListFoldersOptions } from './remoteFolders';
+import {
+  listFolders,
+  Folder,
+  ListFoldersOptions,
+  createFolder,
+  CreateFolderOptions,
+} from './remoteFolders';
 
 // Mock fetch function
 global.fetch = vi.fn();
@@ -282,5 +288,316 @@ describe('listFolders', () => {
     // Assert
     expect(result).toEqual([]);
     expect(result.length).toBe(0);
+  });
+});
+
+describe('createFolder', () => {
+  const mockEndpoint = 'https://zipline.example.com';
+  const mockToken = 'test-token';
+  const mockFolder: Folder = { id: '123', name: 'New Folder' };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should create a folder with minimal parameters', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return mockFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(mockFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'New Folder', isPublic: false }),
+    });
+  });
+
+  it('should create a folder with isPublic parameter', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return mockFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+      isPublic: true,
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(mockFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'New Folder', isPublic: true }),
+    });
+  });
+
+  it('should create a folder with files parameter', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return mockFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+      files: ['file1', 'file2'],
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(mockFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'New Folder',
+        isPublic: false,
+        files: ['file1', 'file2'],
+      }),
+    });
+  });
+
+  it('should create a folder with all parameters', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return mockFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+      isPublic: true,
+      files: ['file1', 'file2'],
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(mockFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'New Folder',
+        isPublic: true,
+        files: ['file1', 'file2'],
+      }),
+    });
+  });
+
+  it('should throw an error when API response is not OK', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => {
+        await Promise.resolve();
+        return { message: 'Missing folder name' };
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toThrow(
+      'Failed to create folder: 400 Bad Request'
+    );
+  });
+
+  it('should throw an error when API response is invalid JSON', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        throw new Error('Invalid JSON');
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toThrow('Invalid JSON');
+  });
+
+  it('should throw a validation error when folder name is empty', async () => {
+    // Arrange
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: '', // Empty name
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toThrow(
+      'Folder name is required'
+    );
+  });
+
+  it('should handle folder without ID gracefully', async () => {
+    // Arrange
+    const folderWithoutId: Folder = { name: 'Folder without ID' };
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return folderWithoutId;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'Folder without ID',
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(folderWithoutId);
+    expect(result.id).toBeUndefined();
+  });
+
+  it('should create a folder named "test" with default isPublic false', async () => {
+    // Arrange
+    const testFolder: Folder = { id: '456', name: 'test' };
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return testFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'test',
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(testFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'test', isPublic: false }),
+    });
+  });
+
+  it('should create a folder with explicit isPublic false', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        await Promise.resolve();
+        return mockFolder;
+      },
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+      isPublic: false,
+    };
+
+    // Act
+    const result = await createFolder(options);
+
+    // Assert
+    expect(result).toEqual(mockFolder);
+    expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
+      method: 'POST',
+      headers: {
+        authorization: mockToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'New Folder', isPublic: false }),
+    });
   });
 });
