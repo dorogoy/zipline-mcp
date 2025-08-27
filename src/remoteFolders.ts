@@ -462,3 +462,54 @@ export async function getFolder(id: string): Promise<FullFolder> {
 
   return folder;
 }
+
+/**
+ * Deletes a folder from Zipline
+ * @param id - The ID of the folder to delete
+ * @returns A promise that resolves to the deleted folder
+ * @throws Error if the API request fails or folder is not found
+ */
+export async function deleteFolder(id: string): Promise<FullFolder> {
+  const endpoint = process.env.ZIPLINE_ENDPOINT;
+  const token = process.env.ZIPLINE_TOKEN;
+
+  if (!endpoint) {
+    throw new Error('ZIPLINE_ENDPOINT environment variable is not set');
+  }
+
+  if (!token) {
+    throw new Error('ZIPLINE_TOKEN environment variable is not set');
+  }
+
+  const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ delete: 'folder' }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to delete folder: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = (await response.json()) as unknown;
+
+  // Validate the response data
+  const validatedData = FullFolderSchema.parse(data);
+
+  // Return the folder with proper typing
+  const folder: FullFolder = {
+    id: validatedData.id,
+    name: validatedData.name,
+    public: validatedData.public,
+    createdAt: validatedData.createdAt,
+    updatedAt: validatedData.updatedAt,
+    files: validatedData.files?.map((file) => file.id), // Extract just the file IDs
+  };
+
+  return folder;
+}

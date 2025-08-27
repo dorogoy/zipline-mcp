@@ -772,6 +772,7 @@ A new tool has been added: `remote_folder_manager`. It allows you to list and ma
     - `ADD <name>` — Create a new folder with the specified name
     - `EDIT <id>` — Edit an existing folder with the specified ID
     - `INFO <id>` — Get detailed information about a specific folder by ID
+    - `DELETE <id>` — Delete an existing folder with the specified ID
   - `id` (string) — optional — Folder ID to edit (required for EDIT command)
   - `name` (string) — optional — Folder name (required for ADD command, optional for EDIT command)
   - `isPublic` (boolean) — optional — Whether the folder is public (default: false, for ADD command, for EDIT command)
@@ -786,6 +787,7 @@ A new tool has been added: `remote_folder_manager`. It allows you to list and ma
     - When `fileId` is provided: Adds the specified file to the folder
     - When `name`, `isPublic`, or `allowUploads` are provided: Updates folder properties
   - For INFO: Retrieves detailed information about a specific folder by its ID, including all folder properties
+  - For DELETE: Permanently deletes an existing folder with the specified ID and returns the deleted folder's information
   - Returns comprehensive folder information including all available fields
   - Validates input parameters and provides clear error messages
   - For INFO command, requires a valid folder ID (not folder name)
@@ -942,6 +944,32 @@ These modes can be used separately or together in a single command.
 
   **Note:** The INFO command requires a valid folder ID, not the folder name. Use the LIST command to find the ID of the folder you want to get information about.
 
+**DELETE command example:**
+
+- Example input:
+
+```json
+{
+  "command": "DELETE",
+  "id": "folder123"
+}
+```
+
+- Example successful response content:
+
+```
+✅ FOLDER DELETED SUCCESSFULLY!
+
+📁 Documents
+   🆔 ID: folder123
+   🔒 Private
+   📅 Created: 2025-01-15T10:30:45.123Z
+   📝 Updated: 2025-01-20T14:45:30.456Z
+   📄 Files: 5
+```
+
+**Note:** The DELETE command requires a valid folder ID, not the folder name. Use the LIST command to find the ID of the folder you want to delete. The folder deletion is permanent and cannot be undone.
+
 Folder Model
 
 The tool returns folders with the following structure:
@@ -979,6 +1007,11 @@ Notes for integrators
 - "Show me all details for folder with ID 'folder789'"
 - "What are the properties of folder 'folder456'?"
 - "Get info about the folder named 'Documents' (first use LIST to get the ID)"
+- "Delete folder with ID 'folder123'"
+- "Remove the folder named 'Old Documents' from the server"
+- "Delete the folder with ID 'folder456'"
+- "Permanently delete folder 'folder789'"
+- "I want to delete the folder with ID 'folder123'"
 
 ### Sandbox Path Resolution
 

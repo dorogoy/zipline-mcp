@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Enhanced remote folder management functionality for the Zipline MCP Server, including the new INFO command and improved LIST command with full folder details.
+Enhanced remote folder management functionality for the Zipline MCP Server, including the new DELETE command for removing folders, INFO command, and improved LIST command with full folder details.
 
 ## Recent Changes
 
@@ -69,7 +69,13 @@ Enhanced remote folder management functionality for the Zipline MCP Server, incl
   - Implemented command parsing to handle folder information retrieval
   - Updated README.md with detailed documentation for the INFO command and LIST changes
   - All tests pass with proper error handling and API integration
+- Enhanced remote folder management with DELETE command:
+  - Extended `src/remoteFolders.ts` module with deleteFolder function to remove folders
+  - Added comprehensive unit tests in `src/remoteFolders-delete.test.ts` covering various scenarios
+  - Enhanced `remote_folder_manager` tool in `src/index.ts` to support DELETE command
+  - Updated README.md with detailed documentation for the DELETE command
+  - All tests pass with proper error handling and API integration
 
 ## Next Steps
 
-- Remote folder management functionality with INFO command and enhanced LIST output is complete. Ready for production use.
+- Remote folder management functionality with INFO command, enhanced LIST output, and DELETE command is complete. Ready for production use.
