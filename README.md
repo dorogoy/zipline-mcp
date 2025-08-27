@@ -767,15 +767,22 @@ A new tool has been added: `remote_folder_manager`. It allows you to list and ma
 - Tool name: `remote_folder_manager`
 - Purpose: List and manage remote folders on the Zipline server
 - Input schema:
-  - `command` (string) — required — Command to execute. Currently supports:
+  - `command` (string) — required — Command to execute. Supports:
     - `LIST` — List all folders on the Zipline server
+    - `ADD <name>` — Create a new folder with the specified name
+  - `name` (string) — optional — Folder name (required for ADD command)
+  - `isPublic` (boolean) — optional — Whether the folder is public (default: false, for ADD command)
+  - `files` (string[]) — optional — Array of file IDs to include in the folder (for ADD command)
 - Behavior:
-  - Fetches folders from the Zipline API
-  - Returns a structured response with folder information including name and ID (when available)
-  - Supports pagination through the Zipline API
+  - For LIST: Fetches folders from the Zipline API and returns a structured response with folder information
+  - For ADD: Creates a new folder with the specified name and optional parameters
+  - Returns folder information including name and ID (when available)
   - Handles cases where folders may not have IDs
+  - Validates input parameters and provides clear error messages
 
-Usage example (MCP tool call)
+Usage examples (MCP tool call)
+
+**LIST command example:**
 
 - Example input:
   ```json
@@ -803,6 +810,37 @@ Usage example (MCP tool call)
   Total folders: 3
   ```
 
+**ADD command example:**
+
+- Example input (using parameters):
+
+  ```json
+  {
+    "command": "ADD",
+    "name": "My New Folder",
+    "isPublic": false
+  }
+  ```
+
+- Example input (using command arguments):
+
+  ```json
+  {
+    "command": "ADD My New Folder"
+  }
+  ```
+
+- Example successful response content:
+
+  ```
+  ✅ FOLDER CREATED SUCCESSFULLY!
+
+  📁 My New Folder
+     🆔 ID: folder789
+     🔒 Private
+     📄 Files: 0
+  ```
+
   **Note:** Some folders may not have IDs if the Zipline server doesn't assign them. The tool gracefully handles this case by displaying "No ID" for folders without IDs.
 
 Folder Model
@@ -816,7 +854,7 @@ Notes for integrators
 
 - This tool is exported by the MCP server and can be invoked programmatically by MCP clients or models.
 - The implementation lives in [`src/remoteFolders.ts`](src/remoteFolders.ts:1) and the MCP registration is in [`src/index.ts`](src/index.ts:1).
-- Tests were added under `src/remoteFolders.test.ts` to exercise success cases, pagination, error handling, and edge cases.
+- Tests were added under `src/remoteFolders.test.ts` to exercise success cases, pagination, error handling, and edge cases for both LIST and ADD commands.
 
 **Example Prompts for Users:**
 
@@ -824,6 +862,11 @@ Notes for integrators
 - "Show me the available folders"
 - "What folders do I have on the server?"
 - "List all remote folders"
+- "Create a new folder named 'Documents'"
+- "Add a folder called 'Images' to my Zipline server"
+- "Create a public folder named 'Shared Files'"
+- "Add a new folder with the name 'Projects'"
+- "Create a folder named 'Archive' and make it private"
 
 ### Sandbox Path Resolution
 

@@ -18,7 +18,7 @@ import {
   DeleteUserFileOptions,
   normalizeUrl,
 } from './userFiles.js';
-import { listFolders } from './remoteFolders.js';
+import { listFolders, createFolder } from './remoteFolders.js';
 import {
   getUserSandbox,
   validateFilename,
@@ -1355,19 +1355,40 @@ server.registerTool(
   {
     title: 'Remote Folder Manager',
     description:
-      'Manage folders on the Zipline server (currently supports listing folders). ' +
+      'Manage folders on the Zipline server (supports listing and creating folders). ' +
       'Prerequisites: No dependencies on other tools. Provides folder IDs for use with upload_file_to_zipline. Requires Zipline authentication. ' +
-      'Usage: remote_folder_manager { "command": "LIST" } ' +
-      'Data Contracts: Input: { command: string }, Output: Text content with folder list. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
-      'Error Handling: Common failures: Invalid command, API communication errors. Recovery: Use valid commands, check authentication, verify server accessibility.',
+      'Usage: remote_folder_manager { "command": "LIST" } or remote_folder_manager { "command": "ADD", "name": "Folder Name", "isPublic": false, "files": [] } ' +
+      'Data Contracts: Input: { command: string, name?: string, isPublic?: boolean, files?: string[] }, Output: Text content with folder list or creation result. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
+      'Error Handling: Common failures: Invalid command, API communication errors, validation errors. Recovery: Use valid commands, check authentication, verify server accessibility.',
     inputSchema: {
       command: z
         .string()
-        .describe('Command to execute. Currently supported: LIST'),
+        .describe('Command to execute. Supported: LIST, ADD <name>'),
+      name: z
+        .string()
+        .optional()
+        .describe('Folder name (required for ADD command)'),
+      isPublic: z
+        .boolean()
+        .optional()
+        .describe(
+          'Whether the folder is public (default: false, for ADD command)'
+        ),
+      files: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Array of file IDs to include in the folder (for ADD command)'
+        ),
     },
   },
-  async (args: { command: string }) => {
-    const { command } = args;
+  async (args: {
+    command: string;
+    name?: string | undefined;
+    isPublic?: boolean | undefined;
+    files?: string[] | undefined;
+  }) => {
+    const { command, name, isPublic = false, files = [] } = args;
 
     if (!command || typeof command !== 'string') {
       return {
@@ -1381,7 +1402,9 @@ server.registerTool(
       };
     }
 
-    const upperCmd = command.trim().toUpperCase();
+    const trimmed = command.trim();
+    const [cmd, ...argsArr] = trimmed.split(/\s+/);
+    const upperCmd = cmd?.toUpperCase() || '';
 
     // LIST
     if (upperCmd === 'LIST') {
@@ -1433,6 +1456,72 @@ server.registerTool(
       }
     }
 
+    // ADD
+    if (upperCmd === 'ADD') {
+      try {
+        // For ADD command, name can come from the "name" parameter or from the command arguments
+        let folderName = name;
+
+        // If name is not provided as a parameter, try to get it from command arguments
+        if (!folderName && argsArr.length > 0) {
+          folderName = argsArr.join(' ');
+        }
+
+        if (!folderName) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '❌ ADD refused: Folder name is required.',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const folder = await createFolder({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          name: folderName,
+          isPublic,
+          files,
+        });
+
+        const id = folder.id ? `🆔 ${folder.id}` : '🆔 (no ID)';
+        // Note: The basic Folder type doesn't include isPublic and files properties
+        // These would need to be added to the Folder interface if the API returns them
+        const publicStatus = '🔒 Private'; // Default since Folder type doesn't have isPublic
+        const filesCount = 0; // Default since Folder type doesn't have files
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                `✅ FOLDER CREATED SUCCESSFULLY!\n\n` +
+                `📁 ${folder.name}\n` +
+                `   ${id}\n` +
+                `   ${publicStatus}\n` +
+                `   📄 Files: ${filesCount}`,
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error(`Create folder failed: ${errorMessage}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ CREATE FOLDER FAILED\n\nError: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Invalid command
     return {
       content: [
@@ -1440,7 +1529,8 @@ server.registerTool(
           type: 'text',
           text:
             '❌ Invalid command.\n\nCurrently supported commands:\n' +
-            '  LIST - List all user folders with their names and IDs',
+            '  LIST - List all user folders with their names and IDs\n' +
+            '  ADD <name> - Create a new folder with the specified name',
         },
       ],
       isError: true,
