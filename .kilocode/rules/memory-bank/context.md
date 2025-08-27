@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Implemented remote folder management functionality for the Zipline MCP Server.
+Implemented remote folder management functionality for the Zipline MCP Server, including the new EDIT command.
 
 ## Recent Changes
 
@@ -48,7 +48,17 @@ Implemented remote folder management functionality for the Zipline MCP Server.
   - Implemented command parsing to handle both parameter-based and argument-based folder creation
   - Updated README.md with detailed documentation for the ADD command
   - All tests pass with proper error handling and API integration
+- Enhanced remote folder management with EDIT command:
+  - Extended `src/remoteFolders.ts` module with editFolder function and supporting types
+  - Added EditFolderOptions interface, EditFolderPropertiesRequestSchema, and AddFileToFolderRequestSchema for input validation
+  - Implemented editFolder function to support both PATCH (properties) and PUT (add file) operations to /api/user/folders/:id endpoint
+  - Added comprehensive unit tests in `src/remoteFolders-edit.test.ts` covering various scenarios
+  - Enhanced `remote_folder_manager` tool in `src/index.ts` to support EDIT command
+  - Added input schema support for id, name, isPublic, allowUploads, and fileId parameters
+  - Implemented command parsing to handle folder editing operations
+  - Updated README.md with detailed documentation for the EDIT command
+  - All tests pass with proper error handling and API integration
 
 ## Next Steps
 
-- Remote folder management functionality with ADD command is complete. Ready for production use.
+- Remote folder management functionality with EDIT command is complete. Ready for production use.

@@ -770,12 +770,19 @@ A new tool has been added: `remote_folder_manager`. It allows you to list and ma
   - `command` (string) — required — Command to execute. Supports:
     - `LIST` — List all folders on the Zipline server
     - `ADD <name>` — Create a new folder with the specified name
-  - `name` (string) — optional — Folder name (required for ADD command)
-  - `isPublic` (boolean) — optional — Whether the folder is public (default: false, for ADD command)
+    - `EDIT <id>` — Edit an existing folder with the specified ID
+  - `id` (string) — optional — Folder ID to edit (required for EDIT command)
+  - `name` (string) — optional — Folder name (required for ADD command, optional for EDIT command)
+  - `isPublic` (boolean) — optional — Whether the folder is public (default: false, for ADD command, for EDIT command)
+  - `allowUploads` (boolean) — optional — Whether uploads are allowed to the folder (for EDIT command)
+  - `fileId` (string) — optional — File ID to add to the folder (for EDIT command)
   - `files` (string[]) — optional — Array of file IDs to include in the folder (for ADD command)
 - Behavior:
   - For LIST: Fetches folders from the Zipline API and returns a structured response with folder information
   - For ADD: Creates a new folder with the specified name and optional parameters
+  - For EDIT: Modifies an existing folder with the specified ID and optional parameters
+    - When `fileId` is provided: Adds the specified file to the folder
+    - When `name`, `isPublic`, or `allowUploads` are provided: Updates folder properties
   - Returns folder information including name and ID (when available)
   - Handles cases where folders may not have IDs
   - Validates input parameters and provides clear error messages
@@ -843,6 +850,60 @@ Usage examples (MCP tool call)
 
   **Note:** Some folders may not have IDs if the Zipline server doesn't assign them. The tool gracefully handles this case by displaying "No ID" for folders without IDs.
 
+**EDIT command example:**
+
+- Example input (updating folder properties):
+
+```json
+{
+  "command": "EDIT",
+  "id": "folder123",
+  "name": "Updated Folder Name",
+  "isPublic": true,
+  "allowUploads": true
+}
+```
+
+- Example input (adding a file to a folder):
+
+```json
+{
+  "command": "EDIT",
+  "id": "folder123",
+  "fileId": "file456"
+}
+```
+
+- Example successful response content (updating properties):
+
+```
+✅ FOLDER UPDATED SUCCESSFULLY!
+
+📁 Updated Folder Name
+   🆔 ID: folder123
+   🔒 Public
+   📤 Uploads Allowed
+   📄 Files: 3
+```
+
+- Example successful response content (adding a file):
+
+```
+✅ FILE ADDED TO FOLDER SUCCESSFULLY!
+
+📁 Documents
+   🆔 ID: folder123
+   🔒 Private
+   📄 Files: 4
+```
+
+**Note:** The EDIT command supports two modes of operation:
+
+1.  **Property editing**: When `name`, `isPublic`, or `allowUploads` are provided, the folder properties are updated via PATCH request.
+2.  **File addition**: When `fileId` is provided, the specified file is added to the folder via PUT request.
+
+These modes can be used separately or together in a single command.
+
 Folder Model
 
 The tool returns folders with the following structure:
@@ -867,6 +928,11 @@ Notes for integrators
 - "Create a public folder named 'Shared Files'"
 - "Add a new folder with the name 'Projects'"
 - "Create a folder named 'Archive' and make it private"
+- "Edit folder 'folder123' to rename it to 'New Documents'"
+- "Update folder 'folder456' to make it public and allow uploads"
+- "Add file 'file789' to folder 'folder123'"
+- "Change folder 'folder789' to be private and disable uploads"
+- "Rename folder 'folder456' to 'Archive' and make it public"
 
 ### Sandbox Path Resolution
 
