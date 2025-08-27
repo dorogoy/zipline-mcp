@@ -13,10 +13,43 @@ global.fetch = vi.fn();
 describe('listFolders', () => {
   const mockEndpoint = 'https://zipline.example.com';
   const mockToken = 'test-token';
-  const mockFolders: Folder[] = [
-    { id: '1', name: 'Folder 1' },
-    { id: '2', name: 'Folder 2' },
-    { name: 'Folder without ID' },
+  const mockFolders = [
+    {
+      id: '1',
+      name: 'Folder 1',
+      public: false,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+    },
+    {
+      id: '2',
+      name: 'Folder 2',
+      public: true,
+      createdAt: '2023-01-02T00:00:00Z',
+      updatedAt: '2023-01-02T00:00:00Z',
+      files: [
+        {
+          id: 'file1',
+          name: 'file1.txt',
+          originalName: 'file1.txt',
+          size: 1024,
+          type: 'text/plain',
+          url: 'https://zipline.example.com/file1',
+          createdAt: '2023-01-01T00:00:00Z',
+          expiresAt: null,
+          maxViews: null,
+          views: 0,
+          favorite: false,
+          tags: [],
+        },
+      ],
+    },
+    {
+      name: 'Folder without ID',
+      public: false,
+      createdAt: '2023-01-03T00:00:00Z',
+      updatedAt: '2023-01-03T00:00:00Z',
+    },
   ];
 
   beforeEach(() => {
@@ -25,7 +58,7 @@ describe('listFolders', () => {
 
   it('should return a list of folders on successful API call', async () => {
     // Arrange
-    const mockResponse: Folder[] = mockFolders;
+    const mockResponse = mockFolders;
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -46,7 +79,29 @@ describe('listFolders', () => {
     const result = await listFolders(options);
 
     // Assert
-    expect(result).toEqual(mockFolders);
+    expect(result).toEqual([
+      {
+        id: '1',
+        name: 'Folder 1',
+        public: false,
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+      },
+      {
+        id: '2',
+        name: 'Folder 2',
+        public: true,
+        createdAt: '2023-01-02T00:00:00Z',
+        updatedAt: '2023-01-02T00:00:00Z',
+        files: ['file1'],
+      },
+      {
+        name: 'Folder without ID',
+        public: false,
+        createdAt: '2023-01-03T00:00:00Z',
+        updatedAt: '2023-01-03T00:00:00Z',
+      },
+    ]);
     expect(fetch).toHaveBeenCalledWith(`${mockEndpoint}/api/user/folders`, {
       method: 'GET',
       headers: {
@@ -58,7 +113,7 @@ describe('listFolders', () => {
 
   it('should include page parameter when provided', async () => {
     // Arrange
-    const mockResponse: Folder[] = mockFolders;
+    const mockResponse = mockFolders;
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -94,7 +149,7 @@ describe('listFolders', () => {
 
   it('should include noincl parameter when provided', async () => {
     // Arrange
-    const mockResponse: Folder[] = mockFolders;
+    const mockResponse = mockFolders;
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -130,7 +185,7 @@ describe('listFolders', () => {
 
   it('should include both page and noincl parameters when provided', async () => {
     // Arrange
-    const mockResponse: Folder[] = mockFolders;
+    const mockResponse = mockFolders;
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -167,12 +222,22 @@ describe('listFolders', () => {
 
   it('should handle folders without IDs gracefully', async () => {
     // Arrange
-    const foldersWithoutIds: Folder[] = [
-      { name: 'Folder without ID 1' },
-      { name: 'Folder without ID 2' },
+    const foldersWithoutIds = [
+      {
+        name: 'Folder without ID 1',
+        public: false,
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+      },
+      {
+        name: 'Folder without ID 2',
+        public: true,
+        createdAt: '2023-01-02T00:00:00Z',
+        updatedAt: '2023-01-02T00:00:00Z',
+      },
     ];
 
-    const mockResponse: Folder[] = foldersWithoutIds;
+    const mockResponse = foldersWithoutIds;
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -265,7 +330,7 @@ describe('listFolders', () => {
 
   it('should handle empty folders array', async () => {
     // Arrange
-    const mockResponse: Folder[] = [];
+    const mockResponse: unknown[] = [];
 
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

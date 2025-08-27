@@ -1,6 +1,6 @@
 # Zipline MCP Server
 
-An MCP (Model Context Protocol) server that allows you to upload files to a Zipline-compatible host. This server provides tools for uploading files, validating them, and generating upload commands.
+An MCP (Model Context Protocol) server designed specifically to interact with [Zipline](https://zipline.diced.sh/), allowing you to upload files to a Zipline-compatible host. This server provides tools for uploading files, validating them, and generating upload commands.
 
 ## Features
 
@@ -768,24 +768,27 @@ A new tool has been added: `remote_folder_manager`. It allows you to list and ma
 - Purpose: List and manage remote folders on the Zipline server
 - Input schema:
   - `command` (string) — required — Command to execute. Supports:
-    - `LIST` — List all folders on the Zipline server
+    - `LIST` — List all folders on the Zipline server with full details
     - `ADD <name>` — Create a new folder with the specified name
     - `EDIT <id>` — Edit an existing folder with the specified ID
+    - `INFO <id>` — Get detailed information about a specific folder by ID
   - `id` (string) — optional — Folder ID to edit (required for EDIT command)
   - `name` (string) — optional — Folder name (required for ADD command, optional for EDIT command)
   - `isPublic` (boolean) — optional — Whether the folder is public (default: false, for ADD command, for EDIT command)
   - `allowUploads` (boolean) — optional — Whether uploads are allowed to the folder (for EDIT command)
   - `fileId` (string) — optional — File ID to add to the folder (for EDIT command)
   - `files` (string[]) — optional — Array of file IDs to include in the folder (for ADD command)
+  - `id` (string) — optional — Folder ID to get information for (required for INFO command)
 - Behavior:
-  - For LIST: Fetches folders from the Zipline API and returns a structured response with folder information
+  - For LIST: Fetches folders from the Zipline API and returns a structured response with full folder details including ID, name, public status, creation/update timestamps, and file count
   - For ADD: Creates a new folder with the specified name and optional parameters
   - For EDIT: Modifies an existing folder with the specified ID and optional parameters
     - When `fileId` is provided: Adds the specified file to the folder
     - When `name`, `isPublic`, or `allowUploads` are provided: Updates folder properties
-  - Returns folder information including name and ID (when available)
-  - Handles cases where folders may not have IDs
+  - For INFO: Retrieves detailed information about a specific folder by its ID, including all folder properties
+  - Returns comprehensive folder information including all available fields
   - Validates input parameters and provides clear error messages
+  - For INFO command, requires a valid folder ID (not folder name)
 
 Usage examples (MCP tool call)
 
@@ -804,15 +807,24 @@ Usage examples (MCP tool call)
 
   1. Documents
      🆔 ID: folder123
-     📂 Type: folder
+     🔒 Private
+     📅 Created: 2025-01-15T10:30:45.123Z
+     📝 Updated: 2025-01-20T14:45:30.456Z
+     📄 Files: 5
 
   2. Images
      🆔 ID: folder456
-     📂 Type: folder
+     🔒 Public
+     📅 Created: 2025-01-10T09:15:22.789Z
+     📝 Updated: 2025-01-18T16:20:11.012Z
+     📄 Files: 12
 
   3. Public
      🆔 ID: No ID
-     📂 Type: folder
+     🔒 Public
+     📅 Created: 2025-01-05T08:00:00.000Z
+     📝 Updated: 2025-01-05T08:00:00.000Z
+     📄 Files: 0
 
   Total folders: 3
   ```
@@ -904,12 +916,42 @@ Usage examples (MCP tool call)
 
 These modes can be used separately or together in a single command.
 
+**INFO command example:**
+
+- Example input:
+
+  ```json
+  {
+    "command": "INFO",
+    "id": "folder123"
+  }
+  ```
+
+- Example successful response content:
+
+  ```
+  📁 FOLDER INFORMATION
+
+  📁 Documents
+     🆔 ID: folder123
+     🔒 Private
+     📅 Created: 2025-01-15T10:30:45.123Z
+     📝 Updated: 2025-01-20T14:45:30.456Z
+     📄 Files: 5
+  ```
+
+  **Note:** The INFO command requires a valid folder ID, not the folder name. Use the LIST command to find the ID of the folder you want to get information about.
+
 Folder Model
 
 The tool returns folders with the following structure:
 
 - `id`: Unique identifier for the folder (optional, may not be present for all folders)
 - `name`: The folder name
+- `public`: Whether the folder is public (true/false)
+- `createdAt`: When the folder was created (ISO 8601 format)
+- `updatedAt`: When the folder was last updated (ISO 8601 format)
+- `files`: Array of file IDs contained in the folder
 
 Notes for integrators
 
@@ -933,6 +975,10 @@ Notes for integrators
 - "Add file 'file789' to folder 'folder123'"
 - "Change folder 'folder789' to be private and disable uploads"
 - "Rename folder 'folder456' to 'Archive' and make it public"
+- "Get detailed information about folder 'folder123'"
+- "Show me all details for folder with ID 'folder789'"
+- "What are the properties of folder 'folder456'?"
+- "Get info about the folder named 'Documents' (first use LIST to get the ID)"
 
 ### Sandbox Path Resolution
 
