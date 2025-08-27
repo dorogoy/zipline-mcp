@@ -22,6 +22,7 @@ import {
   listFolders,
   createFolder,
   editFolder,
+  getFolder,
   EditFolderOptions,
 } from './remoteFolders.js';
 import {
@@ -1360,15 +1361,17 @@ server.registerTool(
   {
     title: 'Remote Folder Manager',
     description:
-      'Manage folders on the Zipline server (supports listing, creating, and editing folders). ' +
-      'Prerequisites: No dependencies on other tools. Provides folder IDs for use with upload_file_to_zipline. Requires Zipline authentication. ' +
-      'Usage: remote_folder_manager { "command": "LIST" } or remote_folder_manager { "command": "ADD", "name": "Folder Name", "isPublic": false, "files": [] } or remote_folder_manager { "command": "EDIT", "id": "folder123", "name": "New Name", "isPublic": true, "allowUploads": false, "fileId": "file456" } ' +
-      'Data Contracts: Input: { command: string, name?: string, isPublic?: boolean, files?: string[], id?: string, allowUploads?: boolean, fileId?: string }, Output: Text content with folder list, creation result, or edit result. Folder objects: { id?: string, name: string } (IDs may be missing). ' +
+      'Manage folders on the Zipline server (supports listing, creating, editing, and getting info). ' +
+      'Prerequisites: No dependencies on other tools. Provides folder IDs for use with upload_file_to_zipline or EDIT command. Requires Zipline authentication. ' +
+      'Usage: remote_folder_manager { "command": "LIST" } or remote_folder_manager { "command": "ADD", "name": "Folder Name", "isPublic": false, "files": [] } or remote_folder_manager { "command": "EDIT", "id": "123456", "name": "New Name", "isPublic": true, "allowUploads": false, "fileId": "file456" } or remote_folder_manager { "command": "INFO", "id": "123456" } ' +
+      'Data Contracts: Input: { command: string, name?: string, isPublic?: boolean, files?: string[], id?: string, allowUploads?: boolean, fileId?: string }, Output: Text content with folder list, creation result, edit result, or folder info. Folder objects: { id?: string, name: string, public?: boolean, createdAt?: string, updatedAt?: string, files?: string[] } (IDs may be missing). ' +
       'Error Handling: Common failures: Invalid command, API communication errors, validation errors. Recovery: Use valid commands, check authentication, verify server accessibility.',
     inputSchema: {
       command: z
         .string()
-        .describe('Command to execute. Supported: LIST, ADD <name>, EDIT <id>'),
+        .describe(
+          'Command to execute. Supported: LIST, ADD <name>, EDIT <id>, INFO <id>'
+        ),
       name: z
         .string()
         .optional()
@@ -1390,7 +1393,9 @@ server.registerTool(
       id: z
         .string()
         .optional()
-        .describe('Folder ID (required for EDIT command)'),
+        .describe(
+          'Folder ID (required for EDIT command) this is not the same than folder name. Retrieve the ID first with the LIST or any other previous command'
+        ),
       allowUploads: z
         .boolean()
         .optional()
@@ -1398,7 +1403,9 @@ server.registerTool(
       fileId: z
         .string()
         .optional()
-        .describe('File ID to add to the folder (for EDIT command)'),
+        .describe(
+          'File ID to add to the folder (for EDIT command). Retrieve the file ID first'
+        ),
     },
   },
   async (args: {
@@ -1458,7 +1465,17 @@ server.registerTool(
         const folderList = folders
           .map((folder, index) => {
             const id = folder.id ? `🆔 ${folder.id}` : '🆔 (no ID)';
-            return `${index + 1}. 📁 ${folder.name}\n   ${id}`;
+            const publicStatus = folder.public ? '🌐 Public' : '🔒 Private';
+            const createdAt = folder.createdAt
+              ? `📅 Created: ${new Date(folder.createdAt).toLocaleDateString()}`
+              : '';
+            const updatedAt = folder.updatedAt
+              ? `✏️  Updated: ${new Date(folder.updatedAt).toLocaleDateString()}`
+              : '';
+            const filesCount = folder.files
+              ? `📄 Files: ${folder.files.length}`
+              : '';
+            return `${index + 1}. 📁 ${folder.name}\n   ${id}\n   ${publicStatus}\n   ${createdAt}\n   ${updatedAt}\n   ${filesCount}`.trim();
           })
           .join('\n\n');
 
@@ -1641,6 +1658,74 @@ server.registerTool(
       }
     }
 
+    // INFO
+    if (upperCmd === 'INFO') {
+      try {
+        // For INFO command, id can come from the "id" parameter or from the command arguments
+        let folderId = id;
+
+        // If id is not provided as a parameter, try to get it from command arguments
+        if (!folderId && argsArr.length > 0) {
+          folderId = argsArr[0];
+        }
+
+        if (!folderId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '❌ INFO refused: Folder ID is required.',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const folder = await getFolder(folderId);
+
+        const idDisplay = folder.id ? `🆔 ${folder.id}` : '🆔 (no ID)';
+        const publicStatus = folder.public ? '🌐 Public' : '🔒 Private';
+        const createdAt = folder.createdAt
+          ? `📅 Created: ${new Date(folder.createdAt).toLocaleDateString()}`
+          : '';
+        const updatedAt = folder.updatedAt
+          ? `✏️  Updated: ${new Date(folder.updatedAt).toLocaleDateString()}`
+          : '';
+        const filesCount = folder.files
+          ? `📄 Files: ${folder.files.length}`
+          : '';
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                `📁 FOLDER INFORMATION\n\n` +
+                `📁 ${folder.name}\n` +
+                `   ${idDisplay}\n` +
+                `   ${publicStatus}\n` +
+                `   ${createdAt}\n` +
+                `   ${updatedAt}\n` +
+                `   ${filesCount}`.trim(),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error(`Get folder info failed: ${errorMessage}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ GET FOLDER INFO FAILED\n\nError: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Invalid command
     return {
       content: [
@@ -1650,7 +1735,8 @@ server.registerTool(
             '❌ Invalid command.\n\nCurrently supported commands:\n' +
             '  LIST - List all user folders with their names and IDs\n' +
             '  ADD <name> - Create a new folder with the specified name\n' +
-            '  EDIT <id> - Edit an existing folder with the specified ID',
+            '  EDIT <id> - Edit an existing folder with the specified ID\n' +
+            '  INFO <id> - Get detailed information about a folder',
         },
       ],
       isError: true,

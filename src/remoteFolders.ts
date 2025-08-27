@@ -11,12 +11,66 @@ export interface Folder {
 }
 
 /**
+ * Interface representing a file in Zipline
+ */
+export interface File {
+  /** The unique identifier of the file */
+  id: string;
+  /** The name of the file */
+  name: string;
+  /** The original name of the file */
+  originalName: string | null;
+  /** The size of the file in bytes */
+  size: number;
+  /** The MIME type of the file */
+  type: string;
+  /** The URL to access the file */
+  url: string;
+  /** When the file was created */
+  createdAt: string;
+  /** When the file will expire (if applicable) */
+  expiresAt?: string;
+  /** Maximum number of views (if applicable) */
+  maxViews?: number | null;
+  /** Current number of views */
+  views: number;
+  /** Whether the file is favorited */
+  favorite: boolean;
+  /** Tags associated with the file */
+  tags: string[];
+  /** Folder ID the file belongs to (if any) */
+  folderId?: string;
+}
+
+/**
  * Response schema for listing folders
  */
 export const ListFoldersResponseSchema = z.array(
   z.object({
     id: z.string().optional(),
     name: z.string(),
+    public: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    files: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          originalName: z.string().nullable(),
+          size: z.number(),
+          type: z.string(),
+          url: z.string(),
+          createdAt: z.string(),
+          expiresAt: z.string().optional().nullable(),
+          maxViews: z.number().optional().nullable(),
+          views: z.number(),
+          favorite: z.boolean(),
+          tags: z.array(z.string()),
+          folderId: z.string().optional().nullable(),
+        })
+      )
+      .optional(),
   })
 );
 
@@ -44,7 +98,7 @@ export interface ListFoldersOptions {
  */
 export async function listFolders(
   options: ListFoldersOptions
-): Promise<Folder[]> {
+): Promise<FullFolder[]> {
   const { endpoint, token, page, noincl } = options;
 
   // Build the URL with query parameters
@@ -78,9 +132,13 @@ export async function listFolders(
   const validatedData = ListFoldersResponseSchema.parse(data);
 
   // Return the folders array with proper typing
-  const folders: Folder[] = validatedData.map((folder) => ({
+  const folders: FullFolder[] = validatedData.map((folder) => ({
     id: folder.id,
     name: folder.name,
+    public: folder.public,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    files: folder.files?.map((file) => file.id), // Extract just the file IDs
   }));
 
   return folders;
@@ -314,4 +372,93 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
 
     return folder;
   }
+}
+
+/**
+ * Represents a full folder object from the Zipline API
+ */
+export interface FullFolder extends Folder {
+  /** Whether the folder is public */
+  public: boolean;
+  /** The timestamp when the folder was created */
+  createdAt: string;
+  /** The timestamp when the folder was last updated */
+  updatedAt: string;
+  /** Array of file IDs in the folder (optional) */
+  files?: string[] | undefined;
+}
+
+/**
+ * Schema for validating a full folder object
+ */
+export const FullFolderSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  public: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  files: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        originalName: z.string().nullable(),
+        size: z.number(),
+        type: z.string(),
+        url: z.string(),
+        createdAt: z.string(),
+        expiresAt: z.string().optional().nullable(),
+        maxViews: z.number().optional().nullable(),
+        views: z.number(),
+        favorite: z.boolean(),
+        tags: z.array(z.string()),
+        folderId: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
+});
+
+export type FullFolderResponse = z.infer<typeof FullFolderSchema>;
+
+/**
+ * Gets a single folder by ID from the Zipline API
+ * @param id - The ID of the folder to retrieve
+ * @returns A promise that resolves to the folder details
+ * @throws Error if the API request fails or folder is not found
+ */
+export async function getFolder(id: string): Promise<FullFolder> {
+  const endpoint = process.env.ZIPLINE_ENDPOINT;
+  const token = process.env.ZIPLINE_TOKEN;
+
+  if (!endpoint || !token) {
+    throw new Error('ZIPLINE_ENDPOINT and ZIPLINE_TOKEN must be set');
+  }
+
+  const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
+    headers: {
+      authorization: token,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get folder: ${response.status}`);
+  }
+
+  const data = (await response.json()) as unknown;
+
+  // Validate the response data
+  const validatedData = FullFolderSchema.parse(data);
+
+  // Return the folder with proper typing
+  const folder: FullFolder = {
+    id: validatedData.id,
+    name: validatedData.name,
+    public: validatedData.public,
+    createdAt: validatedData.createdAt,
+    updatedAt: validatedData.updatedAt,
+    files: validatedData.files?.map((file) => file.id), // Extract just the file IDs
+  };
+
+  return folder;
 }
