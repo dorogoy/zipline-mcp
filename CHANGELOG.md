@@ -6,6 +6,18 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.8.0](https://github.com/dorogoy/zipline-mcp/compare/v1.7.3...v1.8.0) (2025-08-27)
+
+
+### Features
+
+* **remote-folders:** add remote folder management tool ([88ab00c](https://github.com/dorogoy/zipline-mcp/commit/88ab00ce9b923a545b66d81919fa4bf7cb6def7a))
+* **remoteFolders:** add createFolder API ([67d26f0](https://github.com/dorogoy/zipline-mcp/commit/67d26f0b7ee3c57da5142e8fc6fec0fa0af737b4))
+* **remoteFolders:** add deleteFolder support ([13b12b2](https://github.com/dorogoy/zipline-mcp/commit/13b12b21c6fa251d8113bedeee88100ddfd4aab7))
+* **remoteFolders:** add edit folder support ([e9f7a2d](https://github.com/dorogoy/zipline-mcp/commit/e9f7a2d2d8c8a9c222e48548d7c089953856b000))
+* **remoteFolders:** add getFolder and INFO command support ([e50495a](https://github.com/dorogoy/zipline-mcp/commit/e50495aa80213609f3f523de8fc71b0daa0486cd))
+* **upload:** enhance file upload and validation tools with detailed ([5e16794](https://github.com/dorogoy/zipline-mcp/commit/5e16794af3e68e4cf318386e3e2a665a17760262))
+
 ## [1.7.3](https://github.com/dorogoy/zipline-mcp/compare/v1.7.2...v1.7.3) (2025-08-16)
 
 
