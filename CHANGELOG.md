@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.9.0](https://github.com/dorogoy/zipline-mcp/compare/v1.8.0...v1.9.0) (2025-08-28)
+
+
+### Features
+
+* **remoteFolders:** add INFO command file listing ([f7ce048](https://github.com/dorogoy/zipline-mcp/commit/f7ce0488757a7822f02e5f8a001c6acabcec8d23))
+
 ## [1.8.0](https://github.com/dorogoy/zipline-mcp/compare/v1.7.3...v1.8.0) (2025-08-27)
 
 
