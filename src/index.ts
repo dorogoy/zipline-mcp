@@ -1696,6 +1696,11 @@ server.registerTool(
           ? `📄 Files: ${folder.files.length}`
           : '';
 
+        const fileList =
+          folder.files && folder.files.length > 0
+            ? `   📋 File IDs: ${folder.files.join(', ')}`
+            : '';
+
         return {
           content: [
             {
@@ -1707,7 +1712,8 @@ server.registerTool(
                 `   ${publicStatus}\n` +
                 `   ${createdAt}\n` +
                 `   ${updatedAt}\n` +
-                `   ${filesCount}`.trim(),
+                `   ${filesCount}\n` +
+                `${fileList}`.trim(),
             },
           ],
         };

@@ -940,6 +940,7 @@ These modes can be used separately or together in a single command.
      📅 Created: 2025-01-15T10:30:45.123Z
      📝 Updated: 2025-01-20T14:45:30.456Z
      📄 Files: 5
+     📋 Files (IDs): file123, file456, file789, fileabc, filexyz
   ```
 
   **Note:** The INFO command requires a valid folder ID, not the folder name. Use the LIST command to find the ID of the folder you want to get information about.
