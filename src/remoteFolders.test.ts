@@ -1075,6 +1075,73 @@ describe('getFolder', () => {
       `Failed to get folder: 500`
     );
   });
+
+  // New test for INFO command with file list
+  it('should fetch a single folder with detailed file information', async () => {
+    const folderId = 'test-folder-id';
+    const mockFolder = {
+      id: folderId,
+      name: 'Test Folder with Files',
+      public: true,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-02T00:00:00Z',
+      files: [
+        {
+          id: 'file1',
+          name: 'document.pdf',
+          originalName: 'document.pdf',
+          size: 102400,
+          type: 'application/pdf',
+          url: 'https://zipline.example.com/document.pdf',
+          createdAt: '2023-01-01T10:00:00Z',
+          maxViews: 10,
+          views: 3,
+          favorite: true,
+          tags: ['important', 'document'],
+        },
+        {
+          id: 'file2',
+          name: 'image.png',
+          originalName: 'image.png',
+          size: 204800,
+          type: 'image/png',
+          url: 'https://zipline.example.com/image.png',
+          createdAt: '2023-01-01T11:00:00Z',
+          maxViews: null,
+          views: 15,
+          favorite: false,
+          tags: ['image'],
+        },
+      ],
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFolder),
+    } as Response);
+
+    const result = await getFolder(folderId);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${ZIPLINE_ENDPOINT}/api/user/folders/${folderId}`,
+      {
+        headers: {
+          authorization: ZIPLINE_TOKEN,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // Verify that the result includes file IDs
+    expect(result).toEqual({
+      id: folderId,
+      name: 'Test Folder with Files',
+      public: true,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-02T00:00:00Z',
+      files: ['file1', 'file2'],
+    });
+  });
 });
 
 // Add tests for deleteFolder function
