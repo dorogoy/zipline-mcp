@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.9.1](https://github.com/dorogoy/zipline-mcp/compare/v1.9.0...v1.9.1) (2026-01-14)
+
+
+### Bug Fixes
+
+* **deps:** bump eventsource-parser from 3.0.3 to 3.0.6 ([559fd51](https://github.com/dorogoy/zipline-mcp/commit/559fd51eedc86ace0cb51fc1b57bd2ce045f8659))
+
 ## [1.9.0](https://github.com/dorogoy/zipline-mcp/compare/v1.8.0...v1.9.0) (2025-08-28)
 
 
