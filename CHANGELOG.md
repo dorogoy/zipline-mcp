@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.9.2](https://github.com/dorogoy/zipline-mcp/compare/v1.9.1...v1.9.2) (2026-01-24)
+
+
+### Bug Fixes
+
+* **deps:** bump body-parser from 2.2.0 to 2.2.1 ([d9c5ae0](https://github.com/dorogoy/zipline-mcp/commit/d9c5ae0fda9a9cfbb20d7b66bf3de7679cfa74ce))
+* **deps:** bump js-yaml from 4.1.0 to 4.1.1 ([3d78914](https://github.com/dorogoy/zipline-mcp/commit/3d78914a856075fa8eaa35a5b975befe954b006c))
+* **deps:** bump qs from 6.14.0 to 6.14.1 ([1ed3fe5](https://github.com/dorogoy/zipline-mcp/commit/1ed3fe5801fc38c0e4f04ec9c85f8ef709350008))
+
 ## [1.9.1](https://github.com/dorogoy/zipline-mcp/compare/v1.9.0...v1.9.1) (2026-01-14)
 
 
