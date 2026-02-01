@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.9.3](https://github.com/dorogoy/zipline-mcp/compare/v1.9.2...v1.9.3) (2026-02-01)
+
+
+### Bug Fixes
+
+* **deps:** bump @modelcontextprotocol/sdk from 1.17.2 to 1.25.2 ([1b74a37](https://github.com/dorogoy/zipline-mcp/commit/1b74a3789de195abba545ed583ac8e216b08472d))
+* **deps:** bump @modelcontextprotocol/sdk from 1.17.2 to 1.25.2 ([d26db89](https://github.com/dorogoy/zipline-mcp/commit/d26db89f2edc08e65f1f326b42fef058d6b8b28a))
+
 ## [1.9.2](https://github.com/dorogoy/zipline-mcp/compare/v1.9.1...v1.9.2) (2026-01-24)
 
 
