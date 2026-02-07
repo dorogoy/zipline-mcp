@@ -20,6 +20,7 @@ import {
   logSandboxOperation,
   SandboxPathError,
   stageFile,
+  clearStagedContent,
 } from './sandboxUtils';
 import * as fs from 'fs/promises';
 import path from 'path';
@@ -268,6 +269,8 @@ describe('Sandbox Utils', () => {
         if (staged.type === 'memory') {
           expect(staged.content).toEqual(content);
           expect(staged.path).toBe(filePath);
+          expect(staged.content).toBeInstanceOf(Buffer);
+          expect(staged.content.length).toBe(1024);
         }
       });
 
@@ -289,6 +292,53 @@ describe('Sandbox Utils', () => {
         if (staged.type === 'memory') {
           expect(staged.content).toEqual(content);
           expect(staged.path).toBe(filePath);
+          expect(staged.content).toBeInstanceOf(Buffer);
+          expect(staged.content.length).toBe(0);
+        }
+      });
+
+      it('should stage 1 byte file in memory (edge case)', async () => {
+        const filePath = path.join(testDir, '1byte.txt');
+        const content = Buffer.from('a');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+        if (staged.type === 'memory') {
+          expect(staged.content).toEqual(content);
+          expect(staged.content).toBeInstanceOf(Buffer);
+          expect(staged.content.length).toBe(1);
+          expect(staged.content.toString()).toBe('a');
+        }
+      });
+
+      it('should stage 4.9MB file in memory (edge case near threshold)', async () => {
+        const filePath = path.join(testDir, '4.9mb.txt');
+        const size = 4.9 * 1024 * 1024;
+        const content = Buffer.alloc(Math.floor(size), 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+        if (staged.type === 'memory') {
+          expect(staged.content).toEqual(content);
+          expect(staged.content).toBeInstanceOf(Buffer);
+          expect(staged.content.length).toBe(Math.floor(size));
+        }
+      }, 30000);
+
+      it('should verify Buffer contains correct file content byte-for-byte', async () => {
+        const filePath = path.join(testDir, 'content-verify.txt');
+        const originalContent = Buffer.from(
+          'Hello, World! This is test content.'
+        );
+        await fs.writeFile(filePath, originalContent);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+        if (staged.type === 'memory') {
+          expect(staged.content.equals(originalContent)).toBe(true);
+          expect(staged.content.toString()).toBe(originalContent.toString());
         }
       });
     });
@@ -336,6 +386,121 @@ describe('Sandbox Utils', () => {
 
         const staged = await stageFile(filePath);
         expect(staged.type).toBe('disk');
+      });
+    });
+
+    describe('clearStagedContent', () => {
+      it('should clear Buffer content for memory-staged files', async () => {
+        const filePath = path.join(testDir, 'test.txt');
+        const content = Buffer.from('test content');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        if (staged.type === 'memory') {
+          expect(staged.content).toEqual(content);
+          clearStagedContent(staged);
+          expect(staged.content as any).toBeNull();
+        }
+      });
+
+      it('should handle disk-staged files without error', async () => {
+        const filePath = path.join(testDir, 'large-file.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+
+        clearStagedContent(staged);
+      });
+    });
+
+    describe('Graceful disk fallback', () => {
+      it('should validate secrets for memory-staged files before returning', async () => {
+        const filePath = path.join(testDir, 'secret.txt');
+        const content = Buffer.from('api_key = "sk-test-secret-key"');
+        await fs.writeFile(filePath, content);
+
+        await expect(stageFile(filePath)).rejects.toThrow();
+      });
+
+      it('should use disk fallback for files exactly at 5MB threshold', async () => {
+        const filePath = path.join(testDir, 'exactly-5mb.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+        expect(staged.path).toBe(filePath);
+      });
+
+      it('should use disk fallback for files larger than 5MB threshold', async () => {
+        const filePath = path.join(testDir, '6mb.txt');
+        const content = Buffer.alloc(6 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+        expect(staged.path).toBe(filePath);
+      });
+    });
+
+    describe('Integration: Full cleanup workflow', () => {
+      it('should stage, use, and cleanup memory-staged file end-to-end', async () => {
+        const filePath = path.join(testDir, 'integration-test.txt');
+        const originalContent = Buffer.from('Integration test content');
+        await fs.writeFile(filePath, originalContent);
+
+        // Stage the file
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        if (staged.type === 'memory') {
+          // Verify content is loaded
+          expect(staged.content.equals(originalContent)).toBe(true);
+
+          // Simulate usage (e.g., upload would happen here)
+          const contentCopy = Buffer.from(staged.content);
+          expect(contentCopy.equals(originalContent)).toBe(true);
+
+          // Cleanup
+          clearStagedContent(staged);
+
+          // Verify buffer reference is cleared
+          expect(staged.content as any).toBeNull();
+        }
+      });
+
+      it('should handle cleanup in try/finally pattern (simulated error)', async () => {
+        const filePath = path.join(testDir, 'error-test.txt');
+        const content = Buffer.from('Error test content');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        // Wrap in a function to test error handling
+        const uploadSimulation = async () => {
+          try {
+            if (staged.type === 'memory') {
+              // Simulate an error during upload
+              throw new Error('Simulated upload error');
+            }
+          } finally {
+            // Cleanup should happen even on error
+            clearStagedContent(staged);
+          }
+        };
+
+        // Expect the error to be thrown
+        await expect(uploadSimulation()).rejects.toThrow('Simulated upload error');
+
+        // Verify cleanup happened despite error
+        if (staged.type === 'memory') {
+          expect(staged.content as any).toBeNull();
+        }
       });
     });
   });

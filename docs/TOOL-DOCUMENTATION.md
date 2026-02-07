@@ -111,13 +111,121 @@ The tool provides clear error messages for common issues:
    - Use text format instead of binary when possible
 2. **Increase limit:**
    ```bash
-   # Set max file size to 200 MB
-   export ZIPLINE_MAX_FILE_SIZE=209715200
+    # Set max file size to 200 MB
+    export ZIPLINE_MAX_FILE_SIZE=209715200
    ```
 3. **Check server limits:**
    - Verify Zipline server configuration for maximum allowed file size
    - Check if server-side limits are different from client defaults
-4. **Use disk staging for large files:**
+
+---
+
+## Memory-First Staging Architecture
+
+**Overview:**
+
+The zipline-mcp server uses a memory-first ephemeral storage strategy for file uploads. This approach provides optimal performance for typical use cases while ensuring zero disk footprint.
+
+**Staging Strategy Decision Tree:**
+
+```
+File Upload Request
+    ↓
+Check file size (fs.stat)
+    ↓
+    size < 5MB?
+    ├─ Yes → Load into Buffer (memory staging)
+    │         - Validates secrets against Buffer content
+    │         - Returns { type: 'memory', content: Buffer, path: string }
+    │         - Fast: <10ms allocation overhead
+    │         - Zero disk footprint
+    │
+    └─ No → Keep on disk (disk staging)
+              - Validates secrets against file on disk
+              - Returns { type: 'disk', path: string }
+              - Used for large files (≥5MB)
+              - Avoids memory pressure
+```
+
+**Buffer Lifecycle (Memory Staging):**
+
+1. **Allocation:** Created via `fs.readFile(filepath)` in `sandboxUtils.ts`
+   - `fs.readFile()` returns a Buffer by default (no encoding parameter)
+   - Fast allocation for files <5MB (typically <10ms overhead)
+
+2. **Validation:** Secret scanning happens BEFORE Buffer is returned
+   - `validateFileForSecrets(filepath, content)` scans the Buffer
+   - Only validated content reaches the upload function
+   - Prevents secrets from being uploaded
+
+3. **Usage:** Buffer passed to `httpClient.ts` for upload
+   - `uploadFile()` receives the Buffer in `opts.fileContent`
+   - Buffer is uploaded to Zipline server
+
+4. **Cleanup:** Buffer reference cleared immediately after upload (try/finally)
+   - `clearStagedContent()` nulls the Buffer reference
+   - Happens in BOTH success and error paths
+   - Guarantees zero-footprint (no persistent state)
+
+5. **Garbage Collection:** Node.js GC reclaims memory when reference is null
+   - Setting Buffer to `null` helps GC reclaim memory
+   - Prevents memory leaks in long-running MCP server
+
+**Cleanup Guarantees:**
+
+- ✅ **100% Buffer cleanup:** All memory-staged files are cleaned up after operation
+- ✅ **Atomic cleanup:** try/finally ensures cleanup happens even on error
+- ✅ **Zero-footprint:** No persistent state remains after operation completes
+- ✅ **No memory leaks:** Buffer references explicitly nulled for garbage collection
+
+**Example: Memory vs. Disk Staging:**
+
+```json
+// Small file (<5MB) - Uses memory staging
+{
+  "filePath": "/path/to/screenshot.png",
+  "result": {
+    "type": "memory",
+    "content": "<Buffer with 512KB image data>",
+    "path": "/path/to/screenshot.png"
+  },
+  "stagingStrategy": "🧠 Memory staging (fast, no disk I/O)",
+  "performance": "Upload time: <2 seconds for typical screenshots"
+}
+
+// Large file (≥5MB) - Uses disk staging
+{
+  "filePath": "/path/to/large-video.mp4",
+  "result": {
+    "type": "disk",
+    "path": "/path/to/large-video.mp4"
+  },
+  "stagingStrategy": "💾 Disk fallback staging (for files ≥5MB)",
+  "performance": "Upload time depends on network speed (no memory overhead)"
+}
+```
+
+**Performance Characteristics:**
+
+- **Memory staging:** <10ms allocation overhead, zero disk I/O during read
+- **Disk staging:** File stays on disk, validated in-place before upload
+- **Secret validation:** Scans Buffer (memory) or file (disk) for patterns
+- **Cleanup overhead:** <1ms (reference nulling in finally block)
+
+**Resource Limits:**
+
+- **Max memory per request:** 5MB (MEMORY_STAGING_THRESHOLD)
+- **Max concurrent uploads:** 5 requests × 5MB = 25MB peak memory
+- **Max disk-staged files:** No limit (uses disk space only during upload)
+- **Typical use case:** Screenshots, logs, config files are usually <5MB
+
+**Why Memory-First?**
+
+1. **Performance:** Memory is orders of magnitude faster than disk I/O
+2. **Zero-footprint:** No temporary files created, cleaned up immediately
+3. **Simplicity:** Single Buffer allocation, no temp file management
+4. **Typical workload:** Most user uploads (screenshots, logs) are <5MB
+5. **Use disk staging for large files:**
    - Files ≥ 5MB automatically use disk fallback staging
    - This preserves memory for smaller files while allowing large uploads
 

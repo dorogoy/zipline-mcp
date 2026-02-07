@@ -36,6 +36,38 @@ vi.mock('./httpClient', () => ({
     .mockResolvedValue('/home/user/.zipline_tmp/users/hash/downloaded.txt'),
 }));
 
+// Mock sandboxUtils for clearStagedContent
+vi.mock('./sandboxUtils', () => ({
+  getUserSandbox: vi.fn(() => '/home/user/.zipline_tmp/users/testhash'),
+  validateFilename: vi.fn(() => null),
+  ensureUserSandbox: vi.fn(async () => '/home/user/.zipline_tmp/users/testhash'),
+  resolveInUserSandbox: vi.fn((filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`),
+  resolveSandboxPath: vi.fn((filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`),
+  logSandboxOperation: vi.fn(),
+  TMP_MAX_READ_SIZE: 1024 * 1024,
+  cleanupOldSandboxes: vi.fn(),
+  isSandboxLocked: vi.fn(),
+  acquireSandboxLock: vi.fn(),
+  releaseSandboxLock: vi.fn(),
+  validateFileForSecrets: vi.fn(),
+  stageFile: vi.fn().mockImplementation(async (filepath: string) => {
+    const content = Buffer.from('test content for cleanup test');
+    return { type: 'memory', content, path: filepath };
+  }),
+  clearStagedContent: vi.fn(),
+  MEMORY_STAGING_THRESHOLD: 5 * 1024 * 1024,
+  SecretDetectionError: class extends Error {
+    constructor(
+      message: string,
+      public secretType: string,
+      public pattern: string
+    ) {
+      super(message);
+      this.name = 'SecretDetectionError';
+    }
+  },
+}));
+
 const fsMock = {
   readFile: vi.fn(),
   writeFile: vi.fn(),
@@ -821,6 +853,59 @@ describe('upload_file_to_zipline tool', () => {
     expect(result.isError).toBeFalsy();
     expect(result.content[0]?.text).toContain('🟢 Ready for upload');
     expect(result.content[0]?.text).toContain('Memory staging');
+  });
+
+  it('should clear memory-staged Buffer after successful upload', async () => {
+    const content = Buffer.from('test content for cleanup test');
+    mockFileContent(content);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/file.txt' }, {});
+    expect(result.isError).toBeFalsy();
+
+    const { clearStagedContent } = await import('./sandboxUtils');
+    expect(clearStagedContent).toHaveBeenCalled();
+  });
+
+  it('should clear memory-staged Buffer after failed upload', async () => {
+    const content = Buffer.from('test content for cleanup test');
+    mockFileContent(content);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const uploadError = new Error('Upload failed');
+    const { uploadFile } = await import('./httpClient');
+    (uploadFile as any).mockRejectedValueOnce(uploadError);
+
+    const result = await handler({ filePath: '/path/to/file.txt' }, {});
+    expect(result.isError).toBe(true);
+
+    const { clearStagedContent } = await import('./sandboxUtils');
+    expect(clearStagedContent).toHaveBeenCalled();
+  });
+
+  it('should call clearStagedContent for disk-staged files (no-op)', async () => {
+    const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+    const largeFileSize = 10 * 1024 * 1024; // 10MB
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const { stageFile } = await import('./sandboxUtils');
+    (stageFile as any).mockImplementationOnce(async (filepath: string) => {
+      return { type: 'disk', path: filepath };
+    });
+
+    const result = await handler({ filePath: '/path/to/large.txt' }, {});
+    expect(result.isError).toBe(false);
+
+    // clearStagedContent IS called for disk files, it just does nothing internally
+    const { clearStagedContent } = await import('./sandboxUtils');
+    expect(clearStagedContent).toHaveBeenCalled();
   });
 });
 

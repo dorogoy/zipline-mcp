@@ -36,6 +36,7 @@ import {
   releaseSandboxLock,
   validateFileForSecrets,
   stageFile,
+  clearStagedContent,
   MEMORY_STAGING_THRESHOLD,
   SecretDetectionError,
 } from './sandboxUtils.js';
@@ -57,6 +58,7 @@ export {
   acquireSandboxLock,
   releaseSandboxLock,
   validateFileForSecrets,
+  clearStagedContent,
   SecretDetectionError,
 };
 
@@ -493,34 +495,38 @@ server.registerTool(
       // This validates secrets and loads content into memory if < 5MB
       const stagedFile = await stageFile(filePath);
 
-      const fileSize =
-        stagedFile.type === 'memory' ? stagedFile.content.length : stats.size;
+      try {
+        const fileSize =
+          stagedFile.type === 'memory' ? stagedFile.content.length : stats.size;
 
-      const opts: UploadOptions = {
-        endpoint: ZIPLINE_ENDPOINT,
-        token: ZIPLINE_TOKEN,
-        filePath,
-        format: normalizedFormat,
-      };
+        const opts: UploadOptions = {
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          filePath,
+          format: normalizedFormat,
+        };
 
-      if (stagedFile.type === 'memory') {
-        opts.fileContent = stagedFile.content;
+        if (stagedFile.type === 'memory') {
+          opts.fileContent = stagedFile.content;
+        }
+
+        if (password !== undefined) opts.password = password;
+        if (maxViews !== undefined) opts.maxViews = maxViews;
+        if (folder !== undefined) opts.folder = folder;
+        if (deletesAt !== undefined) opts.deletesAt = deletesAt;
+        if (originalName !== undefined) opts.originalName = originalName;
+
+        const url = await uploadFile(opts);
+        if (!isValidUrl(url)) throw new Error(`Invalid URL returned: ${url}`);
+        const formattedSize = formatFileSize(fileSize);
+        const fileName = path.basename(filePath);
+        let text = `✅ FILE UPLOADED SUCCESSFULLY!\n\n📁 File: ${fileName}\n📊 Size: ${formattedSize}\n🏷️  Format: ${format}\n🔗 DOWNLOAD URL: ${url}`;
+        if (fileExt === '.md')
+          text += `\n🔗 VIEW URL: ${url.replace('/u/', '/view/')}`;
+        return { content: [{ type: 'text', text }] };
+      } finally {
+        clearStagedContent(stagedFile);
       }
-
-      if (password !== undefined) opts.password = password;
-      if (maxViews !== undefined) opts.maxViews = maxViews;
-      if (folder !== undefined) opts.folder = folder;
-      if (deletesAt !== undefined) opts.deletesAt = deletesAt;
-      if (originalName !== undefined) opts.originalName = originalName;
-
-      const url = await uploadFile(opts);
-      if (!isValidUrl(url)) throw new Error(`Invalid URL returned: ${url}`);
-      const formattedSize = formatFileSize(fileSize);
-      const fileName = path.basename(filePath);
-      let text = `✅ FILE UPLOADED SUCCESSFULLY!\n\n📁 File: ${fileName}\n📊 Size: ${formattedSize}\n🏷️  Format: ${format}\n🔗 DOWNLOAD URL: ${url}`;
-      if (fileExt === '.md')
-        text += `\n🔗 VIEW URL: ${url.replace('/u/', '/view/')}`;
-      return { content: [{ type: 'text', text }] };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -678,7 +684,10 @@ server.registerTool(
       if (stats.size < MEMORY_STAGING_THRESHOLD) {
         stagingStrategy = '🧠 Memory staging (fast, no disk I/O)';
       } else {
-        stagingStrategy = '💾 Disk fallback staging (for files ≥' + formatFileSize(MEMORY_STAGING_THRESHOLD) + ')';
+        stagingStrategy =
+          '💾 Disk fallback staging (for files ≥' +
+          formatFileSize(MEMORY_STAGING_THRESHOLD) +
+          ')';
       }
 
       return {
