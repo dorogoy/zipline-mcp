@@ -120,9 +120,18 @@ export function resolveSandboxPath(filename: string): string {
   return sanitizePathUtil(filename, userSandbox);
 }
 
-export async function validateFileForSecrets(filepath: string): Promise<void> {
+export async function validateFileForSecrets(
+  filepath: string,
+  existingContent?: Buffer
+): Promise<void> {
   try {
-    const content = await fs.readFile(filepath);
+    let content: Buffer;
+    if (existingContent) {
+      content = existingContent;
+    } else {
+      content = await fs.readFile(filepath);
+    }
+
     const result = detectSecretPatterns(content, filepath);
     if (result.detected) {
       throw new SecretDetectionError(
@@ -144,6 +153,26 @@ export async function validateFileForSecrets(filepath: string): Promise<void> {
       throw new Error(`File not found: ${filepath}`);
     }
     throw error;
+  }
+}
+
+export type StagedFile =
+  | { type: 'memory'; content: Buffer; path: string }
+  | { type: 'disk'; path: string };
+
+export async function stageFile(filepath: string): Promise<StagedFile> {
+  const stats = await fs.stat(filepath);
+  // Memory-First Staging: If < 5MB, load into memory
+  if (stats.size < 5 * 1024 * 1024) {
+    const content = await fs.readFile(filepath);
+    await validateFileForSecrets(filepath, content);
+    return { type: 'memory', content, path: filepath };
+  } else {
+    // Disk Fallback: Just validate secrets (reads file but avoids keeping it in memory for upload if we can avoid it)
+    // Note: validateFileForSecrets will currently read the whole file.
+    // For large files, ideally we would stream-scan, but sticking to current scope.
+    await validateFileForSecrets(filepath);
+    return { type: 'disk', path: filepath };
   }
 }
 

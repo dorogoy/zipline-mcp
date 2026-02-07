@@ -119,6 +119,60 @@ describe('Zipline MCP Server', () => {
     );
   });
 
+  describe('validate_file tool', () => {
+    let server: MockServer;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      const imported = (await import('./index')) as unknown as {
+        server: MockServer;
+      };
+      server = imported.server;
+    });
+
+    const getToolHandler = (toolName: string): ToolHandler | undefined => {
+      const calls = server.registerTool.mock.calls as Array<
+        [string, unknown, ToolHandler]
+      >;
+      const call = calls.find((c) => c[0] === toolName);
+      return call?.[2];
+    };
+
+    it('should provide clear error message for non-existent file', async () => {
+      const enoentError = new Error(
+        'ENOENT: no such file or directory'
+      ) as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      fsMock.readFile.mockRejectedValue(enoentError);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { filePath: '/path/to/nonexistent.txt' },
+        {}
+      );
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('File not found');
+    });
+
+    it('should handle permission errors gracefully', async () => {
+      const eaccesError = new Error(
+        'EACCES: permission denied'
+      ) as NodeJS.ErrnoException;
+      eaccesError.code = 'EACCES';
+      fsMock.readFile.mockRejectedValue(eaccesError);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/root/protected.txt' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('permission denied');
+    });
+  });
+
   describe('upload_file_to_zipline tool', () => {
     let server: MockServer;
 
@@ -141,6 +195,7 @@ describe('Zipline MCP Server', () => {
 
     it('should validate and normalize format correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -169,9 +224,12 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle file not found error', async () => {
-      fsMock.readFile.mockRejectedValue(
-        new Error('ENOENT: no such file or directory')
-      );
+      const enoentError = new Error(
+        'ENOENT: no such file or directory'
+      ) as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      fsMock.readFile.mockRejectedValue(enoentError);
+      fsMock.stat.mockRejectedValue(enoentError);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -182,10 +240,12 @@ describe('Zipline MCP Server', () => {
       );
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('UPLOAD FAILED');
+      expect(result.content[0]?.text).toContain('File not found');
     });
 
     it('should handle unsupported file type error', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -197,6 +257,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle deleteAt parameter correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -222,6 +283,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle password parameter correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -247,6 +309,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle maxViews parameter correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -272,6 +335,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle folder parameter correctly', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -297,6 +361,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle all optional parameters together', async () => {
       fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
+      fsMock.stat.mockResolvedValue({ size: 12 });
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -324,6 +389,74 @@ describe('Zipline MCP Server', () => {
           folder: 'testfolder',
         })
       );
+    });
+
+    it('should provide clear error message for non-existent file', async () => {
+      const enoentError = new Error(
+        'ENOENT: no such file or directory'
+      ) as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      fsMock.readFile.mockRejectedValue(enoentError);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { filePath: '/path/to/nonexistent.txt' },
+        {}
+      );
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('File not found');
+    });
+
+    it('should handle PNG binary files correctly', async () => {
+      const pngData = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      fsMock.readFile.mockResolvedValue(pngData);
+      fsMock.stat.mockResolvedValue({ size: 8 });
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.png' }, {});
+      expect(!result.isError).toBe(true);
+    });
+
+    it('should handle JPG binary files correctly', async () => {
+      const jpgData = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+      fsMock.readFile.mockResolvedValue(jpgData);
+      fsMock.stat.mockResolvedValue({ size: 4 });
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.jpg' }, {});
+      expect(!result.isError).toBe(true);
+    });
+
+    it('should handle TXT text files correctly', async () => {
+      const textData = Buffer.from('Hello, World!', 'utf8');
+      fsMock.readFile.mockResolvedValue(textData);
+      fsMock.stat.mockResolvedValue({ size: 13 });
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/text.txt' }, {});
+      expect(!result.isError).toBe(true);
+    });
+
+    it('should handle JSON text files correctly', async () => {
+      const jsonData = Buffer.from('{"key":"value"}', 'utf8');
+      fsMock.readFile.mockResolvedValue(jsonData);
+      fsMock.stat.mockResolvedValue({ size: 16 });
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/data.json' }, {});
+      expect(!result.isError).toBe(true);
     });
   });
 });

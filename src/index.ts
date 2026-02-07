@@ -36,8 +36,10 @@ import {
   acquireSandboxLock,
   releaseSandboxLock,
   validateFileForSecrets,
+  stageFile,
+  SecretDetectionError,
 } from './sandboxUtils.js';
-import { SecretDetectionError } from './sandboxUtils.js';
+import { McpErrorCode } from './utils/errorMapper.js';
 
 // Re-export sandbox functions for backward compatibility
 export {
@@ -386,7 +388,7 @@ export const remoteFolderManagerInputSchema = {
     .string()
     .optional()
     .describe(
-      'Optional: Folder ID (required for EDIT command, not used for other commands). Retrieve the ID first (default: none).'
+      'Optional: Folder ID (required for EDIT command, not used for other commands). Retrieve the ID first (default: no file added).'
     ),
   allowUploads: z
     .boolean()
@@ -415,9 +417,6 @@ export const batchFileOperationInputSchema = {
     ),
 };
 
-// --- Tool Registrations ---
-
-// 1. upload_file_to_zipline
 server.registerTool(
   'upload_file_to_zipline',
   {
@@ -441,18 +440,25 @@ server.registerTool(
     try {
       const normalizedFormat = normalizeFormat(format);
       if (!normalizedFormat) throw new Error(`Invalid format: ${format}`);
-      const fileContent = await readFile(filePath);
-      const fileSize = fileContent.length;
+
       const fileExt = path.extname(filePath).toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
         throw new Error(`File type ${fileExt} not supported.`);
       }
-      await validateFileForSecrets(filePath);
+
+      // Memory-First Staging via sandboxUtils
+      // This validates secrets and loads content into memory if < 5MB
+      const stagedFile = await stageFile(filePath);
+
+      const fileSize = stagedFile.type === 'memory'
+        ? stagedFile.content.length
+        : (await fs.stat(filePath)).size;
 
       const opts: UploadOptions = {
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
         filePath,
+        fileContent: stagedFile.type === 'memory' ? stagedFile.content : undefined,
         format: normalizedFormat,
       };
       if (password !== undefined) opts.password = password;
@@ -473,12 +479,26 @@ server.registerTool(
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       secureLog(`Upload failed: ${errorMessage}`);
+
+      let errorDetails = errorMessage;
+      let errorCode = McpErrorCode.INTERNAL_ZIPLINE_ERROR;
+
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        errorCode = McpErrorCode.RESOURCE_NOT_FOUND;
+        errorDetails = `File not found: ${filePath}`;
+      }
+
       return {
         content: [
           {
             type: 'text',
             text: maskSensitiveData(
-              `❌ UPLOAD FAILED!\n\nError: ${errorMessage}\n\nPossible solutions:\n• Check if the file exists and is accessible\n• Verify the file path\n• Ensure that the server ${ZIPLINE_ENDPOINT} is reachable\n• Confirm that the file type is supported`
+              `❌ UPLOAD FAILED!\n\nError Code: ${errorCode}\nError: ${errorDetails}\n\nPossible solutions:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file\n• Confirm that the server ${ZIPLINE_ENDPOINT} is reachable`
             ),
           },
         ],
@@ -521,11 +541,22 @@ server.registerTool(
         ],
       };
     } catch (error) {
+      let errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        errorMessage = `File not found: ${filePath}`;
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: `❌ FILE VALIDATION FAILED!\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nPlease check:\n• File path is correct\n• File exists and is readable\n• You have proper permissions`,
+            text: `❌ FILE VALIDATION FAILED!\n\nError: ${errorMessage}\n\nPlease check:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file`,
           },
         ],
         isError: true,

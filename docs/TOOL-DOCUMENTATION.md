@@ -48,9 +48,17 @@ When an MCP client connects to the server, it can discover all available tools a
 
 Upload a file to the Zipline server with advanced options and retrieve the download URL.
 
+**File Types Supported:**
+
+- **Images:** PNG, JPG, JPEG, GIF, WEBP, SVG
+- **Text/Documents:** TXT, MD, HTML, XML, JSON, CSV, PDF
+- **Code:** JS, TS, CSS, PY, SH, YAML, YML, TOML
+- **Archives:** ZIP, DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP, ODG
+- **Media:** MP4, MKV, WEBM, AVI, FLV, MOV
+
 **Parameters:**
 
-- `filePath` (required): Path to the file to upload (txt, md, gpx, html, etc.)
+- `filePath` (required): Path to the file to upload (see supported types above)
 - `format` (optional): Filename format (default: random) - Options: random, uuid, date, name, random-words
 - `deletesAt` (optional): Optional file expiration time (default: no expiration, e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")
 - `password` (optional): Optional password protection for the uploaded file (default: no password)
@@ -58,14 +66,56 @@ Upload a file to the Zipline server with advanced options and retrieve the downl
 - `folder` (optional): Optional target folder ID (alphanumeric, must exist, default: no folder)
 - `originalName` (optional): Optional original filename to preserve during download (default: auto-generated)
 
-**Example Usage:**
+**Error Handling:**
+
+The tool provides clear error messages for common issues:
+
+- **File not found:** If the file doesn't exist, you'll see "File not found: {path}" with actionable guidance
+- **Permission denied:** If you lack read permissions, the error will indicate permission issues
+- **Unsupported file type:** If the file extension isn't supported, you'll see the specific type that's not allowed
+
+**Example Usage - Upload PNG Image:**
 
 ```json
 {
-  "filePath": "/path/to/document.pdf",
+  "filePath": "/path/to/screenshot.png",
   "format": "random",
-  "maxViews": 100,
   "deletesAt": "7d"
+}
+```
+
+**Example Usage - Upload TXT Document:**
+
+```json
+{
+  "filePath": "/path/to/notes.txt",
+  "format": "name",
+  "maxViews": 50
+}
+```
+
+**Example Usage - Upload JSON Configuration:**
+
+```json
+{
+  "filePath": "/path/to/config.json",
+  "format": "uuid",
+  "folder": "myfolder123",
+  "password": "secure123"
+}
+```
+
+**Example Usage - Upload JPG with All Options:**
+
+```json
+{
+  "filePath": "/path/to/photo.jpg",
+  "format": "date",
+  "deletesAt": "1h",
+  "password": "protected",
+  "maxViews": 10,
+  "folder": "teamfolder",
+  "originalName": "team-photo.jpg"
 }
 ```
 
@@ -77,12 +127,39 @@ Validate if a file exists and is suitable for upload to Zipline.
 
 - `filePath` (required): Absolute path to the file to validate.
 
-**Example Usage:**
+**Error Handling:**
+
+- **File not found:** If file doesn't exist, you'll see "File not found: {path}" with actionable guidance
+- **Permission denied:** If you lack read permissions, error will indicate permission issues
+- **Secrets detected:** If file contains sensitive patterns (API keys, tokens), tool will flag it
+
+**Example Usage - Validate Existing File:**
 
 ```json
 {
   "filePath": "/path/to/document.pdf"
 }
+```
+
+**Example Usage - Validate Non-Existent File (Error Case):**
+
+```json
+{
+  "filePath": "/path/to/nonexistent.txt"
+}
+```
+
+**Expected Output for File Not Found:**
+
+```
+❌ FILE VALIDATION FAILED!
+
+Error: File not found: /path/to/nonexistent.txt
+
+Please check:
+• Verify the file path is correct
+• Check if the file exists and is accessible
+• Ensure you have permission to read the file
 ```
 
 ### 3. tmp_file_manager

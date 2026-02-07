@@ -13,6 +13,7 @@ export interface UploadOptions {
   endpoint: string;
   token: string;
   filePath: string;
+  fileContent?: Buffer;
   format: string;
   timeoutMs?: number;
   filenameOverride?: string;
@@ -71,6 +72,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     endpoint,
     token,
     filePath,
+    fileContent,
     format,
     timeoutMs = 30000,
     filenameOverride,
@@ -94,7 +96,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   if (originalName !== undefined) validateOriginalName(originalName);
 
   // Read file content
-  const data = await readFile(filePath);
+  const data = fileContent || (await readFile(filePath));
 
   // Detect MIME type based on file extension
   const mimeType = detectMimeType(filePath);

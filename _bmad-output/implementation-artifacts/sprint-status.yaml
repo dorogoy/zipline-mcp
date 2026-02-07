@@ -48,8 +48,8 @@ development_status:
   1-5-validate-full-toolset-and-schema-exposure: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-implement-file-ingest-via-mcp-tool-calls: backlog
+  epic-2: in-progress
+  2-1-implement-file-ingest-via-mcp-tool-calls: done
   2-2-implement-mime-type-and-file-existence-validation: backlog
   2-3-enforce-file-size-limits-for-sandbox: backlog
   2-4-implement-memory-first-ephemeral-storage: backlog
