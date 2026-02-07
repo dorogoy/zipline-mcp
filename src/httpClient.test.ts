@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ZiplineError } from './utils/errorMapper.js';
 
 // Mock fs/promises.readFile used by the http client
 const fsMock = {
@@ -108,7 +109,21 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
         filePath: samplePath,
         format,
       })
-    ).rejects.toThrow(/HTTP 500/i);
+    ).rejects.toThrow();
+
+    try {
+      await uploadFile({
+        endpoint,
+        token,
+        filePath: samplePath,
+        format,
+      });
+      expect.fail('Should have thrown ZiplineError');
+    } catch (err) {
+      const error = err as { httpStatus?: number; mcpCode?: string };
+      expect(error.httpStatus).toBe(500);
+      expect(error.mcpCode).toBeDefined();
+    }
   });
 
   it('throws when response JSON does not include files[0].url', async () => {

@@ -7,6 +7,7 @@ import {
 } from './sandboxUtils.js';
 import path from 'path';
 import mime from 'mime-types';
+import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
 
 export interface UploadOptions {
   endpoint: string;
@@ -147,15 +148,13 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     });
 
     if (!res.ok) {
-      // Try to include response text in error
       let bodyText = '';
       try {
         bodyText = await res.text();
       } catch {
         // ignore
       }
-      const msg = bodyText ? `: ${bodyText}` : '';
-      throw new Error(`HTTP ${res.status}${msg}`);
+      throw mapHttpStatusToMcpError(res.status, bodyText);
     }
 
     let json: unknown;
@@ -289,17 +288,13 @@ export async function downloadExternalUrl(
     });
 
     if (!res.ok) {
-      // Try to include statusText or body
       let bodyText = '';
       try {
         bodyText = await res.text();
       } catch {
         // ignore
       }
-      const msg = bodyText
-        ? `: ${bodyText}`
-        : ` ${res.status} ${res.statusText || ''}`;
-      throw new HttpError(res.status, `HTTP ${res.status}${msg}`);
+      throw mapHttpStatusToMcpError(res.status, bodyText);
     }
 
     // Check content-length header if present

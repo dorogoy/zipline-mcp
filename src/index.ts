@@ -7,6 +7,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { uploadFile, UploadOptions, DownloadOptions } from './httpClient.js';
+import { ZiplineError } from './utils/errorMapper.js';
+import { secureLog, maskSensitiveData } from './utils/security.js';
 import {
   listUserFiles,
   ListUserFilesOptions,
@@ -351,20 +353,39 @@ server.registerTool(
         ],
       };
     } catch (error) {
+      if (error instanceof ZiplineError) {
+        const errorMessage =
+          `Upload failed: ${error.mcpCode} (HTTP ${error.httpStatus})\n` +
+          `${error.message}\n\n` +
+          `Resolution: ${error.resolutionGuidance}`;
+        secureLog(errorMessage);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(`❌ UPLOAD FAILED!\n\n${errorMessage}`),
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(`Upload failed: ${errorMessage}`);
+      secureLog(`Upload failed: ${errorMessage}`);
       return {
         content: [
           {
             type: 'text',
-            text:
+            text: maskSensitiveData(
               `❌ UPLOAD FAILED!\n\nError: ${errorMessage}\n\n` +
-              'Possible solutions:\n' +
-              '• Check if the file exists and is accessible\n' +
-              '• Verify the file path\n' +
-              '• Ensure the server https://files.etereo.cloud is reachable\n' +
-              '• Confirm the file type is supported',
+                'Possible solutions:\n' +
+                '• Check if the file exists and is accessible\n' +
+                '• Verify the file path\n' +
+                '• Ensure that the server https://files.etereo.cloud is reachable\n' +
+                '• Confirm that the file type is supported'
+            ),
           },
         ],
         isError: true,
@@ -926,13 +947,31 @@ server.registerTool(
         ],
       };
     } catch (error) {
+      if (error instanceof ZiplineError) {
+        const errorMessage =
+          `Download failed: ${error.mcpCode} (HTTP ${error.httpStatus})\n` +
+          `${error.message}\n\n` +
+          `Resolution: ${error.resolutionGuidance}`;
+        secureLog(errorMessage);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(`❌ DOWNLOAD FAILED\n\n${errorMessage}`),
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Download failed: ${message}`);
+      secureLog(`Download failed: ${message}`);
       return {
         content: [
           {
             type: 'text',
-            text: `❌ DOWNLOAD FAILED\n\nError: ${message}`,
+            text: maskSensitiveData(`❌ DOWNLOAD FAILED\n\nError: ${message}`),
           },
         ],
         isError: true,
