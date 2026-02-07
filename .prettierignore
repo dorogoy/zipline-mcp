@@ -4,3 +4,8 @@ package.json
 .github/*
 .prettierrc
 release-please-config.json
+_bmad/
+_bmad-output/
+.agent/
+.claude/
+.opencode/

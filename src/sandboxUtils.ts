@@ -2,6 +2,13 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { createHash } from 'crypto';
+import {
+  sanitizePath as sanitizePathUtil,
+  SandboxPathError,
+} from './utils/security';
+
+// Re-export SandboxPathError for backward compatibility
+export { SandboxPathError };
 
 // Constants
 export const TMP_DIR = path.join(os.homedir(), '.zipline_tmp');
@@ -16,14 +23,6 @@ function getZiplineToken(): string {
 
 function isSandboxingDisabled(): boolean {
   return process.env.ZIPLINE_DISABLE_SANDBOXING === 'true';
-}
-
-// Custom error class for sandbox path violations
-export class SandboxPathError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SandboxPathError';
-  }
 }
 
 // Interface for lock data
@@ -104,20 +103,8 @@ export function resolveInUserSandbox(filename: string): string {
 export function resolveSandboxPath(filename: string): string {
   const userSandbox = getUserSandbox();
 
-  // Validate filename first
-  const validationError = validateFilename(filename);
-  if (validationError) {
-    throw new SandboxPathError(validationError);
-  }
-
-  const resolved = path.resolve(userSandbox, filename);
-
-  // Security: Ensure resolved path is within sandbox
-  if (!resolved.startsWith(userSandbox)) {
-    throw new SandboxPathError(`Path traversal attempt: ${filename}`);
-  }
-
-  return resolved;
+  // Use new sanitization utility for enhanced security
+  return sanitizePathUtil(filename, userSandbox);
 }
 
 // Clean up sandboxes older than 24 hours

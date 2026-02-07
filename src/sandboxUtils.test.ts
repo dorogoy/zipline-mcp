@@ -122,10 +122,14 @@ describe('Sandbox Utils', () => {
 
     it('should throw SandboxPathError for invalid filenames', () => {
       expect(() => resolveSandboxPath('../test.txt')).toThrow(SandboxPathError);
-      expect(() => resolveSandboxPath('subdir/test.txt')).toThrow(
-        SandboxPathError
-      );
       expect(() => resolveSandboxPath('')).toThrow(SandboxPathError);
+    });
+
+    it('should allow directory paths within sandbox', () => {
+      const resolvedPath = resolveSandboxPath('subdir/test.txt');
+      const userSandbox = getUserSandbox();
+      expect(resolvedPath).toBeDefined();
+      expect(resolvedPath.startsWith(userSandbox)).toBe(true);
     });
 
     it('should throw SandboxPathError for path traversal attempts', () => {
@@ -134,14 +138,20 @@ describe('Sandbox Utils', () => {
       );
     });
 
-    it('should throw SandboxPathError for backslash path separators', () => {
-      expect(() => resolveSandboxPath('subdir\\test.txt')).toThrow(
-        SandboxPathError
-      );
+    it('should normalize backslash path separators', () => {
+      const resolvedPath = resolveSandboxPath('subdir\\test.txt');
+      const userSandbox = getUserSandbox();
+      expect(resolvedPath).toBeDefined();
+      expect(resolvedPath.startsWith(userSandbox)).toBe(true);
+      expect(path.basename(resolvedPath)).toBe('test.txt');
     });
 
-    it('should throw SandboxPathError for dot files', () => {
-      expect(() => resolveSandboxPath('.hidden')).toThrow(SandboxPathError);
+    it('should allow dot files within sandbox', () => {
+      const resolvedPath = resolveSandboxPath('.hidden');
+      const userSandbox = getUserSandbox();
+      expect(resolvedPath).toBeDefined();
+      expect(resolvedPath.startsWith(userSandbox)).toBe(true);
+      expect(path.basename(resolvedPath)).toBe('.hidden');
     });
 
     it('should throw SandboxPathError for absolute paths', () => {
@@ -166,6 +176,12 @@ describe('Sandbox Utils', () => {
 
       expect(resolvedPath).toBe(path.resolve(userSandbox, filename));
       expect(resolvedPath.startsWith(userSandbox)).toBe(true);
+    });
+
+    it('should throw SandboxPathError for absolute Windows paths', () => {
+      expect(() => resolveSandboxPath('C:\\Windows\\System32')).toThrow(
+        SandboxPathError
+      );
     });
   });
 
