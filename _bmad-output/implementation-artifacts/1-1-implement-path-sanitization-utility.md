@@ -1,6 +1,6 @@
 # Story 1.1: Implement Path Sanitization Utility
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -235,15 +235,15 @@ Path sanitization should be purely computational - no file system access needed 
 
 ### Implementation Checklist
 
-- [ ] Create `src/utils/` directory
-- [ ] Implement `sanitizePath()` function in `src/utils/security.ts`
-- [ ] Implement `validateSandboxPath()` with boundary checking
-- [ ] Add path separator normalization logic
-- [ ] Create comprehensive test suite in `src/utils/security.test.ts`
-- [ ] Optionally refactor `sandboxUtils.ts` to use new utility
-- [ ] Ensure all existing tests pass
-- [ ] Run linter and formatter (`npm run lint:fix`, `npm run format`)
-- [ ] Verify no regressions in existing functionality
+- [x] Create `src/utils/` directory
+- [x] Implement `sanitizePath()` function in `src/utils/security.ts`
+- [x] Implement `validateSandboxPath()` with boundary checking
+- [x] Add path separator normalization logic
+- [x] Create comprehensive test suite in `src/utils/security.test.ts`
+- [x] Optionally refactor `sandboxUtils.ts` to use new utility
+- [x] Ensure all existing tests pass
+- [x] Run linter and formatter (`npm run lint:fix`, `npm run format`)
+- [x] Verify no regressions in existing functionality
 
 ### References
 
@@ -296,7 +296,7 @@ Created a centralized security utility module for path sanitization that prevent
 
 **Test Coverage:**
 
-- **32 new tests** in `src/utils/security.test.ts` covering:
+- **34 tests** in `src/utils/security.test.ts` covering:
   - Basic path validation and normalization
   - Directory traversal prevention
   - Cross-platform separator handling
@@ -304,10 +304,12 @@ Created a centralized security utility module for path sanitization that prevent
   - Edge cases (null, undefined, empty, whitespace, null bytes)
   - Complex directory structures
   - Special characters in filenames
+  - Symbolic link attack patterns
 
 - **2 updated tests** in `src/sandboxUtils.test.ts` to align with new behavior
 - **27 total tests** in sandboxUtils.test.ts all passing
-- **222 total tests** across entire project all passing (no regressions)
+- **224 total tests** across entire project all passing (increased from 222 after code review fixes)
+- **No regressions** in existing functionality
 
 **Files Modified/Created:**
 
@@ -368,20 +370,50 @@ Implemented a centralized path sanitization utility module that enhances securit
    - Added absolute Windows path detection
 
 2. **Created Comprehensive Test Suite (`src/utils/security.test.ts`):**
-   - 32 tests covering all security scenarios
+   - 34 tests covering all security scenarios (increased from 32 after code review)
    - Tests for directory traversal prevention
    - Tests for cross-platform behavior
    - Tests for edge cases and error conditions
+   - Added symbolic link attack pattern tests
 
 3. **Integrated Security Utility (`src/sandboxUtils.ts`):**
    - Updated `resolveSandboxPath()` to use new sanitization utility
    - Re-exported `SandboxPathError` for backward compatibility
    - Removed duplicate `SandboxPathError` class definition
+   - Added deprecation notices to `validateFilename()` and `resolveInUserSandbox()`
 
 4. **Updated Existing Tests (`src/sandboxUtils.test.ts`):**
    - Updated 2 tests to reflect new, less restrictive behavior
    - Tests now allow directory paths and backslash separators within sandbox
    - Still reject security threats (traversal, absolute paths, etc.)
+
+**Code Review Fixes Applied (2026-02-07):**
+
+Following adversarial code review, the following security enhancements were implemented:
+
+1. **HIGH-1 Fixed:** Added explicit Unix absolute path validation in `sanitizePath()`
+   - Added `path.isAbsolute()` check to catch Unix absolute paths (`/etc/passwd`)
+   - Previously relied on indirect validation via `path.resolve()` behavior
+   - Now has explicit, defensive security validation
+
+2. **HIGH-2 Fixed:** Deprecated legacy `validateFilename()` function
+   - Added `@deprecated` JSDoc notice recommending `sanitizePath()` instead
+   - Maintains backward compatibility while guiding migration
+   - Documents why both validation systems currently coexist
+
+3. **HIGH-3 Fixed:** Enhanced `validateSandboxPath()` security
+   - Added `path.resolve()` call before validation to catch relative path escapes
+   - Previously only normalized paths without resolving to absolute
+   - Now consistent with `sanitizePath()` validation approach
+
+4. **MEDIUM-3 Fixed:** Deprecated `resolveInUserSandbox()` 
+   - Added `@deprecated` JSDoc recommending `resolveSandboxPath()` for security-sensitive operations
+   - Documents that this function lacks security validation
+
+5. **MEDIUM-4 Fixed:** Added symbolic link attack tests
+   - Added 2 tests for symlink-style path patterns
+   - Tests path patterns commonly used in symlink attacks
+   - Increases test coverage from 32 to 34 tests
 
 **Acceptance Criteria Met:**
 

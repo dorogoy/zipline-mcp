@@ -48,6 +48,11 @@ export function sanitizePath(inputPath: string, sandboxRoot: string): string {
     );
   }
 
+  // Explicitly reject Unix absolute paths (e.g., /etc/passwd)
+  if (path.isAbsolute(trimmedPath)) {
+    throw new SandboxPathError(`Absolute paths are not allowed: ${inputPath}`);
+  }
+
   const normalizedSeparators = normalizePathSeparators(trimmedPath);
 
   const absolutePath = path.resolve(sandboxRoot, normalizedSeparators);
@@ -82,7 +87,9 @@ export function validateSandboxPath(
     return false;
   }
 
-  const normalizedPath = path.normalize(trimmedPath);
+  // Resolve to absolute path before validation (security: catches relative traversals)
+  const absolutePath = path.resolve(trimmedPath);
+  const normalizedPath = path.normalize(absolutePath);
   const normalizedRoot = path.normalize(sandboxRoot);
 
   return normalizedPath.startsWith(normalizedRoot);

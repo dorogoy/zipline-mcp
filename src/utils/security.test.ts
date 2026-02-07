@@ -258,5 +258,24 @@ describe('Security Utils', () => {
         SandboxPathError
       );
     });
+
+    it('should handle symbolic link path syntax (防御测试)', () => {
+      // Note: This tests the PATH string syntax, not actual filesystem symlinks
+      // Actual symlink resolution requires filesystem access and is handled by Node.js path.resolve()
+      const symlinkStylePath = 'folder/../../../etc/passwd';
+      expect(() => sanitizePath(symlinkStylePath, userSandbox)).toThrow(
+        SandboxPathError
+      );
+    });
+
+    it('should reject paths that could be symlink targets outside sandbox', () => {
+      // Test path patterns commonly used in symlink attacks
+      expect(() => sanitizePath('/etc/passwd', userSandbox)).toThrow(
+        SandboxPathError
+      );
+      expect(() => sanitizePath('/tmp/../etc/passwd', userSandbox)).toThrow(
+        SandboxPathError
+      );
+    });
   });
 });

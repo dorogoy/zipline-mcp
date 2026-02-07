@@ -67,7 +67,12 @@ export function getUserSandbox(): string {
   return path.join(TMP_DIR, 'users', tokenHash);
 }
 
-// Validate filename for sandbox operations
+/**
+ * Validate filename for sandbox operations
+ * @deprecated Use sanitizePath() from './utils/security.ts' for enhanced security validation.
+ * This function remains for backward compatibility with existing code that validates bare filenames.
+ * For path validation with directory support, use sanitizePath() instead.
+ */
 export function validateFilename(filename: string): string | null {
   if (
     !filename ||
@@ -93,7 +98,12 @@ export async function ensureUserSandbox(): Promise<string> {
   return userSandbox;
 }
 
-// Resolve filename within user sandbox
+/**
+ * Resolve filename within user sandbox (without validation)
+ * @deprecated For security-sensitive operations, use resolveSandboxPath() instead,
+ * which includes comprehensive path sanitization and validation.
+ * This function performs a simple path.join() without security checks.
+ */
 export function resolveInUserSandbox(filename: string): string {
   const userSandbox = getUserSandbox();
   return path.join(userSandbox, filename);
