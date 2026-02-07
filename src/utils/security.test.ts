@@ -6,6 +6,8 @@ import {
   maskToken,
   maskSensitiveData,
   secureLog,
+  detectSecretPatterns,
+  SecretDetectionError,
 } from './security';
 import path from 'path';
 import os from 'os';
@@ -512,6 +514,319 @@ describe('Security Utils', () => {
         'Circular:',
         '[OBJECT_MASKING_ERROR]'
       );
+    });
+  });
+
+  describe('detectSecretPatterns', () => {
+    describe('.env file detection', () => {
+      it('should reject .env files by extension', () => {
+        const result = detectSecretPatterns('API_KEY=secret', '.env');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+        expect(result.message).toContain('.env');
+      });
+
+      it('should reject .env.local files by extension', () => {
+        const result = detectSecretPatterns('API_KEY=secret', '.env.local');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+      });
+
+      it('should reject .env.production files by extension', () => {
+        const result = detectSecretPatterns(
+          'API_KEY=secret',
+          '.env.production'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+      });
+
+      it('should reject .env.development files by extension', () => {
+        const result = detectSecretPatterns(
+          'API_KEY=secret',
+          '.env.development'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+      });
+
+      it('should detect .env files with paths', () => {
+        const result = detectSecretPatterns('API_KEY=secret', 'path/to/.env');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+      });
+    });
+
+    describe('API key detection', () => {
+      it('should detect API_KEY= pattern', () => {
+        const result = detectSecretPatterns(
+          'API_KEY=sk_test_123',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect APIKEY= pattern', () => {
+        const result = detectSecretPatterns('APIKEY=abc123', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect AWS_ACCESS_KEY_ID= pattern', () => {
+        const result = detectSecretPatterns(
+          'AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect AWS key pattern AKIA[0-9A-Z]{16}', () => {
+        const result = detectSecretPatterns(
+          'Access key: AKIAABCDEFGHIJKLMNOP',
+          'readme.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+    });
+
+    describe('Password detection', () => {
+      it('should detect PASSWORD= pattern', () => {
+        const result = detectSecretPatterns('PASSWORD=secret123', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+
+      it('should detect DB_PASSWORD= pattern', () => {
+        const result = detectSecretPatterns(
+          'DB_PASSWORD=pass123',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+
+      it('should detect PASS= pattern', () => {
+        const result = detectSecretPatterns('PASS=test', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+    });
+
+    describe('Secret detection', () => {
+      it('should detect SECRET= pattern', () => {
+        const result = detectSecretPatterns('SECRET=value', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('secret');
+      });
+
+      it('should detect SECRET_KEY= pattern', () => {
+        const result = detectSecretPatterns('SECRET_KEY=xyz', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('secret');
+      });
+
+      it('should detect CLIENT_SECRET= pattern', () => {
+        const result = detectSecretPatterns('CLIENT_SECRET=abc', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('secret');
+      });
+    });
+
+    describe('Token detection', () => {
+      it('should detect TOKEN= pattern', () => {
+        const result = detectSecretPatterns('TOKEN=bearer_xyz', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('token');
+      });
+
+      it('should detect AUTH_TOKEN= pattern', () => {
+        const result = detectSecretPatterns('AUTH_TOKEN=jwt_abc', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('token');
+      });
+
+      it('should detect REFRESH_TOKEN= pattern', () => {
+        const result = detectSecretPatterns(
+          'REFRESH_TOKEN=refresh123',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('token');
+      });
+    });
+
+    describe('Private key detection', () => {
+      it('should detect -----BEGIN PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC=',
+          'key.pem'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect PRIVATE_KEY= pattern', () => {
+        const result = detectSecretPatterns(
+          'PRIVATE_KEY=some_key_value',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+    });
+
+    describe('Clean file detection', () => {
+      it('should allow text files without secrets', () => {
+        const result = detectSecretPatterns('This is clean text', 'file.txt');
+        expect(result.detected).toBe(false);
+      });
+
+      it('should allow JSON config without secrets', () => {
+        const result = detectSecretPatterns(
+          '{"name":"test","version":"1.0"}',
+          'config.json'
+        );
+        expect(result.detected).toBe(false);
+      });
+
+      it('should allow documentation text', () => {
+        const result = detectSecretPatterns(
+          'The password field is required for authentication',
+          'readme.md'
+        );
+        expect(result.detected).toBe(false);
+      });
+
+      it('should allow image files (binary)', () => {
+        const binaryBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+        const result = detectSecretPatterns(binaryBuffer, 'image.png');
+        expect(result.detected).toBe(false);
+      });
+    });
+
+    describe('Case insensitivity', () => {
+      it('should detect lowercase api_key=', () => {
+        const result = detectSecretPatterns('api_key=secret', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect uppercase API_KEY=', () => {
+        const result = detectSecretPatterns('API_KEY=secret', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect mixed case Api_Key=', () => {
+        const result = detectSecretPatterns('Api_Key=secret', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect lowercase password=', () => {
+        const result = detectSecretPatterns('password=secret', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+
+      it('should detect uppercase PASSWORD=', () => {
+        const result = detectSecretPatterns('PASSWORD=secret', 'config.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+    });
+
+    describe('Edge cases', () => {
+      it('should handle empty files', () => {
+        const result = detectSecretPatterns('', 'file.txt');
+        expect(result.detected).toBe(false);
+      });
+
+      it('should handle null content gracefully', () => {
+        const result = detectSecretPatterns(
+          null as unknown as string,
+          'file.txt'
+        );
+        expect(result.detected).toBe(false);
+      });
+
+      it('should handle undefined content gracefully', () => {
+        const result = detectSecretPatterns(
+          undefined as unknown as string,
+          'file.txt'
+        );
+        expect(result.detected).toBe(false);
+      });
+
+      it('should handle binary files with null bytes', () => {
+        const binaryContent = 'Some text\x00with null bytes';
+        const result = detectSecretPatterns(binaryContent, 'file.bin');
+        expect(result.detected).toBe(false);
+      });
+
+      it('should handle large files', () => {
+        const largeContent = 'clean text '.repeat(100000);
+        const result = detectSecretPatterns(largeContent, 'large.txt');
+        expect(result.detected).toBe(false);
+      });
+
+      it('should stop at first secret found', () => {
+        const result = detectSecretPatterns(
+          'API_KEY=first\nPASSWORD=second',
+          'file.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+    });
+
+    describe('Multiple secret types', () => {
+      it('should detect one of multiple secrets', () => {
+        const result = detectSecretPatterns(
+          'clean\nclean\nPASSWORD=secret\nclean',
+          'file.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('password');
+      });
+
+      it('should prioritize .env detection over content scanning', () => {
+        const result = detectSecretPatterns('clean text', '.env');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('env_file');
+      });
+    });
+
+    describe('Buffer input support', () => {
+      it('should handle Buffer content', () => {
+        const bufferContent = Buffer.from('API_KEY=secret');
+        const result = detectSecretPatterns(bufferContent, 'file.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should skip binary Buffer content', () => {
+        const binaryBuffer = Buffer.from([0x00, 0x01, 0x02, 0x03]);
+        const result = detectSecretPatterns(binaryBuffer, 'file.bin');
+        expect(result.detected).toBe(false);
+      });
+    });
+  });
+
+  describe('SecretDetectionError', () => {
+    it('should create error with message, secretType, and pattern', () => {
+      const error = new SecretDetectionError(
+        'File rejected: API key pattern detected',
+        'api_key',
+        'API_KEY='
+      );
+      expect(error.message).toBe('File rejected: API key pattern detected');
+      expect(error.secretType).toBe('api_key');
+      expect(error.pattern).toBe('API_KEY=');
+      expect(error.name).toBe('SecretDetectionError');
     });
   });
 });

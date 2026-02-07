@@ -6,10 +6,12 @@ import {
   sanitizePath as sanitizePathUtil,
   SandboxPathError,
   secureLog,
+  detectSecretPatterns,
+  SecretDetectionError,
 } from './utils/security';
 
 // Re-export SandboxPathError for backward compatibility
-export { SandboxPathError };
+export { SandboxPathError, SecretDetectionError };
 
 // Constants
 export const TMP_DIR = path.join(os.homedir(), '.zipline_tmp');
@@ -116,6 +118,33 @@ export function resolveSandboxPath(filename: string): string {
 
   // Use new sanitization utility for enhanced security
   return sanitizePathUtil(filename, userSandbox);
+}
+
+export async function validateFileForSecrets(filepath: string): Promise<void> {
+  try {
+    const content = await fs.readFile(filepath);
+    const result = detectSecretPatterns(content, filepath);
+    if (result.detected) {
+      throw new SecretDetectionError(
+        result.message || 'File contains secret patterns',
+        result.secretType || 'unknown',
+        result.pattern || 'unknown'
+      );
+    }
+  } catch (error) {
+    if (error instanceof SecretDetectionError) {
+      throw error;
+    }
+    if (
+      error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
+      throw new Error(`File not found: ${filepath}`);
+    }
+    throw error;
+  }
 }
 
 // Clean up sandboxes older than 24 hours

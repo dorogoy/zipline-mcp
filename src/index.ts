@@ -38,7 +38,9 @@ import {
   isSandboxLocked,
   acquireSandboxLock,
   releaseSandboxLock,
+  validateFileForSecrets,
 } from './sandboxUtils.js';
+import { SecretDetectionError } from './sandboxUtils.js';
 
 // Re-export sandbox functions for backward compatibility
 export {
@@ -48,10 +50,13 @@ export {
   resolveInUserSandbox,
   resolveSandboxPath,
   logSandboxOperation,
+  TMP_MAX_READ_SIZE,
   cleanupOldSandboxes,
   isSandboxLocked,
   acquireSandboxLock,
   releaseSandboxLock,
+  validateFileForSecrets,
+  SecretDetectionError,
 };
 
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
@@ -256,6 +261,35 @@ server.registerTool(
 
       console.error(`Executing upload for: ${path.basename(filePath)}`);
 
+      // Validate file for secrets before upload
+      try {
+        await validateFileForSecrets(filePath);
+      } catch (error) {
+        if (error instanceof SecretDetectionError) {
+          const errorMessage =
+            `❌ UPLOAD REJECTED!\n\n` +
+            `Reason: ${error.message}\n` +
+            `Secret Type: ${error.secretType}\n` +
+            `Pattern: ${error.pattern}\n\n` +
+            'Possible solutions:\n' +
+            '• Remove sensitive credentials from the file\n' +
+            '• Use a .env.example file instead of .env\n' +
+            '• Replace actual secrets with placeholder values\n' +
+            '• Ensure API keys, tokens, and passwords are not included';
+          console.error(`Secret detected: ${error.secretType}`);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: errorMessage,
+              },
+            ],
+            isError: true,
+          };
+        }
+        throw error;
+      }
+
       const uploadOptions: UploadOptions = {
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
@@ -363,6 +397,20 @@ server.registerTool(
 
       const isSupported = ALLOWED_EXTENSIONS.includes(fileExt);
 
+      // Validate file for secrets
+      let secretDetected = false;
+      let secretDetails = '';
+      try {
+        await validateFileForSecrets(filePath);
+      } catch (error) {
+        if (error instanceof SecretDetectionError) {
+          secretDetected = true;
+          secretDetails = `\n⚠️  Secret Type: ${error.secretType}\n⚠️  Pattern: ${error.pattern}`;
+        } else {
+          throw error;
+        }
+      }
+
       const formattedSize = formatFileSize(fileSize);
       const fileName = path.basename(filePath);
 
@@ -376,11 +424,13 @@ server.registerTool(
               `📍 Path: ${filePath}\n` +
               `📊 Size: ${formattedSize}\n` +
               `🏷️  Extension: ${fileExt || 'none'}\n` +
-              `✅ Supported: ${isSupported ? 'Yes' : 'No'}\n\n` +
+              `✅ Supported: ${isSupported ? 'Yes' : 'No'}${secretDetails}\n\n` +
               `Status: ${
-                isSupported
-                  ? '🟢 Ready for upload'
-                  : '🔴 File type not supported'
+                secretDetected
+                  ? '🔴 Contains secrets (not allowed for upload)'
+                  : isSupported
+                    ? '🟢 Ready for upload'
+                    : '🔴 File type not supported'
               }\n\n` +
               `Supported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
           },
@@ -527,7 +577,42 @@ server.registerTool(
       }
       const filePath = resolveSandboxPath(filename);
       try {
+        // Write file first
         await fs.writeFile(filePath, content ?? '', { encoding: 'utf8' });
+
+        // Validate for secrets after writing
+        try {
+          await validateFileForSecrets(filePath);
+        } catch (error) {
+          // If secrets detected, delete the file and return error
+          if (error instanceof SecretDetectionError) {
+            await fs.unlink(filePath);
+            logSandboxOperation(
+              'FILE_CREATE_REJECTED',
+              filename,
+              `Reason: ${error.secretType} detected`
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `❌ CREATE REJECTED!\\n\\n` +
+                    `Reason: ${error.message}\\n` +
+                    `Secret Type: ${error.secretType}\\n` +
+                    `Pattern: ${error.pattern}\\n\\n` +
+                    'Possible solutions:\\n' +
+                    '• Remove sensitive credentials from the content\\n' +
+                    '• Use placeholder values instead of actual secrets\\n' +
+                    '• Ensure API keys, tokens, and passwords are not included',
+                },
+              ],
+              isError: true,
+            };
+          }
+          throw error;
+        }
+
         const stat = await fs.stat(filePath);
         logSandboxOperation(
           'FILE_CREATED',

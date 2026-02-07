@@ -1,5 +1,29 @@
 import path from 'path';
 
+export interface SecretDetectionResult {
+  detected: boolean;
+  secretType?:
+    | 'env_file'
+    | 'api_key'
+    | 'password'
+    | 'secret'
+    | 'token'
+    | 'private_key';
+  pattern?: string;
+  message?: string;
+}
+
+export class SecretDetectionError extends Error {
+  constructor(
+    message: string,
+    public secretType: string,
+    public pattern: string
+  ) {
+    super(message);
+    this.name = 'SecretDetectionError';
+  }
+}
+
 export class SandboxPathError extends Error {
   constructor(message: string) {
     super(message);
@@ -164,4 +188,126 @@ export function secureLog(message: string, ...args: unknown[]): void {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   console.error(maskedMessage, ...maskedArgs);
+}
+
+const SECRET_PATTERNS = {
+  apiKey:
+    /(?:api[_-]?key|apikey|aws_access_key_id)\s*[:=]\s*['"]?(?:[a-z0-9_-]{3,}|AKIA[0-9A-Z]{16})['"]?|AKIA[0-9A-Z]{16}/i,
+  password: /(?:password|passwd|pass|pwd)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
+  secret:
+    /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
+  token:
+    /(?:token|auth[_-]?token|refresh_token|access_token)\s*[:=]\s*['"]?[a-z0-9_-]{3,}['"]?/i,
+  privateKey:
+    /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|private[_-]?key\s*[:=]/i,
+} as const;
+
+function isEnvFile(filename: string): boolean {
+  if (!filename || typeof filename !== 'string') {
+    return false;
+  }
+  const ext = path.extname(filename).toLowerCase();
+  const basename = path.basename(filename).toLowerCase();
+  return (
+    ext === '.env' || basename.startsWith('.env') || basename.endsWith('.env')
+  );
+}
+
+function isBinaryContent(content: string | Buffer): boolean {
+  if (Buffer.isBuffer(content)) {
+    for (let i = 0; i < Math.min(content.length, 1024); i++) {
+      const byte = content[i];
+      if (byte === 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+  if (typeof content !== 'string') {
+    return true;
+  }
+  if (content.includes('\0')) {
+    return true;
+  }
+  return false;
+}
+
+function scanForSecretPatterns(content: string): SecretDetectionResult {
+  const patternEntries = Object.entries(SECRET_PATTERNS) as [
+    keyof typeof SECRET_PATTERNS,
+    RegExp,
+  ][];
+
+  for (const [secretType, pattern] of patternEntries) {
+    const match = content.match(pattern);
+    if (match) {
+      // Map secretType to snake_case and derive pattern name
+      const mappedSecretType =
+        secretType === 'apiKey'
+          ? 'api_key'
+          : secretType === 'password'
+            ? 'password'
+            : secretType === 'privateKey'
+              ? 'private_key'
+              : secretType;
+
+      // Use pattern type name instead of actual matched content to avoid leaking secrets
+      const patternName =
+        mappedSecretType === 'api_key'
+          ? 'API_KEY='
+          : mappedSecretType === 'password'
+            ? 'PASSWORD='
+            : mappedSecretType === 'secret'
+              ? 'SECRET='
+              : mappedSecretType === 'token'
+                ? 'TOKEN='
+                : mappedSecretType === 'private_key'
+                  ? 'PRIVATE_KEY='
+                  : 'SECRET_PATTERN';
+
+      return {
+        detected: true,
+        secretType: mappedSecretType,
+        pattern: patternName,
+        message: `File rejected: ${secretType
+          .replace(/([A-Z])/g, ' $1')
+          .trim()
+          .toLowerCase()} pattern detected. Remove sensitive credentials before upload.`,
+      };
+    }
+  }
+
+  return { detected: false };
+}
+
+export function detectSecretPatterns(
+  content: string | Buffer,
+  filename: string
+): SecretDetectionResult {
+  if (!content || !filename) {
+    return { detected: false };
+  }
+
+  if (typeof filename !== 'string') {
+    return { detected: false };
+  }
+
+  if (isEnvFile(filename)) {
+    return {
+      detected: true,
+      secretType: 'env_file',
+      pattern: '.env',
+      message:
+        'File rejected: .env file detected. Environment files may contain secrets.',
+    };
+  }
+
+  if (isBinaryContent(content)) {
+    return { detected: false };
+  }
+
+  const textContent =
+    typeof content === 'string' ? content : content.toString();
+
+  return scanForSecretPatterns(textContent);
 }
