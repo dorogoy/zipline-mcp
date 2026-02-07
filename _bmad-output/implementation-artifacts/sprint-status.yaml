@@ -45,7 +45,7 @@ development_status:
   1-2-implement-token-masking-security-utility: done
   1-3-implement-secret-pattern-detection: done
   1-4-implement-http-error-to-mcp-error-code-mapping: done
-  1-5-validate-full-toolset-and-schema-exposure: backlog
+  1-5-validate-full-toolset-and-schema-exposure: done
   epic-1-retrospective: optional
 
   epic-2: backlog
