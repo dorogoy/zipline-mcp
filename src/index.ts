@@ -2,7 +2,6 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { readFile } from 'fs/promises';
 import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -40,6 +39,8 @@ import {
   SecretDetectionError,
 } from './sandboxUtils.js';
 import { McpErrorCode } from './utils/errorMapper.js';
+import * as mime from 'mime-types';
+import { fileTypeFromBuffer } from 'file-type';
 
 // Re-export sandbox functions for backward compatibility
 export {
@@ -446,21 +447,38 @@ server.registerTool(
         throw new Error(`File type ${fileExt} not supported.`);
       }
 
+      // 1. Critical Security Check: Validate MIME type matches extension
+      // We read only the header to prevent OOM on large files
+      const { mimeMatch, detectedMimeType, extensionMimeType } = await validateFileContent(
+        filePath,
+        fileExt
+      );
+      if (!mimeMatch) {
+        throw new Error(
+          `Security Violation: File content (MIME: [${detectedMimeType}] len:${detectedMimeType.length}) does not match extension (${fileExt}) which expects ([${extensionMimeType}] len:${extensionMimeType.length}). Upload rejected.`
+        );
+      }
+
       // Memory-First Staging via sandboxUtils
       // This validates secrets and loads content into memory if < 5MB
       const stagedFile = await stageFile(filePath);
 
-      const fileSize = stagedFile.type === 'memory'
-        ? stagedFile.content.length
-        : (await fs.stat(filePath)).size;
+      const fileSize =
+        stagedFile.type === 'memory'
+          ? stagedFile.content.length
+          : (await fs.stat(filePath)).size;
 
       const opts: UploadOptions = {
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
         filePath,
-        fileContent: stagedFile.type === 'memory' ? stagedFile.content : undefined,
         format: normalizedFormat,
       };
+
+      if (stagedFile.type === 'memory') {
+        opts.fileContent = stagedFile.content;
+      }
+
       if (password !== undefined) opts.password = password;
       if (maxViews !== undefined) opts.maxViews = maxViews;
       if (folder !== undefined) opts.folder = folder;
@@ -491,6 +509,8 @@ server.registerTool(
       ) {
         errorCode = McpErrorCode.RESOURCE_NOT_FOUND;
         errorDetails = `File not found: ${filePath}`;
+      } else if (errorMessage.includes('Security Violation')) {
+        errorCode = McpErrorCode.FORBIDDEN_OPERATION;
       }
 
       return {
@@ -498,7 +518,7 @@ server.registerTool(
           {
             type: 'text',
             text: maskSensitiveData(
-              `❌ UPLOAD FAILED!\n\nError Code: ${errorCode}\nError: ${errorDetails}\n\nPossible solutions:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file\n• Confirm that the server ${ZIPLINE_ENDPOINT} is reachable`
+              `❌ UPLOAD FAILED!\n\nError Code: ${errorCode}\nError: ${errorDetails}\n\nPossible solutions:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file\n• Confirm that the file type is supported`
             ),
           },
         ],
@@ -508,21 +528,94 @@ server.registerTool(
   }
 );
 
+/**
+ * Validates file content by checking MIME type against extension.
+ * Reads only the first 4100 bytes for efficiency.
+ */
+async function validateFileContent(
+  filePath: string,
+  fileExt: string
+): Promise<{
+  detectedMimeType: string;
+  mimeMatch: boolean;
+  isSupported: boolean;
+  extensionMimeType: string;
+}> {
+  // Read only start of file for magic number detection
+  // 4100 bytes is sufficient for file-type to detect most formats
+  const handle = await fs.open(filePath, 'r');
+  const buffer = Buffer.alloc(4100);
+  try {
+    const { bytesRead } = await handle.read(buffer, 0, 4100, 0);
+    // If file is smaller than buffer, slice it
+    const params = bytesRead < 4100 ? buffer.subarray(0, bytesRead) : buffer;
+
+    // Detect MIME
+    let detectedMimeType = 'unknown';
+    try {
+      const fileType = await fileTypeFromBuffer(params);
+      detectedMimeType = fileType?.mime || mime.lookup(filePath) || 'unknown';
+    } catch {
+      detectedMimeType = mime.lookup(filePath) || 'unknown';
+    }
+
+    const extensionMimeType = mime.lookup(fileExt) || 'unknown';
+
+
+    // Loose matching logic:
+    // 1. If detection failed (unknown), assume match (fallback to extension trust for obscure types)
+    // 2. If detected matches extension mime
+    // 3. Special handling for text files which might be detected as generic 'application/octet-stream' or specific text subtypes
+    let mimeMatch =
+      detectedMimeType === 'unknown' || detectedMimeType === extensionMimeType;
+
+    // Additional robust checks for common mismatches
+    if (!mimeMatch) {
+      // Allow text/plain for code files
+      if (
+        detectedMimeType === 'text/plain' &&
+        [
+          '.ts',
+          '.js',
+          '.json',
+          '.md',
+          '.yml',
+          '.yaml',
+          '.csv',
+          '.xml',
+          '.svg',
+        ].includes(fileExt)
+      ) {
+        mimeMatch = true;
+      }
+      // Allow application/xml for svg
+      if (detectedMimeType === 'application/xml' && fileExt === '.svg') {
+        mimeMatch = true;
+      }
+    }
+
+    const isSupported = ALLOWED_EXTENSIONS.includes(fileExt);
+
+    return { detectedMimeType, mimeMatch, isSupported, extensionMimeType };
+  } finally {
+    if (handle) await handle.close();
+  }
+}
+
 // 2. validate_file
 server.registerTool(
   'validate_file',
   {
     title: 'Validate File',
     description:
-      'Validate if a file exists and is suitable for upload to Zipline.',
+      'Validate if a file exists, detect its MIME type, and verify it is suitable for upload to Zipline. Performs content-based MIME detection, extension validation, and MIME/extension consistency checks.',
     inputSchema: validateFileInputSchema,
   },
   async ({ filePath }) => {
     try {
-      const fileContent = await readFile(filePath);
-      const fileSize = fileContent.length;
       const fileExt = path.extname(filePath).toLowerCase();
-      const isSupported = ALLOWED_EXTENSIONS.includes(fileExt);
+
+      // 1. Secret Validation (Full scan still required for security)
       let secretDetails = '';
       try {
         await validateFileForSecrets(filePath);
@@ -531,12 +624,19 @@ server.registerTool(
           secretDetails = `\n⚠️  Secret Type: ${error.secretType}\n⚠️  Pattern: ${error.pattern}`;
         } else throw error;
       }
-      const formattedSize = formatFileSize(fileSize);
+
+      // 2. Efficient MIME Detection
+      const { detectedMimeType, mimeMatch, isSupported } =
+        await validateFileContent(filePath, fileExt);
+
+      const stats = await fs.stat(filePath);
+      const formattedSize = formatFileSize(stats.size);
+
       return {
         content: [
           {
             type: 'text',
-            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(filePath)}\n📍 Path: ${filePath}\n📊 Size: ${formattedSize}\n🏷️  Extension: ${fileExt || 'none'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}${secretDetails}\n\nStatus: ${secretDetails ? '🔴 Contains secrets (not allowed for upload)' : isSupported ? '🟢 Ready for upload' : '🔴 File type not supported'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
+            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(filePath)}\n📍 Path: ${filePath}\n📊 Size: ${formattedSize}\n🏷️  Extension: ${fileExt || 'none'}\n🎯 MIME: ${detectedMimeType}\n✅ MIME/Extension Match: ${mimeMatch ? 'Yes' : 'No'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}${secretDetails}\n\nStatus: ${secretDetails ? '🔴 Contains secrets (not allowed for upload)' : !isSupported ? '🔴 File type not supported' : !mimeMatch ? '🔴 MIME type matches extension violation' : '🟢 Ready for upload'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
           },
         ],
       };

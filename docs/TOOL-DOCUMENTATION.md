@@ -121,24 +121,59 @@ The tool provides clear error messages for common issues:
 
 ### 2. validate_file
 
-Validate if a file exists and is suitable for upload to Zipline.
+Validate if a file exists, detect its MIME type, and verify it's suitable for upload to Zipline.
 
 **Parameters:**
 
 - `filePath` (required): Absolute path to the file to validate.
+
+**Validation Features:**
+
+- **File existence check:** Confirms the file exists and is accessible
+- **MIME type detection:** Uses content-based detection (magic numbers) for binary files, extension-based for text files
+- **Extension validation:** Verifies file extension matches allowed types
+- **MIME/extension match:** Checks if detected MIME type matches expected type for file extension
+- **Secret detection:** Scans for sensitive patterns (API keys, tokens, passwords)
+
+**Supported File Types:**
+
+- **Images:** PNG, JPG, JPEG, GIF, WEBP, SVG
+- **Text/Documents:** TXT, MD, HTML, XML, JSON, CSV, PDF
+- **Code:** JS, TS, CSS, PY, SH, YAML, YML, TOML
+- **Archives:** ZIP, DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP, ODG
+- **Media:** MP4, MKV, WEBM, AVI, FLV, MOV
 
 **Error Handling:**
 
 - **File not found:** If file doesn't exist, you'll see "File not found: {path}" with actionable guidance
 - **Permission denied:** If you lack read permissions, error will indicate permission issues
 - **Secrets detected:** If file contains sensitive patterns (API keys, tokens), tool will flag it
+- **MIME mismatch:** If file content doesn't match extension (e.g., PNG data in .jpg file), tool will report mismatch
 
-**Example Usage - Validate Existing File:**
+**Example Usage - Validate PNG Image:**
 
 ```json
 {
-  "filePath": "/path/to/document.pdf"
+  "filePath": "/path/to/screenshot.png"
 }
+```
+
+**Expected Output for Valid PNG:**
+
+```
+📋 FILE VALIDATION REPORT
+
+📁 File: screenshot.png
+📍 Path: /path/to/screenshot.png
+📊 Size: 245 KB
+🏷️  Extension: .png
+🎯 MIME: image/png
+✅ MIME/Extension Match: Yes
+✅ Supported: Yes
+
+Status: 🟢 Ready for upload
+
+Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
 ```
 
 **Example Usage - Validate Non-Existent File (Error Case):**
@@ -160,6 +195,32 @@ Please check:
 • Verify the file path is correct
 • Check if the file exists and is accessible
 • Ensure you have permission to read the file
+```
+
+**Example Usage - Validate File with MIME Mismatch:**
+
+```json
+{
+  "filePath": "/path/to/disguised.jpg"
+}
+```
+
+**Expected Output for MIME Mismatch:**
+
+```
+📋 FILE VALIDATION REPORT
+
+📁 File: disguised.jpg
+📍 Path: /path/to/disguised.jpg
+📊 Size: 128 KB
+🏷️  Extension: .jpg
+🎯 MIME: image/png
+✅ MIME/Extension Match: No
+✅ Supported: Yes
+
+Status: 🟢 Ready for upload
+
+Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
 ```
 
 ### 3. tmp_file_manager

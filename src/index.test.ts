@@ -1,7 +1,7 @@
 // Set required environment variables for tests
 process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Dirent } from 'fs';
 
@@ -44,11 +44,32 @@ const fsMock = {
   mkdir: vi.fn(),
   rm: vi.fn(),
   unlink: vi.fn(),
+  open: vi.fn(),
 };
 vi.mock('fs/promises', () => ({
   ...fsMock,
   default: fsMock,
 }));
+
+// Helper to mock file content for both readFile and open/read
+// This is needed because the new implementation uses fs.open+read for MIME checks
+const mockFileContent = (content: Buffer | string) => {
+  const buf = Buffer.isBuffer(content) ? content : Buffer.from(content);
+
+  // Mock readFile (legacy/full read)
+  fsMock.readFile.mockResolvedValue(buf);
+  fsMock.stat.mockResolvedValue({ size: buf.length });
+
+  // Mock open/read (new optimization)
+  fsMock.open.mockResolvedValue({
+    read: vi.fn().mockImplementation((buffer: Buffer, _offset: number, length: number) => {
+      const bytesToCopy = Math.min(length, buf.length);
+      buf.copy(buffer, 0, 0, bytesToCopy);
+      return Promise.resolve({ bytesRead: bytesToCopy, buffer });
+    }),
+    close: vi.fn().mockResolvedValue(undefined),
+  });
+};
 
 vi.mock('path', async (importOriginal) => {
   const actualPath = await importOriginal<typeof import('path')>();
@@ -163,6 +184,7 @@ describe('Zipline MCP Server', () => {
       ) as NodeJS.ErrnoException;
       eaccesError.code = 'EACCES';
       fsMock.readFile.mockRejectedValue(eaccesError);
+      fsMock.open.mockRejectedValue(eaccesError);
 
       const handler = getToolHandler('validate_file');
       if (!handler) throw new Error('Handler not found');
@@ -170,6 +192,197 @@ describe('Zipline MCP Server', () => {
       const result = await handler({ filePath: '/root/protected.txt' }, {});
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('permission denied');
+    });
+
+    it('should validate file successfully without upload side effects', async () => {
+      const { uploadFile } = await import('./httpClient');
+      const uploadSpy = uploadFile as Mock;
+
+      mockFileContent('test content');
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.txt' }, {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('📋 FILE VALIDATION REPORT');
+      expect(uploadSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle symlink resolution correctly', async () => {
+      const symlinkError = new Error(
+        'ELOOP: too many levels of symbolic links'
+      ) as NodeJS.ErrnoException;
+      symlinkError.code = 'ELOOP';
+      fsMock.readFile.mockRejectedValue(symlinkError);
+      fsMock.open.mockRejectedValue(symlinkError);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/symlink' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain(
+        'too many levels of symbolic links'
+      );
+    });
+
+    it('should validate supported file types correctly', async () => {
+      const pngData = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      mockFileContent(pngData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.png' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('Extension: .png');
+      expect(result.content[0]?.text).toContain('Supported: Yes');
+    });
+
+    it('should reject unsupported file extensions', async () => {
+      mockFileContent(Buffer.from('test content'));
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.exe' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('Supported: No');
+      expect(result.content[0]?.text).toContain('File type not supported');
+    });
+
+    it('should detect MIME type for PNG files', async () => {
+      const pngData = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      mockFileContent(pngData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.png' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('MIME: image/png');
+    });
+
+    it('should detect MIME type for JPEG files', async () => {
+      const jpgData = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+      mockFileContent(jpgData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.jpg' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('MIME: image/jpeg');
+    });
+
+    it('should detect MIME type for text files', async () => {
+      const textData = Buffer.from('Hello, World!');
+      mockFileContent(textData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.txt' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('MIME: text/plain');
+      expect(result.content[0]?.text).toContain('MIME/Extension Match: Yes');
+    });
+
+    it('should detect MIME type for JSON files', async () => {
+      const jsonData = Buffer.from('{"message":"test"}');
+      mockFileContent(jsonData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.json' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('MIME: application/json');
+    });
+
+    it('should show MIME extension match status', async () => {
+      const pngData = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      mockFileContent(pngData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.png' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toMatch(
+        /MIME\/Extension Match: (✅|Yes|Match)/
+      );
+    });
+
+    it('should handle MIME/extension mismatch gracefully', async () => {
+      const pngData = Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        Buffer.alloc(64),
+      ]);
+      mockFileContent(pngData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/image.jpg' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('MIME: image/png');
+      expect(result.content[0]?.text).toContain('MIME/Extension Match: No');
+    });
+
+    it('should reject files with unsupported MIME types', async () => {
+      const exeData = Buffer.from([0x4d, 0x5a]);
+      mockFileContent(exeData);
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.exe' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('Supported: No');
+      expect(result.content[0]?.text).toContain('File type not supported');
+    });
+
+    it('should integrate with upload_file_to_zipline flow', async () => {
+      const { uploadFile } = await import('./httpClient');
+      const uploadSpy = uploadFile as Mock;
+
+      const pngData = Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        Buffer.alloc(64),
+      ]);
+      mockFileContent(pngData);
+
+      const validateHandler = getToolHandler('validate_file');
+      const uploadHandler = getToolHandler('upload_file_to_zipline');
+      if (!validateHandler || !uploadHandler)
+        throw new Error('Handler not found');
+
+      const validateResult = await validateHandler(
+        { filePath: '/path/to/image.png' },
+        {}
+      );
+      expect(validateResult.isError).toBeFalsy();
+      expect(validateResult.content[0]?.text).toContain('MIME: image/png');
+      expect(validateResult.content[0]?.text).toContain(
+        'MIME/Extension Match: Yes'
+      );
+      expect(validateResult.content[0]?.text).toContain('Supported: Yes');
+
+      const uploadResult = await uploadHandler(
+        { filePath: '/path/to/image.png' },
+        {}
+      );
+      expect(uploadResult.isError).toBeFalsy();
+      expect(uploadSpy).toHaveBeenCalled();
     });
   });
 
@@ -194,8 +407,7 @@ describe('Zipline MCP Server', () => {
     };
 
     it('should validate and normalize format correctly', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -230,6 +442,7 @@ describe('Zipline MCP Server', () => {
       enoentError.code = 'ENOENT';
       fsMock.readFile.mockRejectedValue(enoentError);
       fsMock.stat.mockRejectedValue(enoentError);
+      fsMock.open.mockRejectedValue(enoentError);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -244,8 +457,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle unsupported file type error', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -256,8 +468,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle deleteAt parameter correctly', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -282,8 +493,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle password parameter correctly', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -308,8 +518,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle maxViews parameter correctly', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -334,8 +543,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle folder parameter correctly', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -360,8 +568,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle all optional parameters together', async () => {
-      fsMock.readFile.mockResolvedValue(Buffer.from('test content'));
-      fsMock.stat.mockResolvedValue({ size: 12 });
+      mockFileContent(Buffer.from('test content'));
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -397,6 +604,7 @@ describe('Zipline MCP Server', () => {
       ) as NodeJS.ErrnoException;
       enoentError.code = 'ENOENT';
       fsMock.readFile.mockRejectedValue(enoentError);
+      fsMock.open.mockRejectedValue(enoentError);
 
       const handler = getToolHandler('validate_file');
       if (!handler) throw new Error('Handler not found');
@@ -413,8 +621,7 @@ describe('Zipline MCP Server', () => {
       const pngData = Buffer.from([
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
       ]);
-      fsMock.readFile.mockResolvedValue(pngData);
-      fsMock.stat.mockResolvedValue({ size: 8 });
+      mockFileContent(pngData);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -425,8 +632,7 @@ describe('Zipline MCP Server', () => {
 
     it('should handle JPG binary files correctly', async () => {
       const jpgData = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-      fsMock.readFile.mockResolvedValue(jpgData);
-      fsMock.stat.mockResolvedValue({ size: 4 });
+      mockFileContent(jpgData);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
@@ -436,27 +642,48 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should handle TXT text files correctly', async () => {
-      const textData = Buffer.from('Hello, World!', 'utf8');
-      fsMock.readFile.mockResolvedValue(textData);
-      fsMock.stat.mockResolvedValue({ size: 13 });
+      const textData = Buffer.from('Hello, World!'.repeat(100), 'utf8');
+      mockFileContent(textData);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
 
       const result = await handler({ filePath: '/path/to/text.txt' }, {});
-      expect(!result.isError).toBe(true);
+      expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
     });
 
     it('should handle JSON text files correctly', async () => {
-      const jsonData = Buffer.from('{"key":"value"}', 'utf8');
-      fsMock.readFile.mockResolvedValue(jsonData);
-      fsMock.stat.mockResolvedValue({ size: 16 });
+      const jsonData = Buffer.from('{"key":"value"}'.repeat(100), 'utf8');
+      mockFileContent(jsonData);
 
       const handler = getToolHandler('upload_file_to_zipline');
       if (!handler) throw new Error('Handler not found');
 
       const result = await handler({ filePath: '/path/to/data.json' }, {});
       expect(!result.isError).toBe(true);
+    });
+
+    it('should reject spoofed file (MIME mismatch) during upload', async () => {
+      // Create a "fake" jpg that is actually a PNG (large enough for detection)
+      const pngHeader = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      const pngData = Buffer.alloc(4100);
+      pngHeader.copy(pngData);
+
+      // Use helper
+      mockFileContent(pngData);
+
+      const handler = getToolHandler('upload_file_to_zipline');
+      if (!handler) throw new Error('Handler not found');
+
+      // Attempt to upload as .jpg
+      const result = await handler({ filePath: '/path/to/spoofed.jpg' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Security Violation');
+      expect(result.content[0]?.text).toContain('image/png'); // Detected
+      expect(result.content[0]?.text).toContain('.jpg'); // Extension
     });
   });
 });
