@@ -36,6 +36,7 @@ import {
   releaseSandboxLock,
   validateFileForSecrets,
   stageFile,
+  MEMORY_STAGING_THRESHOLD,
   SecretDetectionError,
 } from './sandboxUtils.js';
 import { McpErrorCode } from './utils/errorMapper.js';
@@ -62,6 +63,22 @@ export {
 const ZIPLINE_TOKEN = process.env.ZIPLINE_TOKEN;
 const ZIPLINE_ENDPOINT =
   process.env.ZIPLINE_ENDPOINT || 'http://localhost:3000';
+
+/**
+ * Maximum allowed file size for upload (in bytes).
+ * Configurable via ZIPLINE_MAX_FILE_SIZE environment variable.
+ * Default: 100MB
+ */
+const parsedMaxSize = parseInt(process.env.ZIPLINE_MAX_FILE_SIZE || '', 10);
+const MAX_FILE_SIZE_BYTES =
+  Number.isFinite(parsedMaxSize) && parsedMaxSize > 0
+    ? parsedMaxSize
+    : 100 * 1024 * 1024;
+
+/**
+ * Ratio of size to threshold to trigger a warning (0.9 = 90%)
+ */
+const SIZE_WARNING_THRESHOLD_RATIO = 0.9;
 
 if (!ZIPLINE_TOKEN) {
   throw new Error('Environment variable ZIPLINE_TOKEN is required.');
@@ -423,9 +440,14 @@ server.registerTool(
   {
     title: 'Upload File to Zipline',
     description:
-      'Upload a file to the Zipline server with advanced options and retrieve the download URL. ' +
+      'Upload a file to Zipline server with advanced options and retrieve the download URL. ' +
       'Prerequisites: Depends on validate_file (recommended for pre-validation). Requires Zipline authentication. ' +
-      'Error Handling: Common failures: File validation errors, upload failures, authentication issues.',
+      'Size Limits: Maximum file size is ' +
+      formatFileSize(MAX_FILE_SIZE_BYTES) +
+      ' (configurable via ZIPLINE_MAX_FILE_SIZE). Files < ' +
+      formatFileSize(MEMORY_STAGING_THRESHOLD) +
+      ' use memory staging for optimal performance. ' +
+      'Error Handling: Common failures: File validation errors, upload failures, authentication issues, file size exceeded.',
     inputSchema: uploadFileInputSchema,
   },
   async (args) => {
@@ -449,13 +471,21 @@ server.registerTool(
 
       // 1. Critical Security Check: Validate MIME type matches extension
       // We read only the header to prevent OOM on large files
-      const { mimeMatch, detectedMimeType, extensionMimeType } = await validateFileContent(
-        filePath,
-        fileExt
-      );
+      const { mimeMatch, detectedMimeType, extensionMimeType } =
+        await validateFileContent(filePath, fileExt);
       if (!mimeMatch) {
         throw new Error(
           `Security Violation: File content (MIME: [${detectedMimeType}] len:${detectedMimeType.length}) does not match extension (${fileExt}) which expects ([${extensionMimeType}] len:${extensionMimeType.length}). Upload rejected.`
+        );
+      }
+
+      // 2. Early Size Validation: Check file size before staging
+      const stats = await fs.stat(filePath);
+      if (stats.size > MAX_FILE_SIZE_BYTES) {
+        const formattedActualSize = formatFileSize(stats.size);
+        const formattedMaxSize = formatFileSize(MAX_FILE_SIZE_BYTES);
+        throw new Error(
+          `File too large: ${formattedActualSize} exceeds maximum allowed size of ${formattedMaxSize}. Reduce file size or configure ZIPLINE_MAX_FILE_SIZE (value in bytes, e.g. 209715200 for 200MB).`
         );
       }
 
@@ -464,9 +494,7 @@ server.registerTool(
       const stagedFile = await stageFile(filePath);
 
       const fileSize =
-        stagedFile.type === 'memory'
-          ? stagedFile.content.length
-          : (await fs.stat(filePath)).size;
+        stagedFile.type === 'memory' ? stagedFile.content.length : stats.size;
 
       const opts: UploadOptions = {
         endpoint: ZIPLINE_ENDPOINT,
@@ -511,6 +539,8 @@ server.registerTool(
         errorDetails = `File not found: ${filePath}`;
       } else if (errorMessage.includes('Security Violation')) {
         errorCode = McpErrorCode.FORBIDDEN_OPERATION;
+      } else if (errorMessage.includes('File too large')) {
+        errorCode = McpErrorCode.PAYLOAD_TOO_LARGE;
       }
 
       return {
@@ -560,7 +590,6 @@ async function validateFileContent(
     }
 
     const extensionMimeType = mime.lookup(fileExt) || 'unknown';
-
 
     // Loose matching logic:
     // 1. If detection failed (unknown), assume match (fallback to extension trust for obscure types)
@@ -621,7 +650,7 @@ server.registerTool(
         await validateFileForSecrets(filePath);
       } catch (error) {
         if (error instanceof SecretDetectionError) {
-          secretDetails = `\n⚠️  Secret Type: ${error.secretType}\n⚠️  Pattern: ${error.pattern}`;
+          secretDetails = `\n⚠️ Secret Type: ${error.secretType}\n⚠️ Pattern: ${error.pattern}`;
         } else throw error;
       }
 
@@ -632,11 +661,31 @@ server.registerTool(
       const stats = await fs.stat(filePath);
       const formattedSize = formatFileSize(stats.size);
 
+      // 3. Staging Strategy and Size Analysis
+      let stagingStrategy = '';
+      let sizeWarning = '';
+      let sizeLimitWarning = '';
+
+      if (stats.size > MAX_FILE_SIZE_BYTES) {
+        sizeLimitWarning = `\n⚠️ SIZE LIMIT EXCEEDED: ${formattedSize} exceeds maximum ${formatFileSize(MAX_FILE_SIZE_BYTES)}. This file would be rejected during upload.`;
+      } else if (
+        stats.size >= MEMORY_STAGING_THRESHOLD * SIZE_WARNING_THRESHOLD_RATIO &&
+        stats.size < MEMORY_STAGING_THRESHOLD
+      ) {
+        sizeWarning = `\n⚠️ SIZE WARNING: File is close to ${formatFileSize(MEMORY_STAGING_THRESHOLD)} memory threshold. Will use memory staging but consider optimizing file size.`;
+      }
+
+      if (stats.size < MEMORY_STAGING_THRESHOLD) {
+        stagingStrategy = '🧠 Memory staging (fast, no disk I/O)';
+      } else {
+        stagingStrategy = '💾 Disk fallback staging (for files ≥' + formatFileSize(MEMORY_STAGING_THRESHOLD) + ')';
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(filePath)}\n📍 Path: ${filePath}\n📊 Size: ${formattedSize}\n🏷️  Extension: ${fileExt || 'none'}\n🎯 MIME: ${detectedMimeType}\n✅ MIME/Extension Match: ${mimeMatch ? 'Yes' : 'No'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}${secretDetails}\n\nStatus: ${secretDetails ? '🔴 Contains secrets (not allowed for upload)' : !isSupported ? '🔴 File type not supported' : !mimeMatch ? '🔴 MIME type matches extension violation' : '🟢 Ready for upload'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
+            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(filePath)}\n📍 Path: ${filePath}\n📊 Size: ${formattedSize}\n🏷️ Extension: ${fileExt || 'none'}\n🎯 MIME: ${detectedMimeType}\n✅ MIME/Extension Match: ${mimeMatch ? 'Yes' : 'No'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}\n🚀 Staging Strategy: ${stagingStrategy}${sizeWarning}${sizeLimitWarning}${secretDetails}\n\nStatus: ${sizeLimitWarning ? '🔴 Too large for upload' : secretDetails ? '🔴 Contains secrets (not allowed for upload)' : !isSupported ? '🔴 File type not supported' : !mimeMatch ? '🔴 MIME type matches extension violation' : '🟢 Ready for upload'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
           },
         ],
       };

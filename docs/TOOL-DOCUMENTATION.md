@@ -66,13 +66,60 @@ Upload a file to the Zipline server with advanced options and retrieve the downl
 - `folder` (optional): Optional target folder ID (alphanumeric, must exist, default: no folder)
 - `originalName` (optional): Optional original filename to preserve during download (default: auto-generated)
 
+**File Size Limits:**
+
+- **Maximum file size:** 100 MB (default, configurable via `ZIPLINE_MAX_FILE_SIZE` environment variable)
+- **Memory staging threshold:** 5 MB - Files < 5MB use memory staging for optimal performance
+- **Disk fallback:** Files ≥ 5MB use disk staging
+- **Early validation:** Size is checked before any staging operations to prevent resource exhaustion
+- **Size format:** File size is displayed in human-readable format (e.g., "2.5 MB", "450 KB")
+
+**Example: Configure Custom Max File Size**
+
+```bash
+# Set max file size to 200 MB
+export ZIPLINE_MAX_FILE_SIZE=209715200
+
+# Set max file size to 50 MB
+export ZIPLINE_MAX_FILE_SIZE=52428800
+```
+
 **Error Handling:**
 
 The tool provides clear error messages for common issues:
 
 - **File not found:** If the file doesn't exist, you'll see "File not found: {path}" with actionable guidance
-- **Permission denied:** If you lack read permissions, the error will indicate permission issues
+- **Permission denied:** If you lack read permissions, error will indicate permission issues
 - **Unsupported file type:** If the file extension isn't supported, you'll see the specific type that's not allowed
+- **File too large:** If file exceeds maximum size, you'll see "File too large: {actualSize} exceeds maximum {maxSize}" with actionable guidance
+- **PAYLOAD_TOO_LARGE:** Error code indicating file size exceeds configured limit
+
+**Troubleshooting - File Size Issues:**
+
+**Issue: "File too large" error during upload**
+
+**Possible Causes:**
+
+- File exceeds 100 MB default maximum (or configured `ZIPLINE_MAX_FILE_SIZE`)
+- File is larger than what your Zipline server allows
+
+**Solutions:**
+
+1. **Reduce file size:**
+   - Compress images/videos before uploading
+   - Split large files into smaller parts
+   - Use text format instead of binary when possible
+2. **Increase limit:**
+   ```bash
+   # Set max file size to 200 MB
+   export ZIPLINE_MAX_FILE_SIZE=209715200
+   ```
+3. **Check server limits:**
+   - Verify Zipline server configuration for maximum allowed file size
+   - Check if server-side limits are different from client defaults
+4. **Use disk staging for large files:**
+   - Files ≥ 5MB automatically use disk fallback staging
+   - This preserves memory for smaller files while allowing large uploads
 
 **Example Usage - Upload PNG Image:**
 
@@ -125,15 +172,17 @@ Validate if a file exists, detect its MIME type, and verify it's suitable for up
 
 **Parameters:**
 
-- `filePath` (required): Absolute path to the file to validate.
+- `filePath` (required): Absolute path to file to validate.
 
 **Validation Features:**
 
-- **File existence check:** Confirms the file exists and is accessible
+- **File existence check:** Confirms that file exists and is accessible
 - **MIME type detection:** Uses content-based detection (magic numbers) for binary files, extension-based for text files
 - **Extension validation:** Verifies file extension matches allowed types
 - **MIME/extension match:** Checks if detected MIME type matches expected type for file extension
 - **Secret detection:** Scans for sensitive patterns (API keys, tokens, passwords)
+- **Staging strategy:** Reports whether file will use memory staging (< 5MB) or disk fallback (≥ 5MB)
+- **Size warnings:** Warns if file is close to 5MB threshold (90%+) or exceeds maximum size limit
 
 **Supported File Types:**
 
@@ -172,6 +221,62 @@ Validate if a file exists, detect its MIME type, and verify it's suitable for up
 ✅ Supported: Yes
 
 Status: 🟢 Ready for upload
+
+Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
+```
+
+**Example Usage - Validate File with Size Warning:**
+
+```json
+{
+  "filePath": "/path/to/large-doc.txt"
+}
+```
+
+**Expected Output with Size Warning:**
+
+```
+📋 FILE VALIDATION REPORT
+
+📁 File: large-doc.txt
+📍 Path: /path/to/large-doc.txt
+📊 Size: 4.6 MB
+🏷️  Extension: .txt
+🎯 MIME: text/plain
+✅ MIME/Extension Match: Yes
+✅ Supported: Yes
+🚀 Staging Strategy: 🧠 Memory staging (fast, no disk I/O)
+⚠️  SIZE WARNING: File is close to 5MB memory threshold. Will use memory staging but consider optimizing file size.
+
+Status: 🟢 Ready for upload
+
+Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
+```
+
+**Example Usage - Validate File Exceeding Size Limit:**
+
+```json
+{
+  "filePath": "/path/to/huge-video.mp4"
+}
+```
+
+**Expected Output with Size Limit Exceeded:**
+
+```
+📋 FILE VALIDATION REPORT
+
+📁 File: huge-video.mp4
+📍 Path: /path/to/huge-video.mp4
+📊 Size: 120.0 MB
+🏷️  Extension: .mp4
+🎯 MIME: video/mp4
+✅ MIME/Extension Match: Yes
+✅ Supported: Yes
+🚀 Staging Strategy: 💾 Disk fallback staging (for files ≥ 5MB)
+⚠️  SIZE LIMIT EXCEEDED: 120.0 MB exceeds maximum 100.0 MB. This file would be rejected during upload.
+
+Status: 🔴 Too large for upload
 
 Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
 ```

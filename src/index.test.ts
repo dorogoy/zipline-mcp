@@ -62,11 +62,13 @@ const mockFileContent = (content: Buffer | string) => {
 
   // Mock open/read (new optimization)
   fsMock.open.mockResolvedValue({
-    read: vi.fn().mockImplementation((buffer: Buffer, _offset: number, length: number) => {
-      const bytesToCopy = Math.min(length, buf.length);
-      buf.copy(buffer, 0, 0, bytesToCopy);
-      return Promise.resolve({ bytesRead: bytesToCopy, buffer });
-    }),
+    read: vi
+      .fn()
+      .mockImplementation((buffer: Buffer, _offset: number, length: number) => {
+        const bytesToCopy = Math.min(length, buf.length);
+        buf.copy(buffer, 0, 0, bytesToCopy);
+        return Promise.resolve({ bytesRead: bytesToCopy, buffer });
+      }),
     close: vi.fn().mockResolvedValue(undefined),
   });
 };
@@ -384,307 +386,441 @@ describe('Zipline MCP Server', () => {
       expect(uploadResult.isError).toBeFalsy();
       expect(uploadSpy).toHaveBeenCalled();
     });
-  });
 
-  describe('upload_file_to_zipline tool', () => {
-    let server: MockServer;
-
-    beforeEach(async () => {
-      vi.resetModules();
-      Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as {
-        server: MockServer;
-      };
-      server = imported.server;
-    });
-
-    const getToolHandler = (toolName: string): ToolHandler | undefined => {
-      const calls = server.registerTool.mock.calls as Array<
-        [string, unknown, ToolHandler]
-      >;
-      const call = calls.find((c) => c[0] === toolName);
-      return call?.[2];
-    };
-
-    it('should validate and normalize format correctly', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test invalid format
-      const result3 = await handler(
-        { filePath: '/path/to/file.txt', format: 'invalid' },
-        {}
-      );
-      expect(result3.isError).toBe(true);
-      expect(result3.content[0]?.text).toContain('Invalid format: invalid');
-
-      // Test case-insensitive matching (should be valid)
-      const result1 = await handler(
-        { filePath: '/path/to/file.txt', format: 'UUID' },
-        {}
-      );
-      expect(!result1.isError).toBe(true); // Should succeed since UUID is valid (normalized to uuid)
-
-      // Test alias handling (should be valid)
-      const result2 = await handler(
-        { filePath: '/path/to/file.txt', format: 'GFYCAT' },
-        {}
-      );
-      expect(!result2.isError).toBe(true); // Should succeed since GFYCAT is valid (normalized to random-words)
-    });
-
-    it('should handle file not found error', async () => {
-      const enoentError = new Error(
-        'ENOENT: no such file or directory'
-      ) as NodeJS.ErrnoException;
-      enoentError.code = 'ENOENT';
-      fsMock.readFile.mockRejectedValue(enoentError);
-      fsMock.stat.mockRejectedValue(enoentError);
-      fsMock.open.mockRejectedValue(enoentError);
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      const result = await handler(
-        { filePath: '/path/to/nonexistent.txt' },
-        {}
-      );
-      expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('UPLOAD FAILED');
-      expect(result.content[0]?.text).toContain('File not found');
-    });
-
-    it('should handle unsupported file type error', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      const result = await handler({ filePath: '/path/to/file.xyz' }, {});
-      expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('File type .xyz not supported');
-    });
-
-    it('should handle deleteAt parameter correctly', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with valid deletesAt parameter
-      const result = await handler(
-        {
-          filePath: '/path/to/file.txt',
-          deletesAt: '1d',
-        },
-        {}
-      );
-      expect(!result.isError).toBe(true);
-
-      // Verify uploadFile was called with the correct deleteAt parameter
-      const { uploadFile } = await import('./httpClient');
-      expect(uploadFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deletesAt: '1d',
-        })
-      );
-    });
-
-    it('should handle password parameter correctly', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with valid password parameter
-      const result = await handler(
-        {
-          filePath: '/path/to/file.txt',
-          password: 'secret123',
-        },
-        {}
-      );
-      expect(!result.isError).toBe(true);
-
-      // Verify uploadFile was called with the correct password parameter
-      const { uploadFile } = await import('./httpClient');
-      expect(uploadFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          password: 'secret123',
-        })
-      );
-    });
-
-    it('should handle maxViews parameter correctly', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with valid maxViews parameter
-      const result = await handler(
-        {
-          filePath: '/path/to/file.txt',
-          maxViews: 10,
-        },
-        {}
-      );
-      expect(!result.isError).toBe(true);
-
-      // Verify uploadFile was called with the correct maxViews parameter
-      const { uploadFile } = await import('./httpClient');
-      expect(uploadFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          maxViews: 10,
-        })
-      );
-    });
-
-    it('should handle folder parameter correctly', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with valid folder parameter
-      const result = await handler(
-        {
-          filePath: '/path/to/file.txt',
-          folder: 'testfolder',
-        },
-        {}
-      );
-      expect(!result.isError).toBe(true);
-
-      // Verify uploadFile was called with the correct folder parameter
-      const { uploadFile } = await import('./httpClient');
-      expect(uploadFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          folder: 'testfolder',
-        })
-      );
-    });
-
-    it('should handle all optional parameters together', async () => {
-      mockFileContent(Buffer.from('test content'));
-
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
-
-      // Test with all optional parameters
-      const result = await handler(
-        {
-          filePath: '/path/to/file.txt',
-          deletesAt: '2h',
-          password: 'secret123',
-          maxViews: 5,
-          folder: 'testfolder',
-        },
-        {}
-      );
-      expect(!result.isError).toBe(true);
-
-      // Verify uploadFile was called with all parameters
-      const { uploadFile } = await import('./httpClient');
-      expect(uploadFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deletesAt: '2h',
-          password: 'secret123',
-          maxViews: 5,
-          folder: 'testfolder',
-        })
-      );
-    });
-
-    it('should provide clear error message for non-existent file', async () => {
-      const enoentError = new Error(
-        'ENOENT: no such file or directory'
-      ) as NodeJS.ErrnoException;
-      enoentError.code = 'ENOENT';
-      fsMock.readFile.mockRejectedValue(enoentError);
-      fsMock.open.mockRejectedValue(enoentError);
+    it('should show memory staging strategy for files < 5MB', async () => {
+      const content = Buffer.from('test content');
+      mockFileContent(content);
 
       const handler = getToolHandler('validate_file');
       if (!handler) throw new Error('Handler not found');
 
+      const smallFileSize = 1024 * 1024; // 1MB
+      fsMock.stat.mockResolvedValue({ size: smallFileSize } as any);
+
+      const result = await handler({ filePath: '/path/to/small.txt' }, {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('🚀 Staging Strategy');
+      expect(result.content[0]?.text).toContain('Memory staging');
+    });
+
+    it('should show disk fallback staging strategy for files ≥ 5MB', async () => {
+      mockFileContent(Buffer.from('test content'));
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const largeFileSize = 10 * 1024 * 1024; // 10MB
+      fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+
+      const result = await handler({ filePath: '/path/to/large.txt' }, {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('🚀 Staging Strategy');
+      expect(result.content[0]?.text).toContain('Disk fallback staging');
+    });
+
+    it('should show size warning for files close to 5MB threshold', async () => {
+      mockFileContent(Buffer.from('test content'));
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const closeToThreshold = 4.6 * 1024 * 1024; // 4.6MB (92% of 5MB)
+      fsMock.stat.mockResolvedValue({ size: closeToThreshold } as any);
+
       const result = await handler(
-        { filePath: '/path/to/nonexistent.txt' },
+        { filePath: '/path/to/near-threshold.txt' },
         {}
       );
-      expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('File not found');
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('⚠️ SIZE WARNING');
+      expect(result.content[0]?.text).toContain(
+        'close to 5.0 MB memory threshold'
+      );
     });
 
-    it('should handle PNG binary files correctly', async () => {
-      const pngData = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
-      mockFileContent(pngData);
+    it('should warn about file exceeding max size limit', async () => {
+      mockFileContent(Buffer.from('test content'));
 
-      const handler = getToolHandler('upload_file_to_zipline');
+      const handler = getToolHandler('validate_file');
       if (!handler) throw new Error('Handler not found');
 
-      const result = await handler({ filePath: '/path/to/image.png' }, {});
-      expect(!result.isError).toBe(true);
+      const oversized = 120 * 1024 * 1024; // 120MB (exceeds 100MB default)
+      fsMock.stat.mockResolvedValue({ size: oversized } as any);
+
+      const result = await handler({ filePath: '/path/to/oversized.txt' }, {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('⚠️ SIZE LIMIT EXCEEDED');
+      expect(result.content[0]?.text).toContain('120.0 MB');
+      expect(result.content[0]?.text).toContain('exceeds maximum 100.0 MB');
+      expect(result.content[0]?.text).toContain('🔴 Too large for upload');
     });
 
-    it('should handle JPG binary files correctly', async () => {
-      const jpgData = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-      mockFileContent(jpgData);
+    it('should indicate Ready for upload when all checks pass', async () => {
+      const content = Buffer.from('test content');
+      mockFileContent(content);
 
-      const handler = getToolHandler('upload_file_to_zipline');
+      const handler = getToolHandler('validate_file');
       if (!handler) throw new Error('Handler not found');
 
-      const result = await handler({ filePath: '/path/to/image.jpg' }, {});
-      expect(!result.isError).toBe(true);
+      const normalSize = 2 * 1024 * 1024; // 2MB
+      fsMock.stat.mockResolvedValue({ size: normalSize } as any);
+
+      const result = await handler({ filePath: '/path/to/valid.txt' }, {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('🟢 Ready for upload');
+      expect(result.content[0]?.text).toContain('Memory staging');
     });
+  });
+});
 
-    it('should handle TXT text files correctly', async () => {
-      const textData = Buffer.from('Hello, World!'.repeat(100), 'utf8');
-      mockFileContent(textData);
+describe('upload_file_to_zipline tool', () => {
+  let server: MockServer;
 
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
 
-      const result = await handler({ filePath: '/path/to/text.txt' }, {});
-      expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
-    });
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
 
-    it('should handle JSON text files correctly', async () => {
-      const jsonData = Buffer.from('{"key":"value"}'.repeat(100), 'utf8');
-      mockFileContent(jsonData);
+  it('should validate and normalize format correctly', async () => {
+    mockFileContent(Buffer.from('test content'));
 
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
 
-      const result = await handler({ filePath: '/path/to/data.json' }, {});
-      expect(!result.isError).toBe(true);
-    });
+    // Test invalid format
+    const result3 = await handler(
+      { filePath: '/path/to/file.txt', format: 'invalid' },
+      {}
+    );
+    expect(result3.isError).toBe(true);
+    expect(result3.content[0]?.text).toContain('Invalid format: invalid');
 
-    it('should reject spoofed file (MIME mismatch) during upload', async () => {
-      // Create a "fake" jpg that is actually a PNG (large enough for detection)
-      const pngHeader = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
-      const pngData = Buffer.alloc(4100);
-      pngHeader.copy(pngData);
+    // Test case-insensitive matching (should be valid)
+    const result1 = await handler(
+      { filePath: '/path/to/file.txt', format: 'UUID' },
+      {}
+    );
+    expect(!result1.isError).toBe(true); // Should succeed since UUID is valid (normalized to uuid)
 
-      // Use helper
-      mockFileContent(pngData);
+    // Test alias handling (should be valid)
+    const result2 = await handler(
+      { filePath: '/path/to/file.txt', format: 'GFYCAT' },
+      {}
+    );
+    expect(!result2.isError).toBe(true); // Should succeed since GFYCAT is valid (normalized to random-words)
+  });
 
-      const handler = getToolHandler('upload_file_to_zipline');
-      if (!handler) throw new Error('Handler not found');
+  it('should handle file not found error', async () => {
+    const enoentError = new Error(
+      'ENOENT: no such file or directory'
+    ) as NodeJS.ErrnoException;
+    enoentError.code = 'ENOENT';
+    fsMock.readFile.mockRejectedValue(enoentError);
+    fsMock.stat.mockRejectedValue(enoentError);
+    fsMock.open.mockRejectedValue(enoentError);
 
-      // Attempt to upload as .jpg
-      const result = await handler({ filePath: '/path/to/spoofed.jpg' }, {});
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('Security Violation');
-      expect(result.content[0]?.text).toContain('image/png'); // Detected
-      expect(result.content[0]?.text).toContain('.jpg'); // Extension
-    });
+    const result = await handler({ filePath: '/path/to/nonexistent.txt' }, {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('UPLOAD FAILED');
+    expect(result.content[0]?.text).toContain('File not found');
+  });
+
+  it('should handle unsupported file type error', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/file.xyz' }, {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('File type .xyz not supported');
+  });
+
+  it('should handle deleteAt parameter correctly', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Test with valid deletesAt parameter
+    const result = await handler(
+      {
+        filePath: '/path/to/file.txt',
+        deletesAt: '1d',
+      },
+      {}
+    );
+    expect(!result.isError).toBe(true);
+
+    // Verify uploadFile was called with the correct deleteAt parameter
+    const { uploadFile } = await import('./httpClient');
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deletesAt: '1d',
+      })
+    );
+  });
+
+  it('should handle password parameter correctly', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Test with valid password parameter
+    const result = await handler(
+      {
+        filePath: '/path/to/file.txt',
+        password: 'secret123',
+      },
+      {}
+    );
+    expect(!result.isError).toBe(true);
+
+    // Verify uploadFile was called with the correct password parameter
+    const { uploadFile } = await import('./httpClient');
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: 'secret123',
+      })
+    );
+  });
+
+  it('should handle maxViews parameter correctly', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Test with valid maxViews parameter
+    const result = await handler(
+      {
+        filePath: '/path/to/file.txt',
+        maxViews: 10,
+      },
+      {}
+    );
+    expect(!result.isError).toBe(true);
+
+    // Verify uploadFile was called with the correct maxViews parameter
+    const { uploadFile } = await import('./httpClient');
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxViews: 10,
+      })
+    );
+  });
+
+  it('should handle folder parameter correctly', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Test with valid folder parameter
+    const result = await handler(
+      {
+        filePath: '/path/to/file.txt',
+        folder: 'testfolder',
+      },
+      {}
+    );
+    expect(!result.isError).toBe(true);
+
+    // Verify uploadFile was called with the correct folder parameter
+    const { uploadFile } = await import('./httpClient');
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: 'testfolder',
+      })
+    );
+  });
+
+  it('should handle all optional parameters together', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Test with all optional parameters
+    const result = await handler(
+      {
+        filePath: '/path/to/file.txt',
+        deletesAt: '2h',
+        password: 'secret123',
+        maxViews: 5,
+        folder: 'testfolder',
+      },
+      {}
+    );
+    expect(!result.isError).toBe(true);
+
+    // Verify uploadFile was called with all parameters
+    const { uploadFile } = await import('./httpClient');
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deletesAt: '2h',
+        password: 'secret123',
+        maxViews: 5,
+        folder: 'testfolder',
+      })
+    );
+  });
+
+  it('should provide clear error message for non-existent file', async () => {
+    const enoentError = new Error(
+      'ENOENT: no such file or directory'
+    ) as NodeJS.ErrnoException;
+    enoentError.code = 'ENOENT';
+    fsMock.readFile.mockRejectedValue(enoentError);
+    fsMock.open.mockRejectedValue(enoentError);
+
+    const handler = getToolHandler('validate_file');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/nonexistent.txt' }, {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('File not found');
+  });
+
+  it('should handle PNG binary files correctly', async () => {
+    const pngData = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    mockFileContent(pngData);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/image.png' }, {});
+    expect(!result.isError).toBe(true);
+  });
+
+  it('should handle JPG binary files correctly', async () => {
+    const jpgData = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+    mockFileContent(jpgData);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/image.jpg' }, {});
+    expect(!result.isError).toBe(true);
+  });
+
+  it('should handle TXT text files correctly', async () => {
+    const textData = Buffer.from('Hello, World!'.repeat(100), 'utf8');
+    mockFileContent(textData);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/text.txt' }, {});
+    expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
+  });
+
+  it('should handle JSON text files correctly', async () => {
+    const jsonData = Buffer.from('{"key":"value"}'.repeat(100), 'utf8');
+    mockFileContent(jsonData);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/data.json' }, {});
+    expect(!result.isError).toBe(true);
+  });
+
+  it('should reject spoofed file (MIME mismatch) during upload', async () => {
+    // Create a "fake" jpg that is actually a PNG (large enough for detection)
+    const pngHeader = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    const pngData = Buffer.alloc(4100);
+    pngHeader.copy(pngData);
+
+    // Use helper
+    mockFileContent(pngData);
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    // Attempt to upload as .jpg
+    const result = await handler({ filePath: '/path/to/spoofed.jpg' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Security Violation');
+    expect(result.content[0]?.text).toContain('image/png'); // Detected
+    expect(result.content[0]?.text).toContain('.jpg'); // Extension
+  });
+
+  it('should reject file exceeding max size (early validation)', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const largeFileSize = 150 * 1024 * 1024; // 150MB
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+
+    const result = await handler({ filePath: '/path/to/large.txt' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('UPLOAD FAILED');
+    expect(result.content[0]?.text).toContain('File too large');
+    expect(result.content[0]?.text).toContain('PAYLOAD_TOO_LARGE');
+  });
+
+  it('should provide clear error message with actual vs max size', async () => {
+    mockFileContent(Buffer.from('test content'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const largeFileSize = 120 * 1024 * 1024; // 120MB
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+
+    const result = await handler({ filePath: '/path/to/large.txt' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('120.0 MB');
+    expect(result.content[0]?.text).toContain('100.0 MB');
+    expect(result.content[0]?.text).toContain('ZIPLINE_MAX_FILE_SIZE');
+  });
+
+  it('should indicate Ready for upload when all checks pass', async () => {
+    const content = Buffer.from('test content');
+    mockFileContent(content);
+
+    const handler = getToolHandler('validate_file');
+    if (!handler) throw new Error('Handler not found');
+
+    const normalSize = 2 * 1024 * 1024; // 2MB
+    fsMock.stat.mockResolvedValue({ size: normalSize } as any);
+
+    const result = await handler({ filePath: '/path/to/valid.txt' }, {});
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0]?.text).toContain('🟢 Ready for upload');
+    expect(result.content[0]?.text).toContain('Memory staging');
   });
 });
 

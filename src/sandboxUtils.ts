@@ -16,6 +16,7 @@ export { SandboxPathError, SecretDetectionError };
 // Constants
 export const TMP_DIR = path.join(os.homedir(), '.zipline_tmp');
 export const TMP_MAX_READ_SIZE = 1024 * 1024; // 1 MB
+export const MEMORY_STAGING_THRESHOLD = 5 * 1024 * 1024; // 5 MB
 const LOCK_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 const LOCK_FILE = '.lock';
 
@@ -162,8 +163,8 @@ export type StagedFile =
 
 export async function stageFile(filepath: string): Promise<StagedFile> {
   const stats = await fs.stat(filepath);
-  // Memory-First Staging: If < 5MB, load into memory
-  if (stats.size < 5 * 1024 * 1024) {
+  // Memory-First Staging: If < threshold, load into memory
+  if (stats.size < MEMORY_STAGING_THRESHOLD) {
     const content = await fs.readFile(filepath);
     await validateFileForSecrets(filepath, content);
     return { type: 'memory', content, path: filepath };

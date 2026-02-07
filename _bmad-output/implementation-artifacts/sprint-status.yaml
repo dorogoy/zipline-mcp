@@ -51,7 +51,7 @@ development_status:
   epic-2: in-progress
   2-1-implement-file-ingest-via-mcp-tool-calls: done
   2-2-implement-mime-type-and-file-existence-validation: done
-  2-3-enforce-file-size-limits-for-sandbox: backlog
+  2-3-enforce-file-size-limits-for-sandbox: review
   2-4-implement-memory-first-ephemeral-storage: backlog
   2-5-implement-disk-based-fallback-staging: backlog
   2-6-implement-atomic-cleanup-on-completion-or-failure: backlog

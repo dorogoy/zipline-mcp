@@ -19,6 +19,7 @@ import {
   releaseSandboxLock,
   logSandboxOperation,
   SandboxPathError,
+  stageFile,
 } from './sandboxUtils';
 import * as fs from 'fs/promises';
 import path from 'path';
@@ -242,6 +243,100 @@ describe('Sandbox Utils', () => {
       process.env.ZIPLINE_DISABLE_SANDBOXING = 'true';
       const released = await releaseSandboxLock();
       expect(released).toBe(true);
+    });
+  });
+
+  describe('stageFile', () => {
+    const testDir = path.join(os.tmpdir(), 'stagefile-test');
+
+    beforeEach(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    describe('Memory staging (files < 5MB)', () => {
+      it('should stage 1KB file in memory', async () => {
+        const filePath = path.join(testDir, '1kb.txt');
+        const content = Buffer.alloc(1 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+        if (staged.type === 'memory') {
+          expect(staged.content).toEqual(content);
+          expect(staged.path).toBe(filePath);
+        }
+      });
+
+      it('should stage small file with validation errors thrown for secrets', async () => {
+        const filePath = path.join(testDir, 'secret.txt');
+        const content = Buffer.from('api_key = "sk-test-secret-key"');
+        await fs.writeFile(filePath, content);
+
+        await expect(stageFile(filePath)).rejects.toThrow('File rejected');
+      });
+
+      it('should stage 0 byte file in memory', async () => {
+        const filePath = path.join(testDir, 'empty.txt');
+        const content = Buffer.alloc(0);
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+        if (staged.type === 'memory') {
+          expect(staged.content).toEqual(content);
+          expect(staged.path).toBe(filePath);
+        }
+      });
+    });
+
+    describe('Disk fallback (files >= 5MB)', () => {
+      it('should stage exactly 5MB file on disk (boundary condition)', async () => {
+        const filePath = path.join(testDir, 'exactly-5mb.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+        if (staged.type === 'disk') {
+          expect(staged.path).toBe(filePath);
+        }
+      });
+    });
+
+    describe('Error handling', () => {
+      it('should throw error for non-existent file', async () => {
+        const filePath = path.join(testDir, 'non-existent.txt');
+        await expect(stageFile(filePath)).rejects.toThrow('ENOENT');
+      });
+    });
+
+    describe('Size threshold validation', () => {
+      it('should correctly identify 5MB threshold as 5,242,880 bytes', () => {
+        const threshold = 5 * 1024 * 1024;
+        expect(threshold).toBe(5242880);
+      });
+
+      it('should use memory staging for files just under threshold (5,242,879 bytes)', async () => {
+        const filePath = path.join(testDir, 'just-under-5mb.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024 - 1, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+      });
+
+      it('should use disk staging for files exactly at threshold (5,242,880 bytes)', async () => {
+        const filePath = path.join(testDir, 'exactly-5mb.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+      });
     });
   });
 });
