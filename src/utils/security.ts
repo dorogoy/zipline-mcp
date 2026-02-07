@@ -94,3 +94,74 @@ export function validateSandboxPath(
 
   return normalizedPath.startsWith(normalizedRoot);
 }
+
+export function maskToken(input: string, token: string): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
+  if (!token || typeof token !== 'string' || token.length === 0) {
+    return input;
+  }
+
+  return input.replaceAll(token, '[REDACTED]');
+}
+
+export function maskSensitiveData(input: string): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
+  let masked = input;
+
+  // Mask ZIPLINE_TOKEN from environment
+  const token = process.env.ZIPLINE_TOKEN ?? '';
+  if (token) {
+    masked = maskToken(masked, token);
+  }
+
+  // Future: Add additional sensitive patterns here
+  // Example patterns that could be added:
+  // - API keys (generic pattern: /[A-Za-z0-9]{32,}/)
+  // - JWT tokens (pattern: /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)
+  // - Private keys (pattern: /-----BEGIN.*PRIVATE KEY-----/)
+  // - Email addresses in certain contexts
+  // - Credit card numbers
+  //
+  // Implementation approach for future patterns:
+  // const sensitivePatterns = [
+  //   { pattern: /pattern1/g, replacement: '[REDACTED_TYPE]' },
+  //   { pattern: /pattern2/g, replacement: '[REDACTED_TYPE]' }
+  // ];
+  // sensitivePatterns.forEach(({ pattern, replacement }) => {
+  //   masked = masked.replace(pattern, replacement);
+  // });
+
+  return masked;
+}
+
+export function secureLog(message: string, ...args: unknown[]): void {
+  const maskedMessage = maskSensitiveData(message);
+  const maskedArgs = args.map((arg) => {
+    if (typeof arg === 'string') {
+      return maskSensitiveData(arg);
+    }
+    // For objects, convert to JSON, mask, then parse back
+    // This prevents token exposure in object properties
+    if (typeof arg === 'object' && arg !== null) {
+      try {
+        const jsonString = JSON.stringify(arg);
+        const maskedJson = maskSensitiveData(jsonString);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return JSON.parse(maskedJson);
+      } catch {
+        // If JSON processing fails, return a safe placeholder
+        return '[OBJECT_MASKING_ERROR]';
+      }
+    }
+    return arg;
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  console.error(maskedMessage, ...maskedArgs);
+}

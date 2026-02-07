@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import {
   sanitizePath as sanitizePathUtil,
   SandboxPathError,
+  secureLog,
 } from './utils/security';
 
 // Re-export SandboxPathError for backward compatibility
@@ -46,8 +47,8 @@ export function logSandboxOperation(
 
   const logMessage = `[${timestamp}] SANDBOX_OPERATION: ${operation}${filename ? ` - ${filename}` : ''} - Path: ${sanitizedPath}${details ? ` - ${details}` : ''}`;
 
-  // Use console.error for security logs to separate from regular output
-  console.error(logMessage);
+  // Use secureLog to ensure any sensitive data is masked before logging
+  secureLog(logMessage);
 }
 
 // Get user sandbox directory based on ZIPLINE_TOKEN hash
