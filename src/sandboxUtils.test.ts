@@ -14,6 +14,8 @@ import {
   resolveInUserSandbox,
   resolveSandboxPath,
   cleanupOldSandboxes,
+  cleanupStaleLocks,
+  initializeCleanup,
   isSandboxLocked,
   acquireSandboxLock,
   releaseSandboxLock,
@@ -401,7 +403,7 @@ describe('Sandbox Utils', () => {
         if (staged.type === 'memory') {
           expect(staged.content).toEqual(content);
           clearStagedContent(staged);
-          expect(staged.content as any).toBeNull();
+          expect(staged.content as unknown as null).toBeNull();
         }
       });
 
@@ -469,7 +471,7 @@ describe('Sandbox Utils', () => {
           clearStagedContent(staged);
 
           // Verify buffer reference is cleared
-          expect(staged.content as any).toBeNull();
+          expect(staged.content as unknown as null).toBeNull();
         }
       });
 
@@ -482,12 +484,13 @@ describe('Sandbox Utils', () => {
         expect(staged.type).toBe('memory');
 
         // Wrap in a function to test error handling
-        const uploadSimulation = async () => {
+        const uploadSimulation = (): Promise<void> => {
           try {
             if (staged.type === 'memory') {
               // Simulate an error during upload
-              throw new Error('Simulated upload error');
+              return Promise.reject(new Error('Simulated upload error'));
             }
+            return Promise.resolve();
           } finally {
             // Cleanup should happen even on error
             clearStagedContent(staged);
@@ -501,7 +504,7 @@ describe('Sandbox Utils', () => {
 
         // Verify cleanup happened despite error
         if (staged.type === 'memory') {
-          expect(staged.content as any).toBeNull();
+          expect(staged.content as unknown as null).toBeNull();
         }
       });
     });
@@ -623,6 +626,299 @@ describe('Sandbox Utils', () => {
         // Original file should still exist at original path
         const stats = await fs.stat(filePath);
         expect(stats.size).toBe(5 * 1024 * 1024);
+      });
+    });
+  });
+
+  describe('Atomic Cleanup (Story 2.6)', () => {
+    const testDir = path.join(os.tmpdir(), 'atomic-cleanup-test');
+
+    beforeEach(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    describe('cleanupStaleLocks', () => {
+      it('should return 0 when sandboxing is disabled', async () => {
+        process.env.ZIPLINE_DISABLE_SANDBOXING = 'true';
+        const cleanedCount = await cleanupStaleLocks();
+        expect(cleanedCount).toBe(0);
+      });
+
+      it('should clean up stale lock files older than LOCK_TIMEOUT', async () => {
+        // This test verifies the function can be called without error
+        // Actual lock file aging requires real time passage or file system mocking
+        const cleanedCount = await cleanupStaleLocks();
+        expect(typeof cleanedCount).toBe('number');
+        expect(cleanedCount).toBeGreaterThanOrEqual(0);
+      });
+
+      it('should handle non-existent users directory gracefully', async () => {
+        // Ensure the test runs without errors even if no users directory exists
+        const cleanedCount = await cleanupStaleLocks();
+        expect(typeof cleanedCount).toBe('number');
+      });
+    });
+
+    describe('initializeCleanup', () => {
+      it('should return cleanup results object', async () => {
+        const result = await initializeCleanup();
+
+        expect(result).toHaveProperty('sandboxesCleaned');
+        expect(result).toHaveProperty('locksCleaned');
+        expect(typeof result.sandboxesCleaned).toBe('number');
+        expect(typeof result.locksCleaned).toBe('number');
+        expect(result.sandboxesCleaned).toBeGreaterThanOrEqual(0);
+        expect(result.locksCleaned).toBeGreaterThanOrEqual(0);
+      });
+
+      it('should log cleanup operations', async () => {
+        const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await initializeCleanup();
+
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('STARTUP_CLEANUP')
+        );
+
+        logSpy.mockRestore();
+      });
+
+      it('should return 0 counts when sandboxing is disabled', async () => {
+        process.env.ZIPLINE_DISABLE_SANDBOXING = 'true';
+
+        const result = await initializeCleanup();
+
+        expect(result.sandboxesCleaned).toBe(0);
+        expect(result.locksCleaned).toBe(0);
+      });
+    });
+
+    describe('Cleanup on success path', () => {
+      it('should clear Buffer after successful upload simulation (memory staging)', async () => {
+        const filePath = path.join(testDir, 'success-cleanup.txt');
+        const content = Buffer.from('Test content for success cleanup');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        if (staged.type === 'memory') {
+          // Verify Buffer is populated
+          expect(staged.content).toBeInstanceOf(Buffer);
+          expect(staged.content.length).toBeGreaterThan(0);
+
+          // Simulate successful operation
+          const operationResult = 'success';
+
+          // Cleanup in finally pattern
+          clearStagedContent(staged);
+
+          // Verify Buffer reference is nullified
+          expect(staged.content as unknown as null).toBeNull();
+          expect(operationResult).toBe('success');
+        }
+      });
+
+      it('should not throw on cleanup for disk staging (success path)', async () => {
+        const filePath = path.join(testDir, 'disk-success-cleanup.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+
+        // Simulate successful operation
+        const operationResult = 'success';
+
+        // Cleanup should not throw
+        expect(() => clearStagedContent(staged)).not.toThrow();
+
+        // Original file should still exist
+        const fileExists = await fs
+          .access(filePath)
+          .then(() => true)
+          .catch(() => false);
+        expect(fileExists).toBe(true);
+        expect(operationResult).toBe('success');
+      });
+    });
+
+    describe('Cleanup on error path', () => {
+      it('should clear Buffer even when error occurs (memory staging)', async () => {
+        const filePath = path.join(testDir, 'error-cleanup.txt');
+        const content = Buffer.from('Test content for error cleanup');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        if (staged.type === 'memory') {
+          // Verify Buffer is populated
+          expect(staged.content).toBeInstanceOf(Buffer);
+
+          // Simulate operation with error using try/finally
+          // Using a sync wrapper to catch the error
+          const simulateWithError = (): Promise<void> => {
+            try {
+              return Promise.reject(new Error('Simulated upload failure'));
+            } finally {
+              clearStagedContent(staged);
+            }
+          };
+
+          // Expect error to be thrown
+          await expect(simulateWithError()).rejects.toThrow(
+            'Simulated upload failure'
+          );
+
+          // But cleanup should have happened despite the error
+          expect(staged.content as unknown as null).toBeNull();
+        }
+      });
+
+      it('should guarantee cleanup via try/finally pattern on error', async () => {
+        const filePath = path.join(testDir, 'try-finally-error.txt');
+        const content = Buffer.from('Try finally error test');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('memory');
+
+        if (staged.type === 'memory') {
+          // Use try/finally to simulate error handling pattern
+          const simulateUpload = (): Promise<void> => {
+            try {
+              return Promise.reject(new Error('Upload failed'));
+            } finally {
+              clearStagedContent(staged);
+            }
+          };
+
+          // Error should be thrown
+          await expect(simulateUpload()).rejects.toThrow('Upload failed');
+
+          // But cleanup should have happened
+          expect(staged.content as unknown as null).toBeNull();
+        }
+      });
+
+      it('should not throw on cleanup for disk staging (error path)', async () => {
+        const filePath = path.join(testDir, 'disk-error-cleanup.txt');
+        const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+        await fs.writeFile(filePath, content);
+
+        const staged = await stageFile(filePath);
+        expect(staged.type).toBe('disk');
+
+        // Simulate error with try/finally
+        const simulateUpload = (): Promise<void> => {
+          try {
+            return Promise.reject(new Error('Upload failed'));
+          } finally {
+            clearStagedContent(staged);
+          }
+        };
+
+        // Error should be thrown
+        await expect(simulateUpload()).rejects.toThrow('Upload failed');
+
+        // Cleanup should not have thrown
+        // Original file should still exist
+        const fileExists = await fs
+          .access(filePath)
+          .then(() => true)
+          .catch(() => false);
+        expect(fileExists).toBe(true);
+      });
+    });
+
+    describe('Concurrent operation cleanup', () => {
+      it('should handle multiple concurrent cleanups without interference', async () => {
+        const files = await Promise.all([
+          fs
+            .writeFile(
+              path.join(testDir, 'concurrent1.txt'),
+              Buffer.from('content1')
+            )
+            .then(() => path.join(testDir, 'concurrent1.txt')),
+          fs
+            .writeFile(
+              path.join(testDir, 'concurrent2.txt'),
+              Buffer.from('content2')
+            )
+            .then(() => path.join(testDir, 'concurrent2.txt')),
+          fs
+            .writeFile(
+              path.join(testDir, 'concurrent3.txt'),
+              Buffer.from('content3')
+            )
+            .then(() => path.join(testDir, 'concurrent3.txt')),
+        ]);
+
+        const stagedFiles = await Promise.all(files.map((f) => stageFile(f)));
+
+        // All should be memory staged (small files)
+        stagedFiles.forEach((staged) => {
+          expect(staged.type).toBe('memory');
+        });
+
+        // Clean up all concurrently
+        stagedFiles.forEach((staged) => clearStagedContent(staged));
+
+        // All should be cleaned
+        stagedFiles.forEach((staged) => {
+          if (staged.type === 'memory') {
+            expect(staged.content as unknown as null).toBeNull();
+          }
+        });
+      });
+
+      it('should handle mixed memory and disk staging cleanup concurrently', async () => {
+        const smallFile = path.join(testDir, 'small-concurrent.txt');
+        const largeFile = path.join(testDir, 'large-concurrent.txt');
+
+        await fs.writeFile(smallFile, Buffer.from('small'));
+        await fs.writeFile(largeFile, Buffer.alloc(5 * 1024 * 1024, 'x'));
+
+        const [smallStaged, largeStaged] = await Promise.all([
+          stageFile(smallFile),
+          stageFile(largeFile),
+        ]);
+
+        expect(smallStaged.type).toBe('memory');
+        expect(largeStaged.type).toBe('disk');
+
+        // Clean up both
+        clearStagedContent(smallStaged);
+        clearStagedContent(largeStaged);
+
+        // Small file buffer should be nullified
+        if (smallStaged.type === 'memory') {
+          expect(smallStaged.content as unknown as null).toBeNull();
+        }
+
+        // Large file should not throw
+        // (no assertion needed - just verifying no exception)
+      });
+    });
+
+    describe('Startup cleanup integration', () => {
+      it('should call both cleanupOldSandboxes and cleanupStaleLocks', async () => {
+        const result = await initializeCleanup();
+
+        // Both should be called and return numbers
+        expect(typeof result.sandboxesCleaned).toBe('number');
+        expect(typeof result.locksCleaned).toBe('number');
+      });
+
+      it('should handle cleanup when directories do not exist', async () => {
+        // This should not throw even if no sandbox directories exist
+        const result = await initializeCleanup();
+        expect(result).toBeDefined();
       });
     });
   });

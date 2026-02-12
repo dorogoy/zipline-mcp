@@ -31,6 +31,8 @@ import {
   logSandboxOperation,
   TMP_MAX_READ_SIZE,
   cleanupOldSandboxes,
+  initializeCleanup,
+  cleanupStaleLocks,
   isSandboxLocked,
   acquireSandboxLock,
   releaseSandboxLock,
@@ -54,6 +56,8 @@ export {
   logSandboxOperation,
   TMP_MAX_READ_SIZE,
   cleanupOldSandboxes,
+  initializeCleanup,
+  cleanupStaleLocks,
   isSandboxLocked,
   acquireSandboxLock,
   releaseSandboxLock,
@@ -1321,6 +1325,17 @@ server.registerTool(
 // --- Main ---
 
 async function main() {
+  // Run startup cleanup to remove orphaned resources from previous sessions
+  // Wrapped in try/catch to prevent cleanup failure from crashing the server
+  try {
+    await initializeCleanup();
+  } catch (error) {
+    console.error(
+      '⚠️ Startup cleanup failed (server will continue):',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

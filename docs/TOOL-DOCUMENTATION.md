@@ -178,6 +178,116 @@ Check file size (fs.stat)
 - ✅ **Zero-footprint:** No persistent state remains after operation completes
 - ✅ **No memory leaks:** Buffer references explicitly nulled for garbage collection
 
+## Atomic Cleanup Architecture
+
+**Overview:**
+
+The zipline-mcp server implements comprehensive cleanup guarantees to ensure no sensitive data persists beyond the operation lifecycle. This is critical for the "Zero-Footprint" security requirement (NFR5).
+
+**Cleanup Guarantee Flow:**
+
+```
+Operation Starts
+    ↓
+Stage File (memory or disk)
+    ↓
+try {
+    Execute Upload
+} finally {
+    clearStagedContent()  // ALWAYS runs
+}
+    ↓
+Buffer reference nullified (memory)
+or No-op (disk - original files not managed)
+    ↓
+Operation Complete - Zero Footprint
+```
+
+**Success Path Cleanup:**
+
+```
+stageFile() → { type: 'memory', content: Buffer, path }
+    ↓
+try {
+    uploadToZipline() → Success
+} finally {
+    clearStagedContent() → Buffer.content = null
+}
+    ↓
+Response returned to client
+    ↓
+Buffer eligible for GC
+```
+
+**Error Path Cleanup:**
+
+```
+stageFile() → { type: 'memory', content: Buffer, path }
+    ↓
+try {
+    uploadToZipline() → Throws Error
+} finally {
+    clearStagedContent() → Buffer.content = null  // STILL RUNS
+}
+    ↓
+Error propagated to client
+    ↓
+Buffer eligible for GC (cleanup guaranteed)
+```
+
+**Startup Cleanup (Crash Recovery):**
+
+```
+Server Starts
+    ↓
+initializeCleanup()
+    ├── cleanupOldSandboxes()  // Removes directories > 24h old
+    └── cleanupStaleLocks()    // Removes lock files > 30 min old
+    ↓
+Log cleanup results
+    ↓
+Server Ready for Requests
+```
+
+**Crash Recovery Scenarios:**
+
+| Scenario                     | What's Left      | Cleanup Mechanism                     |
+| ---------------------------- | ---------------- | ------------------------------------- |
+| Normal success               | Nothing          | try/finally clears Buffer             |
+| Error during upload          | Buffer reference | try/finally clears Buffer             |
+| Process crash (memory)       | Nothing          | OS reclaims memory                    |
+| Process crash (disk staging) | Nothing          | Original files remain (expected)      |
+| Process crash (lock file)    | Stale lock       | Startup cleanup removes expired locks |
+| Orphaned sandbox dirs        | Old directories  | Startup cleanup removes > 24h old     |
+
+**Cleanup Timing Thresholds:**
+
+- **Memory buffers:** Immediate on `clearStagedContent()` call (Buffer reference nulled)
+- **Old sandboxes:** 24 hours (directories older than this are removed on startup)
+- **Stale locks:** 30 minutes (locks older than this are removed on startup)
+
+**Implementation Details:**
+
+1. **`clearStagedContent(staged: StagedFile)`** - Clears Buffer references for memory-staged files
+   - Memory staging: Sets `Buffer.content = null` to allow GC (immediate)
+   - Disk staging: No-op (original files are not managed by the staging system)
+
+2. **`cleanupOldSandboxes()`** - Removes sandbox directories older than 24 hours
+   - Scans all user sandbox directories in `~/.zipline_tmp/users/`
+   - Removes directories based on modification time
+   - Logs all cleanup operations for monitoring
+
+3. **`cleanupStaleLocks()`** - Removes lock files older than 30 minutes
+   - Scans for `.lock` files in all user sandboxes
+   - Checks JSON `timestamp` field (consistent with `isSandboxLocked()`)
+   - Removes locks that exceed LOCK_TIMEOUT
+   - Prevents orphaned locks from blocking operations
+
+4. **`initializeCleanup()`** - Orchestrates startup cleanup
+   - Called during server initialization before accepting connections
+   - Returns counts of cleaned resources for monitoring
+   - Ensures clean state after server restart
+
 **Example: Memory vs. Disk Staging:**
 
 ```json

@@ -54,7 +54,7 @@ development_status:
   2-3-enforce-file-size-limits-for-sandbox: done
   2-4-implement-memory-first-ephemeral-storage: done
   2-5-implement-disk-based-fallback-staging: done
-  2-6-implement-atomic-cleanup-on-completion-or-failure: backlog
+  2-6-implement-atomic-cleanup-on-completion-or-failure: done
   2-7-implement-single-file-upload-to-zipline: backlog
   2-8-implement-upload-with-expiration-password-and-view-limits: backlog
   2-9-implement-upload-organization-into-folders: backlog

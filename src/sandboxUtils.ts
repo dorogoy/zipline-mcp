@@ -281,8 +281,6 @@ export async function stageFile(filepath: string): Promise<StagedFile> {
  *
  * **Purpose:**
  *   - Releases memory by nullifying Buffer references (memory staging)
- *   - Removes temporary files for disk-staged content
- *   - Helps Node.js garbage collector reclaim memory immediately
  *   - Ensures zero persistent state after upload completes
  *
  * **Memory Cleanup (type: 'memory'):**
@@ -292,8 +290,9 @@ export async function stageFile(filepath: string): Promise<StagedFile> {
  *
  * **Disk Cleanup (type: 'disk'):**
  *   - Note: Current disk staging returns original file path (not a temp copy)
- *   - This means no explicit cleanup is needed for original files
- *   - Function safely handles disk type without throwing (future-proof for temp file implementation)
+ *   - Original files are managed by the caller, not by the staging system
+ *   - This function is a no-op for disk-staged files (for consistency with API)
+ *   - Future implementation may handle temp files differently
  *
  * **When to Use:**
  *   - ALWAYS after upload completes (success or failure)
@@ -302,8 +301,8 @@ export async function stageFile(filepath: string): Promise<StagedFile> {
  *
  * **Performance Impact:**
  *   - Memory cleanup: Negligible overhead (<1ms)
- *   - Disk cleanup: Uses synchronous unlink (fast, <5ms typically)
- *   - Prevents memory leaks and orphaned temp files
+ *   - Disk cleanup: No-op (no file operations performed)
+ *   - Prevents memory leaks from Buffer references
  *   - Critical for NFR5: 100% cleanup (Zero-Footprint)
  *
  * @param staged - The StagedFile object to clean up
@@ -336,11 +335,124 @@ export async function stageFile(filepath: string): Promise<StagedFile> {
  */
 export function clearStagedContent(staged: StagedFile): void {
   if (staged.type === 'memory') {
-    (staged.content as any) = null;
+    (staged.content as unknown as null) = null;
   }
   // Disk staging: Returns original file path (not a temp copy)
   // No cleanup needed for original files - they remain at their source location
   // This is intentional: we don't own or manage the lifecycle of user files
+}
+
+/**
+ * Cleans up stale lock files across all user sandboxes.
+ *
+ * Lock files older than LOCK_TIMEOUT (30 minutes) are considered stale
+ * and are removed during startup cleanup. This handles crash recovery
+ * scenarios where processes terminated without releasing locks.
+ *
+ * @returns Number of stale lock files cleaned up
+ */
+export async function cleanupStaleLocks(): Promise<number> {
+  if (isSandboxingDisabled()) {
+    return 0;
+  }
+
+  const usersDir = path.join(TMP_DIR, 'users');
+  let cleanedCount = 0;
+
+  try {
+    const userDirs = await fs.readdir(usersDir);
+    const now = Date.now();
+
+    for (const userDir of userDirs) {
+      const lockFilePath = path.join(usersDir, userDir, LOCK_FILE);
+
+      try {
+        // Read lock file to check timestamp (consistent with isSandboxLocked)
+        const lockDataStr = await fs.readFile(lockFilePath, {
+          encoding: 'utf8',
+        });
+        const lockData = JSON.parse(lockDataStr) as LockData;
+
+        if (now - lockData.timestamp > LOCK_TIMEOUT) {
+          try {
+            await fs.rm(lockFilePath, { force: true });
+            cleanedCount++;
+            logSandboxOperation(
+              'STALE_LOCK_CLEANED',
+              undefined,
+              `Age: ${Math.round((now - lockData.timestamp) / (60 * 1000))} minutes`
+            );
+          } catch (cleanupError) {
+            logSandboxOperation(
+              'STALE_LOCK_CLEANUP_FAILED',
+              undefined,
+              `Error: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}`
+            );
+          }
+        }
+      } catch {
+        // Lock file doesn't exist, can't be read, or has invalid JSON - skip it
+      }
+    }
+  } catch (readdirError) {
+    if (
+      readdirError instanceof Error &&
+      'code' in readdirError &&
+      readdirError.code !== 'ENOENT'
+    ) {
+      logSandboxOperation(
+        'STALE_LOCK_CLEANUP_ERROR',
+        undefined,
+        `Error: ${readdirError instanceof Error ? readdirError.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  return cleanedCount;
+}
+
+/**
+ * Initializes cleanup on server startup to handle orphaned resources.
+ *
+ * This function should be called during server initialization to clean up
+ * resources left behind from previous sessions that may have crashed or
+ * terminated unexpectedly.
+ *
+ * Cleanup operations:
+ * 1. Remove sandbox directories older than 24 hours
+ * 2. Remove stale lock files older than LOCK_TIMEOUT (30 minutes)
+ *
+ * @returns Object containing counts of cleaned resources
+ *
+ * @example Server startup integration
+ * ```typescript
+ * // In src/index.ts
+ * import { initializeCleanup } from './sandboxUtils.js';
+ *
+ * async function main() {
+ *   // Run startup cleanup before accepting connections
+ *   await initializeCleanup();
+ *
+ *   // Start MCP server...
+ * }
+ * ```
+ */
+export async function initializeCleanup(): Promise<{
+  sandboxesCleaned: number;
+  locksCleaned: number;
+}> {
+  logSandboxOperation('STARTUP_CLEANUP', undefined, 'Starting cleanup');
+
+  const sandboxesCleaned = await cleanupOldSandboxes();
+  const locksCleaned = await cleanupStaleLocks();
+
+  logSandboxOperation(
+    'STARTUP_CLEANUP_COMPLETE',
+    undefined,
+    `Sandboxes: ${sandboxesCleaned}, Locks: ${locksCleaned}`
+  );
+
+  return { sandboxesCleaned, locksCleaned };
 }
 
 // Clean up sandboxes older than 24 hours
