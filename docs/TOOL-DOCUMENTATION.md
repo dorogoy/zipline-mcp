@@ -229,6 +229,31 @@ Check file size (fs.stat)
    - Files ≥ 5MB automatically use disk fallback staging
    - This preserves memory for smaller files while allowing large uploads
 
+**Graceful Memory Pressure Fallback:**
+
+- **Automatic fallback:** If memory allocation fails (extremely rare: ENOMEM), system automatically falls back to disk staging
+- **Error detection:** Detects `ENOMEM` or `ERR_OUT_OF_MEMORY` error codes
+- **Logging:** Memory fallback events are logged for monitoring
+- **Continuity:** Upload operation succeeds even under memory pressure
+- **Implementation:** try/catch in `stageFile()` catches memory errors and falls through to disk staging
+- **Note:** Memory pressure is extremely rare; most memory errors indicate application issues, not genuine OOM
+
+**Security Model:**
+
+- **0o700 permissions:** Sandbox directories have strict owner-only access (no group/other permissions)
+- **User isolation:** Each user gets isolated sandbox based on SHA-256 hash of ZIPLINE_TOKEN
+- **Token protection:** ZIPLINE_TOKEN never appears in filesystem paths
+- **Path format:** `~/.zipline_tmp/users/[SHA-256-hash]/[filename]`
+- **Benefit:** Multiple users can use same MCP server without file conflicts or data leaks
+
+**Disk Cleanup Behavior:**
+
+- **Design decision:** Disk staging returns the original file path (not a temp copy)
+- **Rationale:** Avoids unnecessary I/O, caller owns file lifecycle
+- **Cleanup:** No explicit cleanup needed - original files remain at their source location
+- **clearStagedContent() behavior:** Safely handles disk type (no-op for original files)
+- **Security:** Secret validation happens before staging regardless of strategy
+
 **Example Usage - Upload PNG Image:**
 
 ```json

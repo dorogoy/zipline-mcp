@@ -53,7 +53,7 @@ development_status:
   2-2-implement-mime-type-and-file-existence-validation: done
   2-3-enforce-file-size-limits-for-sandbox: done
   2-4-implement-memory-first-ephemeral-storage: done
-  2-5-implement-disk-based-fallback-staging: backlog
+  2-5-implement-disk-based-fallback-staging: done
   2-6-implement-atomic-cleanup-on-completion-or-failure: backlog
   2-7-implement-single-file-upload-to-zipline: backlog
   2-8-implement-upload-with-expiration-password-and-view-limits: backlog
