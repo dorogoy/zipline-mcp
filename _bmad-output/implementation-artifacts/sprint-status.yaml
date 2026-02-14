@@ -55,7 +55,7 @@ development_status:
   2-4-implement-memory-first-ephemeral-storage: done
   2-5-implement-disk-based-fallback-staging: done
   2-6-implement-atomic-cleanup-on-completion-or-failure: done
-  2-7-implement-single-file-upload-to-zipline: backlog
+  2-7-implement-single-file-upload-to-zipline: review
   2-8-implement-upload-with-expiration-password-and-view-limits: backlog
   2-9-implement-upload-organization-into-folders: backlog
   epic-2-retrospective: optional

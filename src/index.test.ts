@@ -3,7 +3,11 @@ process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
 import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { Dirent } from 'fs';
+import { Dirent, Stats } from 'fs';
+
+interface PartialStats extends Partial<Stats> {
+  size: number;
+}
 
 // Define types for the mock
 interface MockServer {
@@ -40,9 +44,13 @@ vi.mock('./httpClient', () => ({
 vi.mock('./sandboxUtils', () => ({
   getUserSandbox: vi.fn(() => '/home/user/.zipline_tmp/users/testhash'),
   validateFilename: vi.fn(() => null),
-  ensureUserSandbox: vi.fn(async () => '/home/user/.zipline_tmp/users/testhash'),
-  resolveInUserSandbox: vi.fn((filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`),
-  resolveSandboxPath: vi.fn((filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`),
+  ensureUserSandbox: vi.fn(() => '/home/user/.zipline_tmp/users/testhash'),
+  resolveInUserSandbox: vi.fn(
+    (filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`
+  ),
+  resolveSandboxPath: vi.fn(
+    (filename: string) => `/home/user/.zipline_tmp/users/testhash/${filename}`
+  ),
   logSandboxOperation: vi.fn(),
   TMP_MAX_READ_SIZE: 1024 * 1024,
   cleanupOldSandboxes: vi.fn(),
@@ -50,9 +58,9 @@ vi.mock('./sandboxUtils', () => ({
   acquireSandboxLock: vi.fn(),
   releaseSandboxLock: vi.fn(),
   validateFileForSecrets: vi.fn(),
-  stageFile: vi.fn().mockImplementation(async (filepath: string) => {
+  stageFile: vi.fn().mockImplementation((filepath: string) => {
     const content = Buffer.from('test content for cleanup test');
-    return { type: 'memory', content, path: filepath };
+    return Promise.resolve({ type: 'memory', content, path: filepath });
   }),
   clearStagedContent: vi.fn(),
   MEMORY_STAGING_THRESHOLD: 5 * 1024 * 1024,
@@ -427,7 +435,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const smallFileSize = 1024 * 1024; // 1MB
-      fsMock.stat.mockResolvedValue({ size: smallFileSize } as any);
+      fsMock.stat.mockResolvedValue({ size: smallFileSize } as PartialStats);
 
       const result = await handler({ filePath: '/path/to/small.txt' }, {});
 
@@ -443,7 +451,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const largeFileSize = 10 * 1024 * 1024; // 10MB
-      fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+      fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
 
       const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -459,7 +467,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const closeToThreshold = 4.6 * 1024 * 1024; // 4.6MB (92% of 5MB)
-      fsMock.stat.mockResolvedValue({ size: closeToThreshold } as any);
+      fsMock.stat.mockResolvedValue({ size: closeToThreshold } as PartialStats);
 
       const result = await handler(
         { filePath: '/path/to/near-threshold.txt' },
@@ -480,7 +488,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const oversized = 120 * 1024 * 1024; // 120MB (exceeds 100MB default)
-      fsMock.stat.mockResolvedValue({ size: oversized } as any);
+      fsMock.stat.mockResolvedValue({ size: oversized } as PartialStats);
 
       const result = await handler({ filePath: '/path/to/oversized.txt' }, {});
 
@@ -499,7 +507,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const normalSize = 2 * 1024 * 1024; // 2MB
-      fsMock.stat.mockResolvedValue({ size: normalSize } as any);
+      fsMock.stat.mockResolvedValue({ size: normalSize } as PartialStats);
 
       const result = await handler({ filePath: '/path/to/valid.txt' }, {});
 
@@ -811,7 +819,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const largeFileSize = 150 * 1024 * 1024; // 150MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
 
     const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -828,7 +836,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const largeFileSize = 120 * 1024 * 1024; // 120MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
 
     const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -846,7 +854,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const normalSize = 2 * 1024 * 1024; // 2MB
-    fsMock.stat.mockResolvedValue({ size: normalSize } as any);
+    fsMock.stat.mockResolvedValue({ size: normalSize } as PartialStats);
 
     const result = await handler({ filePath: '/path/to/valid.txt' }, {});
 
@@ -878,7 +886,7 @@ describe('upload_file_to_zipline tool', () => {
 
     const uploadError = new Error('Upload failed');
     const { uploadFile } = await import('./httpClient');
-    (uploadFile as any).mockRejectedValueOnce(uploadError);
+    vi.mocked(uploadFile).mockRejectedValueOnce(uploadError);
 
     const result = await handler({ filePath: '/path/to/file.txt' }, {});
     expect(result.isError).toBe(true);
@@ -888,16 +896,16 @@ describe('upload_file_to_zipline tool', () => {
   });
 
   it('should call clearStagedContent for disk-staged files (no-op)', async () => {
-    const content = Buffer.alloc(5 * 1024 * 1024, 'x');
+    mockFileContent(Buffer.alloc(5 * 1024 * 1024, 'x'));
     const largeFileSize = 10 * 1024 * 1024; // 10MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as any);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
 
     const handler = getToolHandler('upload_file_to_zipline');
     if (!handler) throw new Error('Handler not found');
 
     const { stageFile } = await import('./sandboxUtils');
-    (stageFile as any).mockImplementationOnce(async (filepath: string) => {
-      return { type: 'disk', path: filepath };
+    vi.mocked(stageFile).mockImplementationOnce((filepath: string) => {
+      return Promise.resolve({ type: 'disk', path: filepath });
     });
 
     const result = await handler({ filePath: '/path/to/large.txt' }, {});
