@@ -405,6 +405,10 @@ export function validatePassword(password: string): void {
   if (!trimmed) {
     throw new Error('password header cannot be empty or whitespace only');
   }
+
+  if (trimmed.length > 512) {
+    throw new Error('password header exceeds maximum length of 512 characters');
+  }
 }
 
 export function validateMaxViews(maxViews: number): void {
@@ -427,9 +431,11 @@ export function validateFolder(folder: string): void {
     throw new Error('folder header cannot be empty or whitespace only');
   }
 
-  // Check for valid characters (alphanumeric only)
-  if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
-    throw new Error('folder header must contain only alphanumeric characters');
+  // Check for valid characters (alphanumeric, hyphen, underscore)
+  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) {
+    throw new Error(
+      'folder header must contain only alphanumeric characters, hyphens, or underscores'
+    );
   }
 }
 
@@ -443,8 +449,10 @@ export function validateOriginalName(originalName: string): void {
     throw new Error('originalName cannot be empty or whitespace only');
   }
 
-  // Check for path separators
-  if (/[\\/]/.test(trimmed)) {
-    throw new Error('originalName cannot contain path separators');
+  // Check for path separators or control characters
+  if (/[\\/\n\r\t]/.test(trimmed)) {
+    throw new Error(
+      'originalName cannot contain path separators or control characters'
+    );
   }
 }

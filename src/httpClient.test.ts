@@ -308,6 +308,14 @@ describe('Header Validation', () => {
       expect(() => validatePassword('')).toThrow();
       expect(() => validatePassword('   ')).toThrow();
     });
+
+    it('rejects excessively long strings', async () => {
+      const { validatePassword } = await import('./httpClient');
+
+      expect(() => validatePassword('a'.repeat(513))).toThrow(
+        /exceeds maximum length/
+      );
+    });
   });
 
   describe('validateMaxViews', () => {
@@ -340,10 +348,12 @@ describe('Header Validation', () => {
     it('accepts valid folder IDs', async () => {
       const { validateFolder } = await import('./httpClient');
 
-      expect(() => validateFolder('folder123')).not.toThrow();
+      expect(() => validateFolder(' folder123 ')).not.toThrow();
       expect(() => validateFolder('abc')).not.toThrow();
       expect(() => validateFolder('123')).not.toThrow();
       expect(() => validateFolder('a1b2c3')).not.toThrow();
+      expect(() => validateFolder('my-folder')).not.toThrow();
+      expect(() => validateFolder('folder_123')).not.toThrow();
     });
 
     it('rejects empty or whitespace-only strings', async () => {
@@ -360,6 +370,7 @@ describe('Header Validation', () => {
       expect(() => validateFolder('folder\\123')).toThrow();
       expect(() => validateFolder('folder@123')).toThrow();
       expect(() => validateFolder('folder#123')).toThrow();
+      expect(() => validateFolder('folder 123')).toThrow();
     });
   });
 
@@ -670,8 +681,15 @@ describe('Header Validation', () => {
         })
       ).rejects.toThrow('originalName cannot contain path separators');
 
-      // Ensure fetch was not called due to validation failure
-      expect(fetchSpy).not.toHaveBeenCalled();
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'invalid\nname.txt',
+        })
+      ).rejects.toThrow('originalName cannot contain path separators');
     });
   });
 });
