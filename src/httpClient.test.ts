@@ -372,6 +372,13 @@ describe('Header Validation', () => {
       expect(() => validateFolder('folder#123')).toThrow();
       expect(() => validateFolder('folder 123')).toThrow();
     });
+    it('rejects folder IDs exceeding max length', async () => {
+      const { validateFolder } = await import('./httpClient');
+
+      expect(() => validateFolder('a'.repeat(256))).toThrow(
+        'folder header exceeds maximum length'
+      );
+    });
   });
 
   // Integration tests for full upload flow with new headers
@@ -690,6 +697,26 @@ describe('Header Validation', () => {
           originalName: 'invalid\nname.txt',
         })
       ).rejects.toThrow('originalName cannot contain path separators');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'invalid\x00name.txt',
+        })
+      ).rejects.toThrow('originalName cannot contain path separators');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'a'.repeat(256),
+        })
+      ).rejects.toThrow('originalName exceeds maximum length');
     });
   });
 });

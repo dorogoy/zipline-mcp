@@ -63,7 +63,7 @@ Upload a file to the Zipline server with advanced options and retrieve the downl
 - `deletesAt` (optional): Optional file expiration time (default: no expiration, e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")
 - `password` (optional): Optional password protection for the uploaded file (default: no password)
 - `maxViews` (optional): Optional maximum number of views before file removal (default: unlimited, ≥ 0)
-- `folder` (optional): Optional target folder ID (alphanumeric, must exist, default: no folder)
+- `folder` (optional): Optional target folder ID (alphanumeric, hyphens, underscores allowed; must exist; default: no folder)
 - `originalName` (optional): Optional original filename to preserve during download (default: auto-generated)
 
 **File Size Limits:**

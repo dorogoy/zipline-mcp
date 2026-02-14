@@ -214,7 +214,7 @@ export const uploadFileInputSchema = {
     .string()
     .optional()
     .describe(
-      'Optional: Target folder ID (alphanumeric, must exist, default: no folder)'
+      'Optional: Target folder ID (alphanumeric, hyphens, underscores allowed; must exist; default: no folder)'
     ),
   originalName: z
     .string()

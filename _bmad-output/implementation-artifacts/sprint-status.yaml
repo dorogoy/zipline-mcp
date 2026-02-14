@@ -48,7 +48,7 @@ development_status:
   1-5-validate-full-toolset-and-schema-exposure: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-implement-file-ingest-via-mcp-tool-calls: done
   2-2-implement-mime-type-and-file-existence-validation: done
   2-3-enforce-file-size-limits-for-sandbox: done
@@ -57,7 +57,7 @@ development_status:
   2-6-implement-atomic-cleanup-on-completion-or-failure: done
   2-7-implement-single-file-upload-to-zipline: done
   2-8-implement-upload-with-expiration-password-and-view-limits: done
-  2-9-implement-upload-organization-into-folders: backlog
+  2-9-implement-upload-organization-into-folders: done
   epic-2-retrospective: optional
 
   epic-3: backlog

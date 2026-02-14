@@ -437,6 +437,10 @@ export function validateFolder(folder: string): void {
       'folder header must contain only alphanumeric characters, hyphens, or underscores'
     );
   }
+
+  if (trimmed.length > 255) {
+    throw new Error('folder header exceeds maximum length of 255 characters');
+  }
 }
 
 export function validateOriginalName(originalName: string): void {
@@ -449,10 +453,14 @@ export function validateOriginalName(originalName: string): void {
     throw new Error('originalName cannot be empty or whitespace only');
   }
 
-  // Check for path separators or control characters
-  if (/[\\/\n\r\t]/.test(trimmed)) {
+  // Check for path separators or control characters (including null bytes)
+  if (/[\u0000-\u001F\u007F\\/]/.test(trimmed)) {
     throw new Error(
       'originalName cannot contain path separators or control characters'
     );
+  }
+
+  if (trimmed.length > 255) {
+    throw new Error('originalName exceeds maximum length of 255 characters');
   }
 }
