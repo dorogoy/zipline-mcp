@@ -454,6 +454,7 @@ export function validateOriginalName(originalName: string): void {
   }
 
   // Check for path separators or control characters (including null bytes)
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001F\u007F\\/]/.test(trimmed)) {
     throw new Error(
       'originalName cannot contain path separators or control characters'
