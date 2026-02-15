@@ -62,7 +62,7 @@ development_status:
 
   epic-3: in-progress
   3-1-implement-external-url-download-to-sandbox: done
-  3-2-validate-downloaded-content-through-standard-pipeline: backlog
+  3-2-validate-downloaded-content-through-standard-pipeline: done
   3-3-handle-download-timeouts-and-large-files: backlog
   epic-3-retrospective: optional
 

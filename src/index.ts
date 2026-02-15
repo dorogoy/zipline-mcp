@@ -894,23 +894,50 @@ server.registerTool(
   {
     title: 'Download External URL',
     description:
-      "Download a file from an external HTTP(S) URL into the user's sandbox and return the local path.",
+      "Download a file from an external HTTP(S) URL into the user's sandbox, validate content, and return the local path.",
     inputSchema: downloadExternalUrlInputSchema,
   },
   async (args) => {
     const { url, timeoutMs = 30000, maxFileSizeBytes } = args;
+    let downloadedPath: string | null = null;
+
     try {
       if (!isValidUrl(url)) throw new Error('Invalid URL');
       const { downloadExternalUrl } = await import('./httpClient.js');
       const opts: DownloadOptions = { timeout: timeoutMs };
       if (maxFileSizeBytes !== undefined)
         opts.maxFileSizeBytes = maxFileSizeBytes;
-      const pathResult = await downloadExternalUrl(url, opts);
+
+      downloadedPath = await downloadExternalUrl(url, opts);
+
+      const fileExt = path.extname(downloadedPath).toLowerCase();
+      const { detectedMimeType, mimeMatch, isSupported } =
+        await validateFileContent(downloadedPath, fileExt);
+
+      if (!mimeMatch) {
+        await fs.rm(downloadedPath, { force: true });
+        throw new Error(
+          `MIME type mismatch: content is ${detectedMimeType} but extension expects different type`
+        );
+      }
+
+      if (!isSupported) {
+        await fs.rm(downloadedPath, { force: true });
+        throw new Error(`Unsupported file type: ${fileExt}`);
+      }
+
+      try {
+        await validateFileForSecrets(downloadedPath);
+      } catch (error) {
+        await fs.rm(downloadedPath, { force: true });
+        throw error;
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: `✅ DOWNLOAD COMPLETE\n\nLocal path: ${pathResult}`,
+            text: `✅ DOWNLOAD COMPLETE\n\nLocal path: ${downloadedPath}\nMIME: ${detectedMimeType}`,
           },
         ],
       };
