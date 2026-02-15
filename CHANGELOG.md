@@ -6,6 +6,18 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.10.0](https://github.com/dorogoy/zipline-mcp/compare/v1.9.4...v1.10.0) (2026-02-15)
+
+
+### Features
+
+* Foundation and core security ([#71](https://github.com/dorogoy/zipline-mcp/issues/71)) ([4b47350](https://github.com/dorogoy/zipline-mcp/commit/4b47350f200ee92941d03dfa58fee78c0f5df73d))
+
+
+### Bug Fixes
+
+* **deps:** bump qs from 6.14.1 to 6.14.2 ([748a15b](https://github.com/dorogoy/zipline-mcp/commit/748a15bd2305b1f4aeeffb9b46a184d3edb9d8c3))
+
 ## [1.9.4](https://github.com/dorogoy/zipline-mcp/compare/v1.9.3...v1.9.4) (2026-02-07)
 
 
