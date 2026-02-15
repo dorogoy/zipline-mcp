@@ -96,11 +96,11 @@ const server = new McpServer({
   version: RELEASE_VERSION,
 });
 
-// Helper function to validate URLs
+// Helper function to validate URLs (HTTP/HTTPS only)
 function isValidUrl(string: string): boolean {
   try {
-    new URL(string);
-    return true;
+    const url = new URL(string);
+    return ['http:', 'https:'].includes(url.protocol);
   } catch {
     return false;
   }

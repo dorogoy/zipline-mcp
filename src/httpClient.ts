@@ -1,4 +1,4 @@
-import { readFile, writeFile, rm } from 'fs/promises';
+import { readFile, rm, open } from 'fs/promises';
 import {
   ensureUserSandbox,
   resolveSandboxPath,
@@ -310,23 +310,36 @@ export async function downloadExternalUrl(
       }
     }
 
-    // Read body as ArrayBuffer (may throw on network errors / abort)
-    const ab = await res.arrayBuffer();
-    const buf = new Uint8Array(ab);
-
-    if (buf.byteLength > maxFileSize) {
-      throw new FileTooLargeError(
-        `Downloaded file size ${buf.byteLength} bytes exceeds limit of ${maxFileSize} bytes (100MB)`
-      );
+    // Streaming download to disk to prevent memory exhaustion (OOM)
+    if (!res.body) {
+      throw new Error('Response body is null');
     }
 
-    // Write to sandbox (Uint8Array writes binary data directly)
-    await writeFile(finalPath, buf);
+    let downloadedBytes = 0;
+    const handle = await open(finalPath, 'w');
+    try {
+      // res.body is a ReadableStream (Web Stream) in Node 18+ fetch
+      const reader = res.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        downloadedBytes += value.length;
+        if (downloadedBytes > maxFileSize) {
+          throw new FileTooLargeError(
+            `Downloaded content exceeds limit of ${maxFileSize} bytes (100MB)`
+          );
+        }
+        await handle.write(value);
+      }
+    } finally {
+      await handle.close();
+    }
 
     logSandboxOperation(
       'DOWNLOAD_SUCCESS',
       filename,
-      `Bytes: ${buf.byteLength} - URL: ${urlStr}`
+      `Bytes: ${downloadedBytes} - URL: ${urlStr}`
     );
 
     return finalPath;

@@ -2,8 +2,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Minimal fs mock for write/remove operations
+const fsHandleMock = {
+  write: vi.fn(),
+  close: vi.fn(),
+};
+
 const fsMock = {
-  writeFile: vi.fn(),
+  open: vi.fn(async () => fsHandleMock),
   mkdir: vi.fn(),
   rm: vi.fn(),
 };
@@ -37,10 +42,21 @@ describe('downloadExternalUrl (TDD)', () => {
     fetchSpy = vi
       .spyOn(g, 'fetch')
       .mockImplementation(async (_input: any, _init?: any) => {
+        let sent = false;
         const res = {
           ok: true,
           status: 200,
-          arrayBuffer: async () => fakeContent.buffer,
+          body: {
+            getReader: () => ({
+              read: async () => {
+                if (!sent) {
+                  sent = true;
+                  return { done: false, value: fakeContent };
+                }
+                return { done: true, value: undefined };
+              },
+            }),
+          },
           headers: {
             get: (k: string) =>
               k.toLowerCase() === 'content-length'
@@ -64,11 +80,13 @@ describe('downloadExternalUrl (TDD)', () => {
     const result = await downloadExternalUrl(url, { timeout: 10000 });
 
     expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
-    // writeFile is called with path and binary data
-    expect(fsMock.writeFile).toHaveBeenCalledWith(
+    // open is called with path
+    expect(fsMock.open).toHaveBeenCalledWith(
       '/home/user/.zipline_tmp/users/hash/test.txt',
-      expect.any(Uint8Array)
+      'w'
     );
+    // handle.write is called with binary data
+    expect(fsHandleMock.write).toHaveBeenCalledWith(expect.any(Uint8Array));
   });
 
   it('rejects unsupported URL schemes', async () => {
@@ -124,12 +142,16 @@ describe('downloadExternalUrl (TDD)', () => {
     );
   });
 
-  it('rejects files larger than 100MB', async () => {
+  it('rejects files larger than 100MB via Content-Length', async () => {
     const bigSize = 101 * 1024 * 1024;
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      arrayBuffer: async () => new ArrayBuffer(1),
+      body: {
+        getReader: () => ({
+          read: async () => ({ done: true, value: undefined }),
+        }),
+      },
       headers: {
         get: (k: string) =>
           k.toLowerCase() === 'content-length' ? String(bigSize) : null,
@@ -141,6 +163,40 @@ describe('downloadExternalUrl (TDD)', () => {
     await expect(downloadExternalUrl(url)).rejects.toThrow(
       /exceed|too large|100MB/i
     );
+  });
+
+  it('rejects files larger than 100MB via streaming (no Content-Length)', async () => {
+    const chunk = new Uint8Array(10 * 1024 * 1024); // 10MB chunk
+    let chunksSent = 0;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: {
+        get: () => null, // No content-length
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (chunksSent < 11) {
+              // 11 * 10MB = 110MB
+              chunksSent++;
+              return { done: false, value: chunk };
+            }
+            return { done: true, value: undefined };
+          },
+        }),
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    await expect(downloadExternalUrl(url)).rejects.toThrow(
+      /exceeded|too large|100MB/i
+    );
+
+    // Verify cleanup was called
+    expect(fsMock.rm).toHaveBeenCalled();
   });
 
   it('removes partial file on failure', async () => {
