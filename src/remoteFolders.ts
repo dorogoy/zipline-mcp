@@ -214,8 +214,6 @@ export async function createFolder(
     body: JSON.stringify(requestBody),
   });
 
-  console.log('Body enviado a Zipline:', JSON.stringify(requestBody));
-
   if (!response.ok) {
     throw new Error(
       `Failed to create folder: ${response.status} ${response.statusText}`

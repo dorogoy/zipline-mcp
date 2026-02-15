@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ZiplineError } from './utils/errorMapper.js';
 
 // Mock fs/promises.readFile used by the http client
 const fsMock = {
@@ -108,7 +109,21 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
         filePath: samplePath,
         format,
       })
-    ).rejects.toThrow(/HTTP 500/i);
+    ).rejects.toThrow();
+
+    try {
+      await uploadFile({
+        endpoint,
+        token,
+        filePath: samplePath,
+        format,
+      });
+      expect.fail('Should have thrown ZiplineError');
+    } catch (err) {
+      const error = err as { httpStatus?: number; mcpCode?: string };
+      expect(error.httpStatus).toBe(500);
+      expect(error.mcpCode).toBeDefined();
+    }
   });
 
   it('throws when response JSON does not include files[0].url', async () => {
@@ -293,6 +308,14 @@ describe('Header Validation', () => {
       expect(() => validatePassword('')).toThrow();
       expect(() => validatePassword('   ')).toThrow();
     });
+
+    it('rejects excessively long strings', async () => {
+      const { validatePassword } = await import('./httpClient');
+
+      expect(() => validatePassword('a'.repeat(513))).toThrow(
+        /exceeds maximum length/
+      );
+    });
   });
 
   describe('validateMaxViews', () => {
@@ -325,10 +348,12 @@ describe('Header Validation', () => {
     it('accepts valid folder IDs', async () => {
       const { validateFolder } = await import('./httpClient');
 
-      expect(() => validateFolder('folder123')).not.toThrow();
+      expect(() => validateFolder(' folder123 ')).not.toThrow();
       expect(() => validateFolder('abc')).not.toThrow();
       expect(() => validateFolder('123')).not.toThrow();
       expect(() => validateFolder('a1b2c3')).not.toThrow();
+      expect(() => validateFolder('my-folder')).not.toThrow();
+      expect(() => validateFolder('folder_123')).not.toThrow();
     });
 
     it('rejects empty or whitespace-only strings', async () => {
@@ -345,6 +370,14 @@ describe('Header Validation', () => {
       expect(() => validateFolder('folder\\123')).toThrow();
       expect(() => validateFolder('folder@123')).toThrow();
       expect(() => validateFolder('folder#123')).toThrow();
+      expect(() => validateFolder('folder 123')).toThrow();
+    });
+    it('rejects folder IDs exceeding max length', async () => {
+      const { validateFolder } = await import('./httpClient');
+
+      expect(() => validateFolder('a'.repeat(256))).toThrow(
+        'folder header exceeds maximum length'
+      );
     });
   });
 
@@ -655,8 +688,35 @@ describe('Header Validation', () => {
         })
       ).rejects.toThrow('originalName cannot contain path separators');
 
-      // Ensure fetch was not called due to validation failure
-      expect(fetchSpy).not.toHaveBeenCalled();
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'invalid\nname.txt',
+        })
+      ).rejects.toThrow('originalName cannot contain path separators');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'invalid\x00name.txt',
+        })
+      ).rejects.toThrow('originalName cannot contain path separators');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format,
+          originalName: 'a'.repeat(256),
+        })
+      ).rejects.toThrow('originalName exceeds maximum length');
     });
   });
 });

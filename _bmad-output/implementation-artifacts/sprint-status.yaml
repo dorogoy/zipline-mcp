@@ -1,4 +1,4 @@
-# generated: 2026-02-07
+# generated: 2026-02-07 21:40
 # project: zipline-mcp
 # project_key: zipline-mcp
 # tracking_system: file-system
@@ -41,23 +41,23 @@ story_location: /home/sergio/Proyectos/utils/zipline-mcp/_bmad-output/implementa
 
 development_status:
   epic-1: in-progress
-  1-1-implement-path-sanitization-utility: backlog
-  1-2-implement-token-masking-security-utility: backlog
-  1-3-implement-secret-pattern-detection: backlog
-  1-4-implement-http-error-to-mcp-error-code-mapping: backlog
-  1-5-validate-full-toolset-and-schema-exposure: backlog
+  1-1-implement-path-sanitization-utility: done
+  1-2-implement-token-masking-security-utility: done
+  1-3-implement-secret-pattern-detection: done
+  1-4-implement-http-error-to-mcp-error-code-mapping: done
+  1-5-validate-full-toolset-and-schema-exposure: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-implement-file-ingest-via-mcp-tool-calls: backlog
-  2-2-implement-mime-type-and-file-existence-validation: backlog
-  2-3-enforce-file-size-limits-for-sandbox: backlog
-  2-4-implement-memory-first-ephemeral-storage: backlog
-  2-5-implement-disk-based-fallback-staging: backlog
-  2-6-implement-atomic-cleanup-on-completion-or-failure: backlog
-  2-7-implement-single-file-upload-to-zipline: backlog
-  2-8-implement-upload-with-expiration-password-and-view-limits: backlog
-  2-9-implement-upload-organization-into-folders: backlog
+  epic-2: done
+  2-1-implement-file-ingest-via-mcp-tool-calls: done
+  2-2-implement-mime-type-and-file-existence-validation: done
+  2-3-enforce-file-size-limits-for-sandbox: done
+  2-4-implement-memory-first-ephemeral-storage: done
+  2-5-implement-disk-based-fallback-staging: done
+  2-6-implement-atomic-cleanup-on-completion-or-failure: done
+  2-7-implement-single-file-upload-to-zipline: done
+  2-8-implement-upload-with-expiration-password-and-view-limits: done
+  2-9-implement-upload-organization-into-folders: done
   epic-2-retrospective: optional
 
   epic-3: backlog

@@ -7,11 +7,13 @@ import {
 } from './sandboxUtils.js';
 import path from 'path';
 import mime from 'mime-types';
+import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
 
 export interface UploadOptions {
   endpoint: string;
   token: string;
   filePath: string;
+  fileContent?: Buffer;
   format: string;
   timeoutMs?: number;
   filenameOverride?: string;
@@ -70,6 +72,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     endpoint,
     token,
     filePath,
+    fileContent,
     format,
     timeoutMs = 30000,
     filenameOverride,
@@ -93,7 +96,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   if (originalName !== undefined) validateOriginalName(originalName);
 
   // Read file content
-  const data = await readFile(filePath);
+  const data = fileContent || (await readFile(filePath));
 
   // Detect MIME type based on file extension
   const mimeType = detectMimeType(filePath);
@@ -147,15 +150,13 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
     });
 
     if (!res.ok) {
-      // Try to include response text in error
       let bodyText = '';
       try {
         bodyText = await res.text();
       } catch {
         // ignore
       }
-      const msg = bodyText ? `: ${bodyText}` : '';
-      throw new Error(`HTTP ${res.status}${msg}`);
+      throw mapHttpStatusToMcpError(res.status, bodyText);
     }
 
     let json: unknown;
@@ -289,17 +290,13 @@ export async function downloadExternalUrl(
     });
 
     if (!res.ok) {
-      // Try to include statusText or body
       let bodyText = '';
       try {
         bodyText = await res.text();
       } catch {
         // ignore
       }
-      const msg = bodyText
-        ? `: ${bodyText}`
-        : ` ${res.status} ${res.statusText || ''}`;
-      throw new HttpError(res.status, `HTTP ${res.status}${msg}`);
+      throw mapHttpStatusToMcpError(res.status, bodyText);
     }
 
     // Check content-length header if present
@@ -408,6 +405,10 @@ export function validatePassword(password: string): void {
   if (!trimmed) {
     throw new Error('password header cannot be empty or whitespace only');
   }
+
+  if (trimmed.length > 512) {
+    throw new Error('password header exceeds maximum length of 512 characters');
+  }
 }
 
 export function validateMaxViews(maxViews: number): void {
@@ -430,9 +431,15 @@ export function validateFolder(folder: string): void {
     throw new Error('folder header cannot be empty or whitespace only');
   }
 
-  // Check for valid characters (alphanumeric only)
-  if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
-    throw new Error('folder header must contain only alphanumeric characters');
+  // Check for valid characters (alphanumeric, hyphen, underscore)
+  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) {
+    throw new Error(
+      'folder header must contain only alphanumeric characters, hyphens, or underscores'
+    );
+  }
+
+  if (trimmed.length > 255) {
+    throw new Error('folder header exceeds maximum length of 255 characters');
   }
 }
 
@@ -446,8 +453,15 @@ export function validateOriginalName(originalName: string): void {
     throw new Error('originalName cannot be empty or whitespace only');
   }
 
-  // Check for path separators
-  if (/[\\/]/.test(trimmed)) {
-    throw new Error('originalName cannot contain path separators');
+  // Check for path separators or control characters (including null bytes)
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F\\/]/.test(trimmed)) {
+    throw new Error(
+      'originalName cannot contain path separators or control characters'
+    );
+  }
+
+  if (trimmed.length > 255) {
+    throw new Error('originalName exceeds maximum length of 255 characters');
   }
 }
