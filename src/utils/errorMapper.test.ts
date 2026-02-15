@@ -225,7 +225,7 @@ describe('errorMapper', () => {
 
         expect(error.resolutionGuidance).toBeTruthy();
         expect(error.resolutionGuidance).toContain('does not exist');
-        expect(error.resolutionGuidance.toLowerCase()).toContain('verify');
+        expect(error.resolutionGuidance?.toLowerCase()).toContain('verify');
       });
 
       it('should provide resolution guidance for PAYLOAD_TOO_LARGE', () => {
