@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Minimal fs mock for write/remove operations
 const fsHandleMock = {
   write: vi.fn(),
   close: vi.fn(),
@@ -11,10 +10,10 @@ const fsMock = {
   open: vi.fn(async () => fsHandleMock),
   mkdir: vi.fn(),
   rm: vi.fn(),
+  readFile: vi.fn(),
 };
 vi.mock('fs/promises', () => ({ ...fsMock, default: fsMock }));
 
-// Mock sandbox utilities used by the downloader so tests don't depend on real FS layout
 vi.mock('./sandboxUtils', () => ({
   ensureUserSandbox: vi.fn(async () => '/home/user/.zipline_tmp/users/hash'),
   resolveSandboxPath: vi.fn(
@@ -22,6 +21,29 @@ vi.mock('./sandboxUtils', () => ({
   ),
   validateFilename: vi.fn(() => null),
   logSandboxOperation: vi.fn(() => {}),
+  validateFileForSecrets: vi.fn(async () => {}),
+  SecretDetectionError: class SecretDetectionError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'SecretDetectionError';
+    }
+  },
+}));
+
+vi.mock('file-type', () => ({
+  fileTypeFromBuffer: vi.fn(async () => ({ mime: 'text/plain', ext: 'txt' })),
+}));
+
+vi.mock('mime-types', () => ({
+  default: {
+    lookup: vi.fn((filename: string) => {
+      if (filename.endsWith('.txt')) return 'text/plain';
+      if (filename.endsWith('.png')) return 'image/png';
+      if (filename.endsWith('.exe')) return 'application/octet-stream';
+      if (filename.endsWith('.env')) return 'text/plain';
+      return false;
+    }),
+  },
 }));
 
 describe('downloadExternalUrl (TDD)', () => {
@@ -80,12 +102,10 @@ describe('downloadExternalUrl (TDD)', () => {
     const result = await downloadExternalUrl(url, { timeout: 10000 });
 
     expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
-    // open is called with path
     expect(fsMock.open).toHaveBeenCalledWith(
       '/home/user/.zipline_tmp/users/hash/test.txt',
       'w'
     );
-    // handle.write is called with binary data
     expect(fsHandleMock.write).toHaveBeenCalledWith(expect.any(Uint8Array));
   });
 
@@ -166,20 +186,19 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects files larger than 100MB via streaming (no Content-Length)', async () => {
-    const chunk = new Uint8Array(10 * 1024 * 1024); // 10MB chunk
+    const chunk = new Uint8Array(10 * 1024 * 1024);
     let chunksSent = 0;
 
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       status: 200,
       headers: {
-        get: () => null, // No content-length
+        get: () => null,
       },
       body: {
         getReader: () => ({
           read: async () => {
             if (chunksSent < 11) {
-              // 11 * 10MB = 110MB
               chunksSent++;
               return { done: false, value: chunk };
             }
@@ -195,12 +214,10 @@ describe('downloadExternalUrl (TDD)', () => {
       /exceeded|too large|100MB/i
     );
 
-    // Verify cleanup was called
     expect(fsMock.rm).toHaveBeenCalled();
   });
 
   it('removes partial file on failure', async () => {
-    // Simulate fetch that throws mid-download
     fetchSpy.mockImplementationOnce(async () => {
       throw new Error('Network failure');
     });
@@ -208,7 +225,6 @@ describe('downloadExternalUrl (TDD)', () => {
     const { downloadExternalUrl } = await import('./httpClient');
     await expect(downloadExternalUrl(url)).rejects.toThrow(/Network failure/i);
 
-    // Ensure cleanup attempted
     expect(fsMock.rm).toHaveBeenCalledWith(
       '/home/user/.zipline_tmp/users/hash/test.txt',
       { force: true }
