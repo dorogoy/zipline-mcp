@@ -374,6 +374,13 @@ export const updateUserFileInputSchema = {
     .string()
     .optional()
     .describe('Optional: Rename the file (default: no change).'),
+  folderId: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'Optional: Move the file to a different folder by providing the folder ID, or set to null to move to root (default: no change).'
+    ),
 };
 
 export const deleteUserFileInputSchema = {
@@ -1066,6 +1073,7 @@ server.registerTool(
       if (args.type !== undefined) opts.type = args.type;
       if (args.tags !== undefined) opts.tags = args.tags;
       if (args.name !== undefined) opts.name = args.name;
+      if (args.folderId !== undefined) opts.folderId = args.folderId;
 
       const file = await updateUserFile(opts);
       return {
@@ -1081,7 +1089,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ UPDATE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+            text: maskSensitiveData(
+              `❌ UPDATE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+            ),
           },
         ],
         isError: true,
