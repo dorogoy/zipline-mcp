@@ -211,7 +211,7 @@ describe('listUserFiles', () => {
         token: 'invalid-token',
         page: 1,
       })
-    ).rejects.toThrow('HTTP 403: Forbidden');
+    ).rejects.toThrow('Operation forbidden');
   });
 
   it('should handle network errors', async () => {
@@ -247,6 +247,154 @@ describe('listUserFiles', () => {
       ),
       expect.any(Object)
     );
+  });
+
+  it('should return identical URLs for identical files across multiple calls (idempotency)', async () => {
+    const createMockResponse = () => ({
+      page: [
+        {
+          id: 'file1',
+          name: 'test.png',
+          originalName: 'original.png',
+          size: 1024,
+          type: 'image/png',
+          views: 5,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          favorite: false,
+          url: '/u/test.png',
+        },
+      ],
+      total: 1,
+      pages: 1,
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(createMockResponse()),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(createMockResponse()),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(createMockResponse()),
+    });
+
+    const options = {
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      page: 1,
+    };
+
+    const result1 = await listUserFiles(options);
+    const result2 = await listUserFiles(options);
+    const result3 = await listUserFiles(options);
+
+    expect(result1.page[0]!.url).toBe(result2.page[0]!.url);
+    expect(result2.page[0]!.url).toBe(result3.page[0]!.url);
+    expect(result1.page[0]!.url).toBe('https://zipline.example.com/u/test.png');
+  });
+
+  it('should produce absolute URLs not relative paths', async () => {
+    const mockResponse = {
+      page: [
+        {
+          id: 'file1',
+          name: 'test.png',
+          originalName: 'original.png',
+          size: 1024,
+          type: 'image/png',
+          views: 5,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          favorite: false,
+          url: '/u/test.png',
+        },
+      ],
+      total: 1,
+      pages: 1,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const result = await listUserFiles({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      page: 1,
+    });
+
+    const url = result.page[0]!.url;
+    expect(url.startsWith('https://') || url.startsWith('http://')).toBe(true);
+    expect(url.startsWith('/')).toBe(false);
+  });
+
+  it('should return accurate total and pages metadata for pagination', async () => {
+    const mockResponse = {
+      page: [
+        {
+          id: 'file1',
+          name: 'test.png',
+          originalName: 'original.png',
+          size: 1024,
+          type: 'image/png',
+          views: 5,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          favorite: false,
+          url: '/u/test.png',
+        },
+      ],
+      total: 47,
+      pages: 5,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const result = await listUserFiles({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      page: 1,
+      perpage: 10,
+    });
+
+    expect(result.total).toBe(47);
+    expect(result.pages).toBe(5);
+    expect(result.page.length).toBe(1);
+  });
+
+  it('should handle empty file list with proper structure', async () => {
+    const mockResponse = {
+      page: [],
+      total: 0,
+      pages: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const result = await listUserFiles({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      page: 1,
+    });
+
+    expect(result).toEqual({
+      page: [],
+      total: 0,
+      pages: 0,
+    });
+    expect(Array.isArray(result.page)).toBe(true);
+    expect(result.page.length).toBe(0);
   });
 });
 

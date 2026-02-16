@@ -991,7 +991,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ LIST USER FILES FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+            text: maskSensitiveData(
+              `❌ LIST USER FILES FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+            ),
           },
         ],
         isError: true,

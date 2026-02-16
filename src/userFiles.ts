@@ -1,4 +1,6 @@
 // URL normalization utility to safely join URLs like Python's os.path.join
+import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
+
 function normalizeUrl(base: string, path: string): string {
   try {
     if (!path) {
@@ -142,16 +144,14 @@ export async function listUserFiles(
   });
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    let errorMessage: string | undefined;
     try {
       const text = await response.text();
-      if (text) {
-        errorMessage += `: ${text}`;
-      }
+      errorMessage = text || undefined;
     } catch {
       // Ignore if we can't read the response text
     }
-    throw new Error(errorMessage);
+    throw mapHttpStatusToMcpError(response.status, errorMessage);
   }
 
   let data: unknown;
