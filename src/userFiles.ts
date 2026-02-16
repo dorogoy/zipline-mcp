@@ -253,6 +253,7 @@ export interface UpdateUserFileOptions {
   type?: string;
   tags?: string[];
   name?: string;
+  folderId?: string | null;
 }
 
 export async function updateUserFile(

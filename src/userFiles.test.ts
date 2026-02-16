@@ -1139,6 +1139,244 @@ describe('updateUserFile', () => {
       })
     ).rejects.toThrow('id is required');
   });
+
+  it('should rename a file', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'renamed-file.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/renamed-file.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      name: 'renamed-file.png',
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'renamed-file.png',
+        }),
+      }
+    );
+
+    expect(result.name).toBe('renamed-file.png');
+  });
+
+  it('should move file to a different folder', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: 'folder456',
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      folderId: 'folder456',
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          folderId: 'folder456',
+        }),
+      }
+    );
+
+    expect(result.folderId).toBe('folder456');
+  });
+
+  it('should move file to root by setting folderId to null', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      folderId: null,
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          folderId: null,
+        }),
+      }
+    );
+
+    expect(result.folderId).toBeNull();
+  });
+
+  it('should return RESOURCE_NOT_FOUND for invalid file ID', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve('File not found'),
+    });
+
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'nonexistent-file',
+        name: 'new-name.png',
+      })
+    ).rejects.toThrow('Resource not found');
+  });
+
+  it('should handle network errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        name: 'new-name.png',
+      })
+    ).rejects.toThrow('Network error');
+  });
+
+  it('should update multiple properties atomically', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'renamed.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: 200,
+      favorite: true,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: 'folder789',
+      thumbnail: null,
+      tags: ['updated', 'tags'],
+      password: null,
+      url: '/u/renamed.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await updateUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+      name: 'renamed.png',
+      favorite: true,
+      maxViews: 200,
+      folderId: 'folder789',
+      tags: ['updated', 'tags'],
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://zipline.example.com/api/user/files/file123',
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: 'test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'renamed.png',
+          favorite: true,
+          maxViews: 200,
+          folderId: 'folder789',
+          tags: ['updated', 'tags'],
+        }),
+      }
+    );
+
+    expect(result.name).toBe('renamed.png');
+    expect(result.favorite).toBe(true);
+    expect(result.maxViews).toBe(200);
+    expect(result.folderId).toBe('folder789');
+    expect(result.tags).toEqual(['updated', 'tags']);
+  });
 });
 
 describe('deleteUserFile', () => {
