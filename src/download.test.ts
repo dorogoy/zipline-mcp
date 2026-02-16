@@ -230,4 +230,174 @@ describe('downloadExternalUrl (TDD)', () => {
       { force: true }
     );
   });
+
+  it('accepts file exactly at 100MB boundary via Content-Length', async () => {
+    const exactSize = 100 * 1024 * 1024;
+    const content = new Uint8Array([1, 2, 3, 4, 5]);
+    let sent = false;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (!sent) {
+              sent = true;
+              return { done: false, value: content };
+            }
+            return { done: true, value: undefined };
+          },
+        }),
+      },
+      headers: {
+        get: (k: string) =>
+          k.toLowerCase() === 'content-length' ? String(exactSize) : null,
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    const result = await downloadExternalUrl(url);
+
+    expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
+    expect(fsMock.open).toHaveBeenCalled();
+  });
+
+  it('accepts file exactly at 100MB boundary via streaming', async () => {
+    const chunkSize = 1024 * 1024; // 1MB per chunk
+    const totalChunks = 100; // 100 chunks = exactly 100MB
+    const chunk = new Uint8Array(chunkSize);
+    let chunksSent = 0;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: {
+        get: () => null,
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (chunksSent < totalChunks) {
+              chunksSent++;
+              return { done: false, value: chunk };
+            }
+            return { done: true, value: undefined };
+          },
+        }),
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    const result = await downloadExternalUrl(url);
+
+    expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
+  });
+
+  it('rejects file just over 100MB boundary via streaming', async () => {
+    const chunkSize = 1024 * 1024; // 1MB per chunk
+    const totalChunks = 100; // 100 chunks = exactly 100MB
+    const chunk = new Uint8Array(chunkSize);
+    const extraByte = new Uint8Array(1); // 1 extra byte to exceed limit
+    let chunksSent = 0;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: {
+        get: () => null,
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (chunksSent < totalChunks) {
+              chunksSent++;
+              return { done: false, value: chunk };
+            }
+            if (chunksSent === totalChunks) {
+              chunksSent++;
+              return { done: false, value: extraByte };
+            }
+            return { done: true, value: undefined };
+          },
+        }),
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    await expect(downloadExternalUrl(url)).rejects.toThrow(
+      /exceeded|too large|100MB/i
+    );
+
+    expect(fsMock.rm).toHaveBeenCalled();
+  });
+
+  it('cleans up file on streaming abort mid-download', async () => {
+    const chunk = new Uint8Array(50 * 1024 * 1024);
+    let chunksSent = 0;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: {
+        get: () => null,
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            chunksSent++;
+            if (chunksSent === 1) {
+              return { done: false, value: chunk };
+            }
+            throw new Error('Connection lost mid-download');
+          },
+        }),
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    await expect(downloadExternalUrl(url)).rejects.toThrow(/Connection lost/i);
+
+    expect(fsMock.rm).toHaveBeenCalledWith(
+      '/home/user/.zipline_tmp/users/hash/test.txt',
+      { force: true }
+    );
+  });
+
+  it('respects custom maxFileSizeBytes parameter', async () => {
+    const customLimit = 1024; // 1KB custom limit
+    const chunk = new Uint8Array(2048); // 2KB exceeds 1KB limit
+    let chunksSent = 0;
+
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: {
+        get: () => null,
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (chunksSent < 1) {
+              chunksSent++;
+              return { done: false, value: chunk };
+            }
+            return { done: true, value: undefined };
+          },
+        }),
+      },
+      url,
+    } as any);
+
+    const { downloadExternalUrl } = await import('./httpClient');
+    await expect(
+      downloadExternalUrl(url, { maxFileSizeBytes: customLimit })
+    ).rejects.toThrow(/exceed/i);
+
+    expect(fsMock.rm).toHaveBeenCalled();
+  });
 });
