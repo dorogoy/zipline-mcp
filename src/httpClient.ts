@@ -305,7 +305,7 @@ export async function downloadExternalUrl(
       const declared = Number(cl);
       if (!Number.isNaN(declared) && declared > maxFileSize) {
         throw new FileTooLargeError(
-          `Remote file size ${declared} bytes exceeds limit of ${maxFileSize} bytes (100MB)`
+          `Remote file size ${declared} bytes exceeds limit of ${maxFileSize} bytes (${(maxFileSize / (1024 * 1024)).toFixed(0)}MB)`
         );
       }
     }
@@ -327,7 +327,7 @@ export async function downloadExternalUrl(
         downloadedBytes += value.length;
         if (downloadedBytes > maxFileSize) {
           throw new FileTooLargeError(
-            `Downloaded content exceeds limit of ${maxFileSize} bytes (100MB)`
+            `Downloaded content exceeds limit of ${maxFileSize} bytes (${(maxFileSize / (1024 * 1024)).toFixed(0)}MB)`
           );
         }
         await handle.write(value);
