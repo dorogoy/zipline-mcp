@@ -1031,7 +1031,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ GET USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+            text: maskSensitiveData(
+              `❌ GET USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+            ),
           },
         ],
         isError: true,

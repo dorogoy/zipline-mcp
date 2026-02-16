@@ -69,7 +69,7 @@ development_status:
   epic-4: in-progress
   4-1-implement-file-listing-with-idempotent-urls: done
   4-2-implement-file-search-functionality: done
-  4-3-retrieve-detailed-file-metadata: backlog
+  4-3-retrieve-detailed-file-metadata: done
   4-4-update-file-properties: backlog
   4-5-implement-single-file-deletion: backlog
   4-6-implement-batch-file-operations: backlog

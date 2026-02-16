@@ -820,6 +820,160 @@ describe('getUserFile', () => {
       })
     ).rejects.toThrow('Invalid response format from Zipline server');
   });
+
+  it('should return all expected metadata fields', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'test.png',
+      originalName: 'original.png',
+      size: 1024,
+      type: 'image/png',
+      views: 5,
+      maxViews: null,
+      favorite: true,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-02T00:00:00Z',
+      deletesAt: null,
+      folderId: 'folder123',
+      thumbnail: { path: '/thumbnails/test.png' },
+      tags: ['tag1', 'tag2'],
+      password: null,
+      url: '/u/test.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(result.id).toBe('file123');
+    expect(result.name).toBe('test.png');
+    expect(result.originalName).toBe('original.png');
+    expect(result.size).toBe(1024);
+    expect(result.type).toBe('image/png');
+    expect(result.views).toBe(5);
+    expect(result.maxViews).toBeNull();
+    expect(result.favorite).toBe(true);
+    expect(result.createdAt).toBe('2025-01-01T00:00:00Z');
+    expect(result.updatedAt).toBe('2025-01-02T00:00:00Z');
+    expect(result.deletesAt).toBeNull();
+    expect(result.folderId).toBe('folder123');
+    expect(result.thumbnail).toEqual({ path: '/thumbnails/test.png' });
+    expect(result.tags).toEqual(['tag1', 'tag2']);
+    expect(result.password).toBeNull();
+    expect(result.url).toBe('https://zipline.example.com/u/test.png');
+  });
+
+  it('should include expiration date when deletesAt is set', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'expiring.png',
+      originalName: null,
+      size: 2048,
+      type: 'image/png',
+      views: 10,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: '2025-02-01T00:00:00Z',
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/expiring.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(result.deletesAt).toBe('2025-02-01T00:00:00Z');
+  });
+
+  it('should include view limits when maxViews is set', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'limited-views.png',
+      originalName: null,
+      size: 512,
+      type: 'image/png',
+      views: 25,
+      maxViews: 100,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/limited-views.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(result.maxViews).toBe(100);
+    expect(result.views).toBe(25);
+  });
+
+  it('should handle null expiration and unlimited views', async () => {
+    const mockFile = {
+      id: 'file123',
+      name: 'permanent.png',
+      originalName: null,
+      size: 4096,
+      type: 'image/png',
+      views: 0,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+      url: '/u/permanent.png',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockFile),
+    });
+
+    const result = await getUserFile({
+      endpoint: 'https://zipline.example.com',
+      token: 'test-token',
+      id: 'file123',
+    });
+
+    expect(result.deletesAt).toBeNull();
+    expect(result.maxViews).toBeNull();
+    expect(result.views).toBe(0);
+  });
 });
 
 describe('updateUserFile', () => {
