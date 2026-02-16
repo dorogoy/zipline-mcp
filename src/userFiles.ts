@@ -210,16 +210,14 @@ export async function getUserFile(
   });
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    let errorMessage: string | undefined;
     try {
       const text = await response.text();
-      if (text) {
-        errorMessage += `: ${text}`;
-      }
+      errorMessage = text || undefined;
     } catch {
       // Ignore if we can't read the response text
     }
-    throw new Error(errorMessage);
+    throw mapHttpStatusToMcpError(response.status, errorMessage);
   }
 
   let data: unknown;
@@ -294,16 +292,14 @@ export async function updateUserFile(
   });
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    let errorMessage: string | undefined;
     try {
       const text = await response.text();
-      if (text) {
-        errorMessage += `: ${text}`;
-      }
+      errorMessage = text || undefined;
     } catch {
       // Ignore if we can't read the response text
     }
-    throw new Error(errorMessage);
+    throw mapHttpStatusToMcpError(response.status, errorMessage);
   }
 
   let data: unknown;
@@ -360,16 +356,14 @@ export async function deleteUserFile(
   });
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    let errorMessage: string | undefined;
     try {
       const text = await response.text();
-      if (text) {
-        errorMessage += `: ${text}`;
-      }
+      errorMessage = text || undefined;
     } catch {
       // Ignore if we can't read the response text
     }
-    throw new Error(errorMessage);
+    throw mapHttpStatusToMcpError(response.status, errorMessage);
   }
 
   let data: unknown;

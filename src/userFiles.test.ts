@@ -396,6 +396,273 @@ describe('listUserFiles', () => {
     expect(Array.isArray(result.page)).toBe(true);
     expect(result.page.length).toBe(0);
   });
+
+  describe('file search functionality', () => {
+    it('should search by MIME type with searchField=type for image/png', async () => {
+      const mockResponse = {
+        page: [
+          {
+            id: 'file1',
+            name: 'image.png',
+            originalName: 'photo.png',
+            size: 2048,
+            type: 'image/png',
+            views: 0,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            favorite: false,
+            maxViews: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+            url: '/u/image.png',
+          },
+        ],
+        search: { field: 'type', query: 'image/png' },
+        total: 1,
+        pages: 1,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'type',
+        searchQuery: 'image/png',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://zipline.example.com/api/user/files?page=1&perpage=15&searchField=type&searchQuery=image%2Fpng',
+        expect.any(Object)
+      );
+      expect(result.page.length).toBe(1);
+      expect(result.page[0]?.type).toBe('image/png');
+    });
+
+    it('should search by MIME type with searchField=type for text/plain', async () => {
+      const mockResponse = {
+        page: [
+          {
+            id: 'file2',
+            name: 'document.txt',
+            originalName: 'notes.txt',
+            size: 512,
+            type: 'text/plain',
+            views: 5,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            favorite: false,
+            maxViews: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+            url: '/u/document.txt',
+          },
+        ],
+        search: { field: 'type', query: 'text/plain' },
+        total: 1,
+        pages: 1,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'type',
+        searchQuery: 'text/plain',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://zipline.example.com/api/user/files?page=1&perpage=15&searchField=type&searchQuery=text%2Fplain',
+        expect.any(Object)
+      );
+      expect(result.page.length).toBe(1);
+      expect(result.page[0]?.type).toBe('text/plain');
+    });
+
+    it('should search by tags with searchField=tags', async () => {
+      const mockResponse = {
+        page: [
+          {
+            id: 'file1',
+            name: 'tagged-file.png',
+            originalName: 'photo.png',
+            size: 1024,
+            type: 'image/png',
+            views: 0,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            favorite: false,
+            maxViews: null,
+            folderId: null,
+            thumbnail: null,
+            tags: ['vacation', 'beach'],
+            password: null,
+            url: '/u/tagged-file.png',
+          },
+        ],
+        search: { field: 'tags', query: 'vacation' },
+        total: 1,
+        pages: 1,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'tags',
+        searchQuery: 'vacation',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://zipline.example.com/api/user/files?page=1&perpage=15&searchField=tags&searchQuery=vacation',
+        expect.any(Object)
+      );
+      expect(result.page.length).toBe(1);
+      expect(result.page[0]?.tags).toContain('vacation');
+    });
+
+    it('should search by ID with searchField=id', async () => {
+      const mockResponse = {
+        page: [
+          {
+            id: 'abc123',
+            name: 'specific-file.png',
+            originalName: 'photo.png',
+            size: 1024,
+            type: 'image/png',
+            views: 0,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            favorite: false,
+            maxViews: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+            url: '/u/specific-file.png',
+          },
+        ],
+        search: { field: 'id', query: 'abc123' },
+        total: 1,
+        pages: 1,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'id',
+        searchQuery: 'abc123',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://zipline.example.com/api/user/files?page=1&perpage=15&searchField=id&searchQuery=abc123',
+        expect.any(Object)
+      );
+      expect(result.page.length).toBe(1);
+      expect(result.page[0]?.id).toBe('abc123');
+    });
+
+    it('should return empty results for non-matching search query', async () => {
+      const mockResponse = {
+        page: [],
+        total: 0,
+        pages: 0,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'name',
+        searchQuery: 'nonexistent-file-xyz',
+      });
+
+      expect(result).toEqual({
+        page: [],
+        total: 0,
+        pages: 0,
+      });
+      expect(Array.isArray(result.page)).toBe(true);
+      expect(result.page.length).toBe(0);
+      expect(result.total).toBe(0);
+      expect(result.pages).toBe(0);
+    });
+
+    it('should search by originalName field', async () => {
+      const mockResponse = {
+        page: [
+          {
+            id: 'file1',
+            name: 'abc123.png',
+            originalName: 'screenshot-2024.png',
+            size: 2048,
+            type: 'image/png',
+            views: 0,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            favorite: false,
+            maxViews: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+            url: '/u/abc123.png',
+          },
+        ],
+        search: { field: 'originalName', query: 'screenshot' },
+        total: 1,
+        pages: 1,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await listUserFiles({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        page: 1,
+        searchField: 'originalName',
+        searchQuery: 'screenshot',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://zipline.example.com/api/user/files?page=1&perpage=15&searchField=originalName&searchQuery=screenshot',
+        expect.any(Object)
+      );
+      expect(result.page[0]?.originalName).toBe('screenshot-2024.png');
+    });
+  });
 });
 
 describe('getUserFile', () => {
@@ -498,7 +765,7 @@ describe('getUserFile', () => {
         token: 'test-token',
         id: 'nonexistent',
       })
-    ).rejects.toThrow('HTTP 404: File not found');
+    ).rejects.toThrow('Resource not found');
   });
 
   it('should handle network errors', async () => {
@@ -687,7 +954,7 @@ describe('updateUserFile', () => {
         id: 'file123',
         favorite: true,
       })
-    ).rejects.toThrow('HTTP 400: Invalid request');
+    ).rejects.toThrow('Internal Zipline error (HTTP 400)');
   });
 
   it('should validate required parameters', async () => {
@@ -783,7 +1050,7 @@ describe('deleteUserFile', () => {
         token: 'test-token',
         id: 'nonexistent',
       })
-    ).rejects.toThrow('HTTP 404: File not found');
+    ).rejects.toThrow('Resource not found');
   });
 
   it('should handle network errors', async () => {
