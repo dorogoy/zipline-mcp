@@ -1160,77 +1160,167 @@ server.registerTool(
     } = args;
     const upperCmd = command.trim().split(/\s+/)[0]?.toUpperCase() || '';
     if (upperCmd === 'LIST') {
-      const folders = await listFolders({
-        endpoint: ZIPLINE_ENDPOINT,
-        token: ZIPLINE_TOKEN,
-      });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📂 REMOTE FOLDERS\n\n${folders.map((f, i) => `${i + 1}. 📁 ${f.name}\n   🆔 ID: ${f.id}`).join('\n\n')}`,
-          },
-        ],
-      };
+      try {
+        const folders = await listFolders({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+        });
+
+        if (folders.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '📂 REMOTE FOLDERS\n\nNo folders found.',
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `📂 REMOTE FOLDERS\n\n${folders
+                .map((f, i) => {
+                  let folderInfo = `${i + 1}. 📁 ${f.name}\n   🆔 ID: ${f.id}`;
+                  if (f.files && f.files.length > 0) {
+                    folderInfo += `\n   📄 Files: ${f.files.length}`;
+                  }
+                  return folderInfo;
+                })
+                .join('\n\n')}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ LIST FOLDERS FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     if (upperCmd === 'ADD') {
-      const folder = await createFolder({
-        endpoint: ZIPLINE_ENDPOINT,
-        token: ZIPLINE_TOKEN,
-        name: name || 'New Folder',
-        isPublic,
-        files,
-      });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ FOLDER CREATED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
-          },
-        ],
-      };
+      try {
+        const folder = await createFolder({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          name: name || 'New Folder',
+          isPublic,
+          files,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ FOLDER CREATED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ CREATE FOLDER FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     if (upperCmd === 'EDIT' && id) {
-      const opts: EditFolderOptions = {
-        endpoint: ZIPLINE_ENDPOINT,
-        token: ZIPLINE_TOKEN,
-        id,
-      };
-      if (name !== undefined) opts.name = name;
-      if (isPublic !== undefined) opts.isPublic = isPublic;
-      if (allowUploads !== undefined) opts.allowUploads = allowUploads;
-      if (fileId !== undefined) opts.fileId = fileId;
-      const folder = await editFolder(opts);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ FOLDER UPDATED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
-          },
-        ],
-      };
+      try {
+        const opts: EditFolderOptions = {
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          id,
+        };
+        if (name !== undefined) opts.name = name;
+        if (isPublic !== undefined) opts.isPublic = isPublic;
+        if (allowUploads !== undefined) opts.allowUploads = allowUploads;
+        if (fileId !== undefined) opts.fileId = fileId;
+        const folder = await editFolder(opts);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ FOLDER UPDATED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ EDIT FOLDER FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     if (upperCmd === 'INFO' && id) {
-      const folder = await getFolder(id);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📁 FOLDER INFORMATION\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
-          },
-        ],
-      };
+      try {
+        const folder = await getFolder(id);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `📁 FOLDER INFORMATION\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ GET FOLDER FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     if (upperCmd === 'DELETE' && id) {
-      const folder = await deleteFolder(id);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ FOLDER DELETED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
-          },
-        ],
-      };
+      try {
+        const folder = await deleteFolder(id);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ FOLDER DELETED SUCCESSFULLY!\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ DELETE FOLDER FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     return {
       content: [{ type: 'text', text: '❌ Invalid command.' }],

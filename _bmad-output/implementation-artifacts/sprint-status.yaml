@@ -75,9 +75,9 @@ development_status:
   4-6-implement-batch-file-operations: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-implement-folder-listing: backlog
-  5-2-implement-folder-creation: backlog
+  epic-5: in-progress
+  5-1-implement-folder-listing: done
+  5-2-implement-folder-creation: ready-for-dev
   5-3-retrieve-folder-information: backlog
   5-4-implement-folder-editing: backlog
   5-5-implement-folder-deletion: backlog

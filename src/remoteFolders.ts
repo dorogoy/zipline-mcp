@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
 
 /**
  * Interface representing a folder in Zipline
@@ -121,9 +122,7 @@ export async function listFolders(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to list folders: ${response.status} ${response.statusText}`
-    );
+    throw mapHttpStatusToMcpError(response.status, response.statusText);
   }
 
   const data = (await response.json()) as unknown;
@@ -215,9 +214,7 @@ export async function createFolder(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to create folder: ${response.status} ${response.statusText}`
-    );
+    throw mapHttpStatusToMcpError(response.status, response.statusText);
   }
 
   const data = (await response.json()) as unknown;
@@ -306,9 +303,7 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to add file to folder: ${response.status} ${response.statusText}`
-      );
+      throw mapHttpStatusToMcpError(response.status, response.statusText);
     }
 
     const data = (await response.json()) as unknown;
@@ -352,9 +347,7 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to edit folder: ${response.status} ${response.statusText}`
-      );
+      throw mapHttpStatusToMcpError(response.status, response.statusText);
     }
 
     const data = (await response.json()) as unknown;
@@ -440,7 +433,7 @@ export async function getFolder(id: string): Promise<FullFolder> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get folder: ${response.status}`);
+    throw mapHttpStatusToMcpError(response.status, response.statusText);
   }
 
   const data = (await response.json()) as unknown;
@@ -489,9 +482,7 @@ export async function deleteFolder(id: string): Promise<FullFolder> {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to delete folder: ${response.status} ${response.statusText}`
-    );
+    throw mapHttpStatusToMcpError(response.status, response.statusText);
   }
 
   const data = (await response.json()) as unknown;
