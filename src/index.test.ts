@@ -40,6 +40,29 @@ vi.mock('./httpClient', () => ({
     .mockResolvedValue('/home/user/.zipline_tmp/users/hash/downloaded.txt'),
 }));
 
+// Mock userFiles module
+vi.mock('./userFiles', () => ({
+  listUserFiles: vi.fn(),
+  getUserFile: vi.fn(),
+  updateUserFile: vi.fn(),
+  deleteUserFile: vi.fn().mockResolvedValue({
+    id: 'deleted-file',
+    name: 'deleted.png',
+  }),
+}));
+
+// Mock remoteFolders module
+vi.mock('./remoteFolders', () => ({
+  listFolders: vi.fn(),
+  createFolder: vi.fn(),
+  editFolder: vi.fn().mockResolvedValue({
+    id: 'folder-id',
+    name: 'Test Folder',
+  }),
+  getFolder: vi.fn(),
+  deleteFolder: vi.fn(),
+}));
+
 // Mock sandboxUtils for clearStagedContent
 vi.mock('./sandboxUtils', () => ({
   getUserSandbox: vi.fn(() => '/home/user/.zipline_tmp/users/testhash'),
@@ -1976,6 +1999,193 @@ describe('tmp_file_manager tool', () => {
       expect(result.content[0]?.text).toMatch(
         /\/home\/user\/\.zipline_tmp\/users\/testhash\/baz\.md/
       );
+    });
+  });
+});
+
+describe('batch_file_operation tool', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  describe('DELETE command', () => {
+    it('should delete multiple files successfully', async () => {
+      const { deleteUserFile } = await import('./userFiles');
+      const deleteSpy = vi.mocked(deleteUserFile);
+      deleteSpy.mockResolvedValue({ id: 'file1', name: 'test.png' } as never);
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'DELETE', ids: ['file1', 'file2', 'file3'] },
+        {}
+      );
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toContain('BATCH OPERATION SUMMARY');
+      expect(result.content[0]?.text).toContain('Successful: 3');
+      expect(result.content[0]?.text).toContain('Failed: 0');
+      expect(deleteSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle partial failures in DELETE', async () => {
+      const { deleteUserFile } = await import('./userFiles');
+      const deleteSpy = vi.mocked(deleteUserFile);
+      deleteSpy
+        .mockResolvedValueOnce({ id: 'file1', name: 'test1.png' } as never)
+        .mockRejectedValueOnce(new Error('File not found'))
+        .mockResolvedValueOnce({ id: 'file3', name: 'test3.png' } as never);
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'DELETE', ids: ['file1', 'file2', 'file3'] },
+        {}
+      );
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toContain('Successful: 2');
+      expect(result.content[0]?.text).toContain('Failed: 1');
+    });
+
+    it('should report all failures when all DELETE operations fail', async () => {
+      const { deleteUserFile } = await import('./userFiles');
+      const deleteSpy = vi.mocked(deleteUserFile);
+      deleteSpy.mockRejectedValue(new Error('Delete failed'));
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'DELETE', ids: ['file1', 'file2'] },
+        {}
+      );
+
+      // When ALL operations fail, isError should be true
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Successful: 0');
+      expect(result.content[0]?.text).toContain('Failed: 2');
+    });
+  });
+
+  describe('MOVE command', () => {
+    it('should move multiple files successfully', async () => {
+      const { editFolder } = await import('./remoteFolders');
+      const editFolderSpy = vi.mocked(editFolder);
+      editFolderSpy.mockResolvedValue({ id: 'folder1', name: 'Test' } as never);
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        {
+          command: 'MOVE',
+          ids: ['file1', 'file2'],
+          folder: 'folder1',
+        },
+        {}
+      );
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toContain('Successful: 2');
+      expect(result.content[0]?.text).toContain('Failed: 0');
+      expect(editFolderSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should require folder parameter for MOVE command', async () => {
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'MOVE', ids: ['file1'] }, {});
+
+      // All operations failed (missing folder), so isError should be true
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Successful: 0');
+      expect(result.content[0]?.text).toContain('Failed: 1');
+    });
+
+    it('should handle partial failures in MOVE', async () => {
+      const { editFolder } = await import('./remoteFolders');
+      const editFolderSpy = vi.mocked(editFolder);
+      editFolderSpy
+        .mockResolvedValueOnce({ id: 'folder1', name: 'Test' } as never)
+        .mockRejectedValueOnce(new Error('Folder not found'));
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'MOVE', ids: ['file1', 'file2'], folder: 'folder1' },
+        {}
+      );
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]?.text).toContain('Successful: 1');
+      expect(result.content[0]?.text).toContain('Failed: 1');
+    });
+  });
+
+  describe('empty array handling', () => {
+    it('should return error for empty ids array', async () => {
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'DELETE', ids: [] }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('No file IDs provided');
+    });
+
+    it('should return error for empty ids array with MOVE command', async () => {
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'MOVE', ids: [], folder: 'folder1' },
+        {}
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('No file IDs provided');
+    });
+  });
+
+  describe('error masking', () => {
+    it('should not expose sensitive token in output', async () => {
+      process.env.ZIPLINE_TOKEN = 'super-secret-token-12345';
+
+      const { deleteUserFile } = await import('./userFiles');
+      const deleteSpy = vi.mocked(deleteUserFile);
+      deleteSpy.mockRejectedValue(
+        new Error('Delete failed with token: super-secret-token-12345')
+      );
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'DELETE', ids: ['file1'] }, {});
+
+      // All operations failed, isError should be true
+      expect(result.isError).toBe(true);
+      // Most importantly: sensitive token should NOT appear in output
+      expect(result.content[0]?.text).not.toContain('super-secret-token-12345');
     });
   });
 });

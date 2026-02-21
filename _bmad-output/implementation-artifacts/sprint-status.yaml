@@ -66,13 +66,13 @@ development_status:
   3-3-handle-download-timeouts-and-large-files: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-implement-file-listing-with-idempotent-urls: done
   4-2-implement-file-search-functionality: done
   4-3-retrieve-detailed-file-metadata: done
   4-4-update-file-properties: done
   4-5-implement-single-file-deletion: done
-  4-6-implement-batch-file-operations: backlog
+  4-6-implement-batch-file-operations: done
   epic-4-retrospective: optional
 
   epic-5: backlog

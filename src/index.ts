@@ -1128,7 +1128,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: maskSensitiveData(`❌ DELETE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`),
+            text: maskSensitiveData(
+              `❌ DELETE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`
+            ),
           },
         ],
         isError: true,
@@ -1247,6 +1249,20 @@ server.registerTool(
     inputSchema: batchFileOperationInputSchema,
   },
   async ({ command, ids, folder }) => {
+    if (!ids || ids.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: maskSensitiveData(
+              '❌ BATCH OPERATION FAILED\n\nNo file IDs provided. Please provide at least one file ID to operate on.'
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
+
     const results = { success: [] as string[], failed: [] as string[] };
     for (const id of ids) {
       try {
@@ -1266,17 +1282,33 @@ server.registerTool(
           });
         }
         results.success.push(id);
-      } catch {
+      } catch (error) {
         results.failed.push(id);
+        if (results.failed.length === 1) {
+          secureLog('Batch operation error:', error);
+        }
       }
     }
+
+    const failedDetails =
+      results.failed.length > 0
+        ? `\n\n❌ Failed IDs: ${results.failed.join(', ')}`
+        : '';
+
+    // Mark as error if all operations failed (no successes)
+    const isCompleteFailure =
+      results.success.length === 0 && results.failed.length > 0;
+
     return {
       content: [
         {
           type: 'text',
-          text: `📋 BATCH OPERATION SUMMARY: ${command}\n\n✅ Successful: ${results.success.length}\n❌ Failed: ${results.failed.length}`,
+          text: maskSensitiveData(
+            `📋 BATCH OPERATION SUMMARY: ${command}\n\n✅ Successful: ${results.success.length}\n❌ Failed: ${results.failed.length}${failedDetails}`
+          ),
         },
       ],
+      ...(isCompleteFailure && { isError: true }),
     };
   }
 );
