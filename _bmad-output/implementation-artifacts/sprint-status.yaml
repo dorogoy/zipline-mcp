@@ -79,7 +79,7 @@ development_status:
   5-1-implement-folder-listing: done
   5-2-implement-folder-creation: done
   5-3-retrieve-folder-information: done
-  5-4-implement-folder-editing: backlog
+  5-4-implement-folder-editing: done
   5-5-implement-folder-deletion: backlog
   epic-5-retrospective: optional
 

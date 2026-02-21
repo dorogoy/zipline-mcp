@@ -340,6 +340,13 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
       requestBody.allowUploads = allowUploads;
     }
 
+    // Validate that at least one property is being updated
+    if (Object.keys(requestBody).length === 0) {
+      throw new Error(
+        'At least one property (name, isPublic, or allowUploads) must be provided to update the folder'
+      );
+    }
+
     // Validate the request body before sending
     EditFolderPropertiesRequestSchema.parse(requestBody);
 

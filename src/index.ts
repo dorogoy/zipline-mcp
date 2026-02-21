@@ -1152,7 +1152,7 @@ server.registerTool(
     const {
       command,
       name,
-      isPublic = false,
+      isPublic,
       files = [],
       id,
       allowUploads,
@@ -1213,7 +1213,7 @@ server.registerTool(
           endpoint: ZIPLINE_ENDPOINT,
           token: ZIPLINE_TOKEN,
           name: name || 'New Folder',
-          isPublic,
+          isPublic: isPublic ?? false,
           files,
         });
         return {
