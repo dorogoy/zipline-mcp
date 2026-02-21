@@ -42,7 +42,7 @@ import {
   MEMORY_STAGING_THRESHOLD,
   SecretDetectionError,
 } from './sandboxUtils.js';
-import { McpErrorCode } from './utils/errorMapper.js';
+import { McpErrorCode, mapHttpStatusToMcpError } from './utils/errorMapper.js';
 import * as mime from 'mime-types';
 import { fileTypeFromBuffer } from 'file-type';
 
@@ -1452,33 +1452,65 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
+    const start = Date.now();
     try {
-      const start = Date.now();
-      const res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`);
+      const res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`, {
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      });
       const latency = Date.now() - start;
-      if (res.ok)
+
+      if (res.ok) {
         return {
           content: [
             {
               type: 'text',
-              text: `🟢 SERVER HEALTHY\n\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nStatus: UP`,
+              text: `✅ HEALTH CHECK PASSED\n\nStatus: healthy\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nResponse Time: ${latency}ms`,
             },
           ],
         };
+      }
+
+      // HTTP error - check for auth issues first
+      if (res.status === 401 || res.status === 403) {
+        const ziplineError = mapHttpStatusToMcpError(res.status);
+        const maskedResolution = maskSensitiveData(
+          ziplineError.resolutionGuidance ?? ''
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: AUTHENTICATION_ERROR\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Other HTTP errors (500, 502, 503, etc.)
+      const ziplineError = mapHttpStatusToMcpError(res.status);
+      const maskedResolution = maskSensitiveData(
+        ziplineError.resolutionGuidance ?? ''
+      );
       return {
         content: [
           {
             type: 'text',
-            text: `🔴 SERVER UNHEALTHY\n\nEndpoint: ${ZIPLINE_ENDPOINT}\nStatus: HTTP ${res.status}`,
+            text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`,
           },
         ],
+        isError: true,
       };
     } catch (e) {
+      const latency = Date.now() - start;
+      // Network error (ECONNREFUSED, ETIMEDOUT, etc.)
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const maskedError = maskSensitiveData(errorMessage);
       return {
         content: [
           {
             type: 'text',
-            text: `🔴 SERVER UNREACHABLE\n\nEndpoint: ${ZIPLINE_ENDPOINT}\nError: ${e instanceof Error ? e.message : String(e)}`,
+            text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`,
           },
         ],
         isError: true,
