@@ -80,7 +80,7 @@ development_status:
   5-2-implement-folder-creation: done
   5-3-retrieve-folder-information: done
   5-4-implement-folder-editing: done
-  5-5-implement-folder-deletion: backlog
+  5-5-implement-folder-deletion: done
   epic-5-retrospective: optional
 
   epic-6: backlog

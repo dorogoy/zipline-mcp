@@ -1569,6 +1569,70 @@ describe('deleteFolder', () => {
     });
   });
 
+  it('should throw ZiplineError with MCP error code on HTTP 401', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as unknown as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await expect(deleteFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+      httpStatus: 401,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 403', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+    } as unknown as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await expect(deleteFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.FORBIDDEN_OPERATION,
+      httpStatus: 403,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 429', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+    } as unknown as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await expect(deleteFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+      httpStatus: 429,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 500', async () => {
+    const folderId = 'folder123';
+    const mockResponse = {
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as unknown as Response;
+
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await expect(deleteFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+      httpStatus: 500,
+    });
+  });
+
   it('should throw an error if ZIPLINE_ENDPOINT is not set', async () => {
     delete process.env.ZIPLINE_ENDPOINT;
     process.env.ZIPLINE_TOKEN = 'test-token';
