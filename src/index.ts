@@ -1128,7 +1128,7 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ DELETE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+            text: maskSensitiveData(`❌ DELETE USER FILE FAILED\n\nError: ${error instanceof Error ? error.message : String(error)}`),
           },
         ],
         isError: true,

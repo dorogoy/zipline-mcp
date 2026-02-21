@@ -6,6 +6,7 @@ import {
   deleteUserFile,
   normalizeUrl,
 } from './userFiles.js';
+import { ZiplineError, McpErrorCode } from './utils/errorMapper.js';
 
 // Mock the global fetch
 const mockFetch = vi.fn();
@@ -1436,13 +1437,20 @@ describe('deleteUserFile', () => {
       text: () => Promise.resolve('File not found'),
     });
 
-    await expect(
-      deleteUserFile({
+    try {
+      await deleteUserFile({
         endpoint: 'https://zipline.example.com',
         token: 'test-token',
         id: 'nonexistent',
-      })
-    ).rejects.toThrow('Resource not found');
+      });
+      expect.fail('Should have thrown ZiplineError');
+    } catch (err) {
+      const error = err as ZiplineError;
+      expect(error).toBeInstanceOf(ZiplineError);
+      expect(error.message).toContain('Resource not found');
+      expect(error.mcpCode).toBe(McpErrorCode.RESOURCE_NOT_FOUND);
+      expect(error.httpStatus).toBe(404);
+    }
   });
 
   it('should handle network errors', async () => {
