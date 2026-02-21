@@ -147,7 +147,13 @@ export async function listFolders(
  * Request schema for creating a folder
  */
 export const CreateFolderRequestSchema = z.object({
-  name: z.string().min(1, 'Folder name is required'),
+  name: z
+    .string()
+    .min(1, 'Folder name is required')
+    .refine(
+      (name) => !/[<>:"|?*/\\]/.test(name),
+      'Folder name cannot contain invalid characters: < > : " | ? * / \\'
+    ),
   isPublic: z.boolean().default(false),
   files: z.array(z.string()).optional(),
 });
