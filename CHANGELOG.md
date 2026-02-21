@@ -6,6 +6,32 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.10.0](https://github.com/dorogoy/zipline-mcp/compare/v1.9.4...v1.10.0) (2026-02-21)
+
+
+### Features
+
+* Add comprehensive content validation for external URL downloads, checking MIME type, allowed extensions, and secrets. (story 3.2) ([0010316](https://github.com/dorogoy/zipline-mcp/commit/00103160abf59f5ca40d9e180698c2e43afbd52a))
+* Add comprehensive tests and documentation for detailed file metadata retrieval, including expiration and view limits. (story 4.3) ([053442d](https://github.com/dorogoy/zipline-mcp/commit/053442dfa6843e20f64aa8d4c2fe4858adf52528))
+* **batch:** Add batch file operations with security and tests ([e0facf5](https://github.com/dorogoy/zipline-mcp/commit/e0facf5812a547a1c7fc2a58de4b605c019bb917))
+* **folder-management:** Implement folder deletion with comprehensive test coverage and validation ([2ea8274](https://github.com/dorogoy/zipline-mcp/commit/2ea8274449879b5b594b0ad53fbab499d050fbcc))
+* **folder-management:** Implement folder editing with comprehensive test coverage and validation ([902282b](https://github.com/dorogoy/zipline-mcp/commit/902282b4119d4b6ed102c1fa29d0f001f4c84887))
+* **folder-management:** Implement folder information retrieval with comprehensive test coverage ([54a6ea1](https://github.com/dorogoy/zipline-mcp/commit/54a6ea1ed6df64fe7aafed2ab69901d036e013bf))
+* **folder-management:** Implement folder listing with security and error handling ([bbfd1e9](https://github.com/dorogoy/zipline-mcp/commit/bbfd1e97f3441378774089ff021c3d550c7d7e65))
+* Foundation and core security ([#71](https://github.com/dorogoy/zipline-mcp/issues/71)) ([4b47350](https://github.com/dorogoy/zipline-mcp/commit/4b47350f200ee92941d03dfa58fee78c0f5df73d))
+* Implement external URL download to sandbox, updating core logic, tool definition, and tests, along with new feature documentation and sprint status. ([556c237](https://github.com/dorogoy/zipline-mcp/commit/556c23716bf139f691af43268fe502e6421bde85))
+* Implement file property updates including folder movement, add security masking to error handling, and enhance test coverage for Story 4.4. ([4f85be5](https://github.com/dorogoy/zipline-mcp/commit/4f85be5e147ca7e447efa59385f0d748200f842c))
+* Implement file search functionality by adding comprehensive tests, updating file operation error handling, and documenting the feature. (story 4.2) ([fdc30eb](https://github.com/dorogoy/zipline-mcp/commit/fdc30eb9b23f9115a97d1d217f2f86d1736660f3))
+* Implement robust error handling for Zipline API responses in file listing by mapping HTTP status codes to specific MCP errors. (story 4.1) ([f2d62db](https://github.com/dorogoy/zipline-mcp/commit/f2d62db27e77d62aae17b91082279f99022adcaa))
+* Implement single file deletion with security fixes and enhanced test coverage ([29688d1](https://github.com/dorogoy/zipline-mcp/commit/29688d13939bb56e13999ad413b247982a681610))
+* Refine and verify download timeout and large file handling, including updated tests and documentation. (story 3.3) ([94aa102](https://github.com/dorogoy/zipline-mcp/commit/94aa1020fbc49527dab5a3f68380b197b6115973))
+
+
+### Bug Fixes
+
+* **deps:** bump qs from 6.14.1 to 6.14.2 ([748a15b](https://github.com/dorogoy/zipline-mcp/commit/748a15bd2305b1f4aeeffb9b46a184d3edb9d8c3))
+* **folder-management:** Add missing error mappings and validation for folder creation ([bc9ee40](https://github.com/dorogoy/zipline-mcp/commit/bc9ee4083523736c3a1931941eb1c4b8c14b4624))
+
 ## [1.9.4](https://github.com/dorogoy/zipline-mcp/compare/v1.9.3...v1.9.4) (2026-02-07)
 
 
