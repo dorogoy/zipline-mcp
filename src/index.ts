@@ -1275,11 +1275,13 @@ server.registerTool(
     if (upperCmd === 'INFO' && id) {
       try {
         const folder = await getFolder(id);
+        const fileCount = folder.files?.length ?? 0;
+        const visibility = folder.public ? '🌐 Public' : '🔒 Private';
         return {
           content: [
             {
               type: 'text',
-              text: `📁 FOLDER INFORMATION\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}`,
+              text: `📁 FOLDER INFORMATION\n\n📁 ${folder.name}\n   🆔 ID: ${folder.id}\n   ${visibility}\n   📂 Files: ${fileCount}\n   📅 Created: ${folder.createdAt}\n   🔄 Updated: ${folder.updatedAt}`,
             },
           ],
         };

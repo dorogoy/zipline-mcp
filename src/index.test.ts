@@ -2513,3 +2513,102 @@ describe('remote_folder_manager tool - ADD command', () => {
     expect(result.content[0]?.text).toContain('ID: undefined');
   });
 });
+
+describe('remote_folder_manager tool - INFO command', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should get folder information successfully', async () => {
+    const { getFolder } = await import('./remoteFolders');
+    const getFolderSpy = vi.mocked(getFolder);
+    getFolderSpy.mockResolvedValue({
+      id: 'folder-123',
+      name: 'Test Folder',
+      public: false,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+      files: ['file1', 'file2'],
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'INFO', id: 'folder-123' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER INFORMATION');
+    expect(result.content[0]?.text).toContain('Test Folder');
+    expect(result.content[0]?.text).toContain('folder-123');
+    expect(result.content[0]?.text).toContain('Private'); // Verify visibility
+    expect(result.content[0]?.text).toContain('Files: 2'); // Verify file count
+    expect(result.content[0]?.text).toContain('2023-01-01T00:00:00Z'); // Verify dates
+  });
+
+  it('should handle non-existent folder ID', async () => {
+    const { getFolder } = await import('./remoteFolders');
+    const getFolderSpy = vi.mocked(getFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    getFolderSpy.mockRejectedValue(
+      new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'INFO', id: 'non-existent-id' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('GET FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Folder not found');
+    // Verify that ZiplineError was created with correct MCP code
+    expect(getFolderSpy).toHaveBeenCalledWith('non-existent-id');
+  });
+
+  it('should handle errors with security masking', async () => {
+    vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
+    const { getFolder } = await import('./remoteFolders');
+    const getFolderSpy = vi.mocked(getFolder);
+    getFolderSpy.mockRejectedValue(
+      new Error('Failed with token: secret-token-for-testing')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'INFO', id: 'test-id' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('GET FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain('secret-token-for-testing');
+    vi.unstubAllEnvs();
+  });
+
+  it('should return error when id parameter is missing', async () => {
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'INFO' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Invalid command');
+  });
+});
