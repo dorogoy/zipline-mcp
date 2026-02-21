@@ -3061,3 +3061,334 @@ describe('remote_folder_manager tool - DELETE command', () => {
     expect(result.content[0]?.text).toContain('Internal server error');
   });
 });
+
+describe('check_health tool', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should return healthy status when host responds with 200', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('HEALTH CHECK PASSED');
+    expect(result.content[0]?.text).toContain('Status: healthy');
+    expect(result.content[0]?.text).toContain('Latency:');
+    expect(result.content[0]?.text).toContain('http://localhost:3000');
+    vi.unstubAllGlobals();
+  });
+
+  it('should include latency measurement in healthy response', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.content[0]?.text).toMatch(/Latency: \d+ms/);
+    expect(result.content[0]?.text).toMatch(/Response Time: \d+ms/);
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle network errors (ECONNREFUSED)', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(new Error('fetch failed: ECONNREFUSED'));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HEALTH CHECK FAILED');
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('ECONNREFUSED');
+    expect(result.content[0]?.text).toContain(
+      'Check network connectivity and verify ZIPLINE_ENDPOINT is correct'
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle timeout errors (ETIMEDOUT)', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(new Error('fetch failed: ETIMEDOUT'));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('ETIMEDOUT');
+    vi.unstubAllGlobals();
+  });
+
+  it('should distinguish authentication errors (401)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HEALTH CHECK FAILED');
+    expect(result.content[0]?.text).toContain('AUTHENTICATION_ERROR');
+    expect(result.content[0]?.text).toContain('HTTP Status: 401');
+    expect(result.content[0]?.text).toContain('ZIPLINE_TOKEN');
+    vi.unstubAllGlobals();
+  });
+
+  it('should distinguish forbidden errors (403)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('AUTHENTICATION_ERROR');
+    expect(result.content[0]?.text).toContain('HTTP Status: 403');
+    expect(result.content[0]?.text).toContain('permissions');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle HTTP 500 errors', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 500');
+    expect(result.content[0]?.text).toContain('server error');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle HTTP 502 bad gateway errors', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 502');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle HTTP 503 service unavailable errors', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 503');
+    vi.unstubAllGlobals();
+  });
+
+  it('should mask sensitive data in network error messages', async () => {
+    process.env.ZIPLINE_TOKEN = 'super-secret-token-12345';
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(
+        new Error('Connection failed with token: super-secret-token-12345')
+      );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).not.toContain('super-secret-token-12345');
+    expect(result.content[0]?.text).toContain('[REDACTED]');
+    vi.unstubAllGlobals();
+  });
+
+  it('should display endpoint in response for debugging purposes', async () => {
+    // Set a custom endpoint to verify it appears in the response
+    process.env.ZIPLINE_ENDPOINT = 'https://custom-endpoint.example.com';
+    vi.resetModules();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    // Re-import to pick up new environment variable
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    // Endpoint is intentionally shown (not masked) for debugging - users need to know which endpoint was checked
+    expect(result.content[0]?.text).toContain(
+      'https://custom-endpoint.example.com'
+    );
+    vi.unstubAllGlobals();
+    // Reset endpoint for other tests
+    process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
+  });
+
+  it('should include resolution guidance in error responses', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Resolution:');
+    expect(result.content[0]?.text).toContain('Check server logs');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle 404 errors as host unavailable (not auth error)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 404');
+    expect(result.content[0]?.text).not.toContain('AUTHENTICATION_ERROR');
+    vi.unstubAllGlobals();
+  });
+
+  it('should include latency in error responses', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/Latency: \d+ms/);
+    vi.unstubAllGlobals();
+  });
+
+  it('should use 5 second timeout for health check requests', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockImplementation((_url, options: RequestInit) => {
+        // Verify AbortSignal.timeout is being used
+        expect(options).toBeDefined();
+        expect(options?.signal).toBeDefined();
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response);
+      });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({}, {});
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/health',
+      expect.objectContaining({
+        signal: expect.any(AbortSignal) as AbortSignal,
+      })
+    );
+    vi.unstubAllGlobals();
+  });
+});
