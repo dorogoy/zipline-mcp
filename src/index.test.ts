@@ -2189,3 +2189,109 @@ describe('batch_file_operation tool', () => {
     });
   });
 });
+
+describe('remote_folder_manager tool - LIST command', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should list folders successfully with multiple folders', async () => {
+    const { listFolders } = await import('./remoteFolders');
+    const listFoldersSpy = vi.mocked(listFolders);
+    listFoldersSpy.mockResolvedValue([
+      {
+        id: 'folder1',
+        name: 'Documents',
+        public: false,
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+        files: ['file1', 'file2'],
+      },
+      {
+        id: 'folder2',
+        name: 'Images',
+        public: true,
+        createdAt: '2023-01-02T00:00:00Z',
+        updatedAt: '2023-01-02T00:00:00Z',
+      },
+    ] as never);
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'LIST' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('REMOTE FOLDERS');
+    expect(result.content[0]?.text).toContain('Documents');
+    expect(result.content[0]?.text).toContain('folder1');
+    expect(result.content[0]?.text).toContain('Images');
+    expect(result.content[0]?.text).toContain('folder2');
+    expect(result.content[0]?.text).toContain('Files: 2'); // Hierarchy indicator
+  });
+
+  it('should handle empty folders list gracefully', async () => {
+    const { listFolders } = await import('./remoteFolders');
+    const listFoldersSpy = vi.mocked(listFolders);
+    listFoldersSpy.mockResolvedValue([] as never);
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'LIST' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('REMOTE FOLDERS');
+    expect(result.content[0]?.text).toContain('No folders found');
+  });
+
+  it('should handle errors with security masking', async () => {
+    process.env.ZIPLINE_TOKEN = 'secret-token-for-testing';
+    const { listFolders } = await import('./remoteFolders');
+    const listFoldersSpy = vi.mocked(listFolders);
+    listFoldersSpy.mockRejectedValue(
+      new Error('Failed with token: secret-token-for-testing')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'LIST' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('LIST FOLDERS FAILED');
+    expect(result.content[0]?.text).not.toContain('secret-token-for-testing');
+  });
+
+  it('should mask sensitive data in error messages', async () => {
+    process.env.ZIPLINE_TOKEN = 'another-secret-123';
+    const { listFolders } = await import('./remoteFolders');
+    const listFoldersSpy = vi.mocked(listFolders);
+    listFoldersSpy.mockRejectedValue(
+      new Error('Auth failed with another-secret-123')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'LIST' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).not.toContain('another-secret-123');
+  });
+});

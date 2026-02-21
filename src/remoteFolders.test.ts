@@ -12,6 +12,7 @@ import {
   getFolder,
   deleteFolder,
 } from './remoteFolders';
+import { McpErrorCode } from './utils/errorMapper';
 
 // Mock fetch function
 const mockFetch = vi.fn();
@@ -270,8 +271,7 @@ describe('listFolders', () => {
     expect(result[1]?.id).toBeUndefined();
   });
 
-  it('should throw an error when API response is not OK', async () => {
-    // Arrange
+  it('should throw ZiplineError with MCP error code on HTTP 401', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -283,10 +283,64 @@ describe('listFolders', () => {
       token: mockToken,
     };
 
-    // Act & Assert
-    await expect(listFolders(options)).rejects.toThrow(
-      'Failed to list folders: 401 Unauthorized'
-    );
+    await expect(listFolders(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+      httpStatus: 401,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 404', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    } as unknown as Response);
+
+    const options: ListFoldersOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+    };
+
+    await expect(listFolders(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
+      httpStatus: 404,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 429', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+    } as unknown as Response);
+
+    const options: ListFoldersOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+    };
+
+    await expect(listFolders(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+      httpStatus: 429,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 500', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as unknown as Response);
+
+    const options: ListFoldersOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+    };
+
+    await expect(listFolders(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+      httpStatus: 500,
+    });
   });
 
   it('should throw an error when API response is invalid JSON', async () => {
@@ -516,7 +570,7 @@ describe('createFolder', () => {
     });
   });
 
-  it('should throw an error when API response is not OK', async () => {
+  it('should throw ZiplineError with MCP error code when API response is not OK', async () => {
     // Arrange
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,
@@ -535,9 +589,10 @@ describe('createFolder', () => {
     };
 
     // Act & Assert
-    await expect(createFolder(options)).rejects.toThrow(
-      'Failed to create folder: 400 Bad Request'
-    );
+    await expect(createFolder(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+      httpStatus: 400,
+    });
   });
 
   it('should throw an error when API response is invalid JSON', async () => {
@@ -835,7 +890,7 @@ describe('editFolder', () => {
       );
     });
 
-    it('should throw an error when API response is not OK', async () => {
+    it('should throw ZiplineError with MCP error code when API response is not OK', async () => {
       // Arrange
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -851,9 +906,10 @@ describe('editFolder', () => {
       };
 
       // Act & Assert
-      await expect(editFolder(options)).rejects.toThrow(
-        'Failed to edit folder: 404 Not Found'
-      );
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
+        httpStatus: 404,
+      });
     });
 
     it('should throw a validation error when folder name is empty', async () => {
@@ -910,7 +966,7 @@ describe('editFolder', () => {
       );
     });
 
-    it('should throw an error when API response is not OK', async () => {
+    it('should throw ZiplineError with MCP error code when API response is not OK', async () => {
       // Arrange
       const mockFileId = 'file456';
       mockFetch.mockResolvedValueOnce({
@@ -927,9 +983,10 @@ describe('editFolder', () => {
       };
 
       // Act & Assert
-      await expect(editFolder(options)).rejects.toThrow(
-        'Failed to add file to folder: 404 Not Found'
-      );
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
+        httpStatus: 404,
+      });
     });
 
     it('should throw a validation error when file ID is empty', async () => {
@@ -1050,7 +1107,7 @@ describe('getFolder', () => {
     });
   });
 
-  it('should throw an error if the folder is not found', async () => {
+  it('should throw ZiplineError with MCP error code if the folder is not found', async () => {
     const folderId = 'non-existent-folder-id';
 
     mockFetch.mockResolvedValueOnce({
@@ -1058,12 +1115,13 @@ describe('getFolder', () => {
       status: 404,
     } as Response);
 
-    await expect(getFolder(folderId)).rejects.toThrow(
-      `Failed to get folder: 404`
-    );
+    await expect(getFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
+      httpStatus: 404,
+    });
   });
 
-  it('should throw an error if the API request fails', async () => {
+  it('should throw ZiplineError with MCP error code if the API request fails', async () => {
     const folderId = 'test-folder-id';
 
     mockFetch.mockResolvedValueOnce({
@@ -1071,9 +1129,10 @@ describe('getFolder', () => {
       status: 500,
     } as Response);
 
-    await expect(getFolder(folderId)).rejects.toThrow(
-      `Failed to get folder: 500`
-    );
+    await expect(getFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+      httpStatus: 500,
+    });
   });
 
   // New test for INFO command with file list
@@ -1192,7 +1251,7 @@ describe('deleteFolder', () => {
     });
   });
 
-  it('should throw an error if the API request fails', async () => {
+  it('should throw ZiplineError with MCP error code if the API request fails', async () => {
     const folderId = 'folder123';
     const mockResponse = {
       ok: false,
@@ -1206,9 +1265,10 @@ describe('deleteFolder', () => {
 
     mockFetch.mockResolvedValueOnce(mockResponse);
 
-    await expect(deleteFolder(folderId)).rejects.toThrow(
-      'Failed to delete folder: 404 Not Found'
-    );
+    await expect(deleteFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
+      httpStatus: 404,
+    });
   });
 
   it('should throw an error if ZIPLINE_ENDPOINT is not set', async () => {
