@@ -2612,3 +2612,287 @@ describe('remote_folder_manager tool - INFO command', () => {
     expect(result.content[0]?.text).toContain('Invalid command');
   });
 });
+
+describe('remote_folder_manager tool - EDIT command', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should edit folder name successfully', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockResolvedValue({
+      id: 'folder-123',
+      name: 'Updated Name',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'folder-123', name: 'Updated Name' },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER UPDATED SUCCESSFULLY');
+    expect(result.content[0]?.text).toContain('Updated Name');
+    expect(result.content[0]?.text).toContain('folder-123');
+    expect(editFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'folder-123',
+        name: 'Updated Name',
+      })
+    );
+  });
+
+  it('should handle non-existent folder ID', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    editFolderSpy.mockRejectedValue(
+      new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'non-existent-id', name: 'New Name' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('EDIT FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Folder not found');
+  });
+
+  it('should edit multiple folder properties', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockResolvedValue({
+      id: 'folder-456',
+      name: 'Multi Update',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      {
+        command: 'EDIT',
+        id: 'folder-456',
+        name: 'Multi Update',
+        isPublic: true,
+        allowUploads: false,
+      },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER UPDATED SUCCESSFULLY');
+    expect(result.content[0]?.text).toContain('Multi Update');
+    expect(editFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'folder-456',
+        name: 'Multi Update',
+        isPublic: true,
+        allowUploads: false,
+      })
+    );
+  });
+
+  it('should handle errors with security masking', async () => {
+    vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockRejectedValue(
+      new Error('Failed with token: secret-token-for-testing')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'test-id', name: 'New Name' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('EDIT FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain('secret-token-for-testing');
+    vi.unstubAllEnvs();
+  });
+
+  it('should add file to folder with fileId (PUT operation)', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockResolvedValue({
+      id: 'folder-789',
+      name: 'Folder with File',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'folder-789', fileId: 'file-123' },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER UPDATED SUCCESSFULLY');
+    expect(editFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'folder-789',
+        fileId: 'file-123',
+      })
+    );
+  });
+
+  it('should handle duplicate folder name conflict', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    editFolderSpy.mockRejectedValue(
+      new ZiplineError(
+        'Folder name already exists',
+        McpErrorCode.RESOURCE_ALREADY_EXISTS,
+        409
+      )
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'folder-123', name: 'Existing Folder Name' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('EDIT FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Folder name already exists');
+  });
+
+  it('should return error when id parameter is missing', async () => {
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'EDIT', name: 'New Name' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Invalid command');
+  });
+
+  it('should mask sensitive data in error messages', async () => {
+    vi.stubEnv('ZIPLINE_TOKEN', 'another-sensitive-token-xyz');
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockRejectedValue(
+      new Error('Auth error with another-sensitive-token-xyz')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'test-id', name: 'Secure Update' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('EDIT FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain(
+      'another-sensitive-token-xyz'
+    );
+    vi.unstubAllEnvs();
+  });
+
+  it('should edit folder with only isPublic property', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockResolvedValue({
+      id: 'folder-visibility',
+      name: 'Visibility Update',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'folder-visibility', isPublic: true },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER UPDATED SUCCESSFULLY');
+    expect(editFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'folder-visibility',
+        isPublic: true,
+      })
+    );
+  });
+
+  it('should edit folder with only allowUploads property', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockResolvedValue({
+      id: 'folder-uploads',
+      name: 'Uploads Update',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'EDIT', id: 'folder-uploads', allowUploads: true },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER UPDATED SUCCESSFULLY');
+    expect(editFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'folder-uploads',
+        allowUploads: true,
+      })
+    );
+  });
+
+  it('should return error when called without any update parameters', async () => {
+    const { editFolder } = await import('./remoteFolders');
+    const editFolderSpy = vi.mocked(editFolder);
+    editFolderSpy.mockRejectedValue(
+      new Error(
+        'At least one property (name, isPublic, or allowUploads) must be provided to update the folder'
+      )
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'EDIT', id: 'folder-123' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain(
+      'At least one property (name, isPublic, or allowUploads) must be provided to update the folder'
+    );
+  });
+});

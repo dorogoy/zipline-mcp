@@ -1001,7 +1001,7 @@ describe('editFolder', () => {
       );
     });
 
-    it('should throw ZiplineError with MCP error code when API response is not OK', async () => {
+    it('should throw ZiplineError with MCP error code on HTTP 404', async () => {
       // Arrange
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -1020,6 +1020,94 @@ describe('editFolder', () => {
       await expect(editFolder(options)).rejects.toMatchObject({
         mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
         httpStatus: 404,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 401 (PATCH)', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+        httpStatus: 401,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 429 (PATCH)', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+        httpStatus: 429,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 409 (duplicate folder name)', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        statusText: 'Conflict',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Duplicate Folder Name',
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.RESOURCE_ALREADY_EXISTS,
+        httpStatus: 409,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 500 (PATCH)', async () => {
+      // Arrange
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        name: 'Updated Folder Name',
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+        httpStatus: 500,
       });
     });
 
@@ -1077,7 +1165,7 @@ describe('editFolder', () => {
       );
     });
 
-    it('should throw ZiplineError with MCP error code when API response is not OK', async () => {
+    it('should throw ZiplineError with MCP error code on HTTP 404', async () => {
       // Arrange
       const mockFileId = 'file456';
       mockFetch.mockResolvedValueOnce({
@@ -1097,6 +1185,75 @@ describe('editFolder', () => {
       await expect(editFolder(options)).rejects.toMatchObject({
         mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
         httpStatus: 404,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 401 (PUT)', async () => {
+      // Arrange
+      const mockFileId = 'file456';
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: mockFileId,
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+        httpStatus: 401,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 429 (PUT)', async () => {
+      // Arrange
+      const mockFileId = 'file456';
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: mockFileId,
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+        httpStatus: 429,
+      });
+    });
+
+    it('should throw ZiplineError with MCP error code on HTTP 500 (PUT)', async () => {
+      // Arrange
+      const mockFileId = 'file456';
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as unknown as Response);
+
+      const options: EditFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: mockFolderId,
+        fileId: mockFileId,
+      };
+
+      // Act & Assert
+      await expect(editFolder(options)).rejects.toMatchObject({
+        mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+        httpStatus: 500,
       });
     });
 
