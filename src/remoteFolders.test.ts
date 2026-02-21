@@ -1246,6 +1246,36 @@ describe('getFolder', () => {
     });
   });
 
+  it('should throw ZiplineError with MCP error code on HTTP 401 Unauthorized', async () => {
+    const folderId = 'test-folder-id';
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response);
+
+    await expect(getFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+      httpStatus: 401,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 429 Rate Limit', async () => {
+    const folderId = 'test-folder-id';
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+    } as Response);
+
+    await expect(getFolder(folderId)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+      httpStatus: 429,
+    });
+  });
+
   // New test for INFO command with file list
   it('should fetch a single folder with detailed file information', async () => {
     const folderId = 'test-folder-id';
