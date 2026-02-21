@@ -2295,3 +2295,221 @@ describe('remote_folder_manager tool - LIST command', () => {
     expect(result.content[0]?.text).not.toContain('another-secret-123');
   });
 });
+
+describe('remote_folder_manager tool - ADD command', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should create folder successfully with name only', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      id: 'new-folder-123',
+      name: 'Test Folder',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'ADD', name: 'Test Folder' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(result.content[0]?.text).toContain('Test Folder');
+    expect(result.content[0]?.text).toContain('new-folder-123');
+    expect(createFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Test Folder',
+      })
+    );
+  });
+
+  it('should create folder successfully with isPublic parameter', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      id: 'public-folder-456',
+      name: 'Public Folder',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'ADD', name: 'Public Folder', isPublic: true },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(result.content[0]?.text).toContain('Public Folder');
+    expect(createFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Public Folder',
+        isPublic: true,
+      })
+    );
+  });
+
+  it('should create folder successfully with files array parameter', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      id: 'folder-with-files-789',
+      name: 'Folder with Files',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      {
+        command: 'ADD',
+        name: 'Folder with Files',
+        files: ['file1', 'file2', 'file3'],
+      },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(result.content[0]?.text).toContain('Folder with Files');
+    expect(createFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Folder with Files',
+        files: ['file1', 'file2', 'file3'],
+      })
+    );
+  });
+
+  it('should create folder with all parameters combined', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      id: 'complete-folder-999',
+      name: 'Complete Folder',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      {
+        command: 'ADD',
+        name: 'Complete Folder',
+        isPublic: true,
+        files: ['fileA', 'fileB'],
+      },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(result.content[0]?.text).toContain('Complete Folder');
+    expect(createFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Complete Folder',
+        isPublic: true,
+        files: ['fileA', 'fileB'],
+      })
+    );
+  });
+
+  it('should handle errors with security masking', async () => {
+    process.env.ZIPLINE_TOKEN = 'secret-token-for-testing';
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockRejectedValue(
+      new Error('Failed with token: secret-token-for-testing')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'ADD', name: 'Test' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('CREATE FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain('secret-token-for-testing');
+  });
+
+  it('should mask sensitive data in error messages', async () => {
+    process.env.ZIPLINE_TOKEN = 'another-sensitive-token-xyz';
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockRejectedValue(
+      new Error('Auth error with another-sensitive-token-xyz')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'ADD', name: 'Secure Folder' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('CREATE FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain(
+      'another-sensitive-token-xyz'
+    );
+  });
+
+  it('should use default name when name is not provided', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      id: 'default-folder',
+      name: 'New Folder',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'ADD' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(createFolderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'New Folder',
+      })
+    );
+  });
+
+  it('should handle folder creation when ID is undefined', async () => {
+    const { createFolder } = await import('./remoteFolders');
+    const createFolderSpy = vi.mocked(createFolder);
+    createFolderSpy.mockResolvedValue({
+      name: 'Folder Without ID',
+      // id is undefined
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'ADD', name: 'Folder Without ID' },
+      {}
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER CREATED');
+    expect(result.content[0]?.text).toContain('Folder Without ID');
+    expect(result.content[0]?.text).toContain('ID: undefined');
+  });
+});

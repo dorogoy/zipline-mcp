@@ -2,6 +2,7 @@ export enum McpErrorCode {
   UNAUTHORIZED_ACCESS = 'UNAUTHORIZED_ACCESS',
   FORBIDDEN_OPERATION = 'FORBIDDEN_OPERATION',
   RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
+  RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
   PAYLOAD_TOO_LARGE = 'PAYLOAD_TOO_LARGE',
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
   INTERNAL_ZIPLINE_ERROR = 'INTERNAL_ZIPLINE_ERROR',
@@ -28,6 +29,8 @@ function getResolutionGuidance(httpStatus: number): string {
       return 'Operation not permitted with current token. Verify token has required permissions for this operation. Contact administrator if access is needed.';
     case 404:
       return 'Requested resource does not exist. Verify file/folder ID is correct. Use list_user_files or remote_folder_manager LIST to find correct ID.';
+    case 409:
+      return 'Resource already exists. A folder or file with this name already exists. Choose a different name or use the existing resource.';
     case 413:
       return 'File size exceeds server limit. Reduce file size below 5MB or check server configuration for size limits.';
     case 429:
@@ -60,6 +63,10 @@ export function mapHttpStatusToMcpError(
     case 404:
       mcpCode = McpErrorCode.RESOURCE_NOT_FOUND;
       message = 'Resource not found';
+      break;
+    case 409:
+      mcpCode = McpErrorCode.RESOURCE_ALREADY_EXISTS;
+      message = 'Resource already exists';
       break;
     case 413:
       mcpCode = McpErrorCode.PAYLOAD_TOO_LARGE;

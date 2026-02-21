@@ -595,6 +595,90 @@ describe('createFolder', () => {
     });
   });
 
+  it('should throw ZiplineError with MCP error code on HTTP 401', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
+      httpStatus: 401,
+    });
+  });
+
+  it('should throw ZiplineError with RESOURCE_ALREADY_EXISTS on HTTP 409 (folder already exists)', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'Existing Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RESOURCE_ALREADY_EXISTS,
+      httpStatus: 409,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 429 (rate limit)', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
+      httpStatus: 429,
+    });
+  });
+
+  it('should throw ZiplineError with MCP error code on HTTP 500 (internal server error)', async () => {
+    // Arrange
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as unknown as Response);
+
+    const options: CreateFolderOptions = {
+      endpoint: mockEndpoint,
+      token: mockToken,
+      name: 'New Folder',
+    };
+
+    // Act & Assert
+    await expect(createFolder(options)).rejects.toMatchObject({
+      mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+      httpStatus: 500,
+    });
+  });
+
   it('should throw an error when API response is invalid JSON', async () => {
     // Arrange
     vi.mocked(fetch).mockResolvedValueOnce({
@@ -629,6 +713,33 @@ describe('createFolder', () => {
     await expect(createFolder(options)).rejects.toThrow(
       'Folder name is required'
     );
+  });
+
+  it('should throw a validation error when folder name contains invalid characters', async () => {
+    // Arrange
+    const invalidNames = [
+      'folder/name',
+      'folder\\name',
+      'folder<name>',
+      'folder:name',
+      'folder|name',
+      'folder?name',
+      'folder*name',
+      'folder"name',
+    ];
+
+    for (const invalidName of invalidNames) {
+      const options: CreateFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        name: invalidName,
+      };
+
+      // Act & Assert
+      await expect(createFolder(options)).rejects.toThrow(
+        'Folder name cannot contain invalid characters'
+      );
+    }
   });
 
   it('should handle folder without ID gracefully', async () => {
