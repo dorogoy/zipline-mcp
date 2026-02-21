@@ -2896,3 +2896,168 @@ describe('remote_folder_manager tool - EDIT command', () => {
     );
   });
 });
+
+describe('remote_folder_manager tool - DELETE command', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should delete folder successfully', async () => {
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    deleteFolderSpy.mockResolvedValue({
+      id: 'folder-123',
+      name: 'Test Folder',
+      public: false,
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'DELETE', id: 'folder-123' }, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('FOLDER DELETED SUCCESSFULLY');
+    expect(result.content[0]?.text).toContain('Test Folder');
+    expect(result.content[0]?.text).toContain('folder-123');
+    expect(deleteFolderSpy).toHaveBeenCalledWith('folder-123');
+  });
+
+  it('should handle non-existent folder ID', async () => {
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    deleteFolderSpy.mockRejectedValue(
+      new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'DELETE', id: 'non-existent-id' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('DELETE FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Folder not found');
+  });
+
+  it('should handle errors with security masking', async () => {
+    vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    deleteFolderSpy.mockRejectedValue(
+      new Error('Failed with token: secret-token-for-testing')
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'DELETE', id: 'test-id' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('DELETE FOLDER FAILED');
+    expect(result.content[0]?.text).not.toContain('secret-token-for-testing');
+    vi.unstubAllEnvs();
+  });
+
+  it('should handle folder containing files (403 Forbidden)', async () => {
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    deleteFolderSpy.mockRejectedValue(
+      new ZiplineError(
+        'Folder contains files and cannot be deleted',
+        McpErrorCode.FORBIDDEN_OPERATION,
+        403
+      )
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler(
+      { command: 'DELETE', id: 'folder-with-files' },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('DELETE FOLDER FAILED');
+    expect(result.content[0]?.text).toContain(
+      'Folder contains files and cannot be deleted'
+    );
+  });
+
+  it('should return error when id parameter is missing', async () => {
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'DELETE' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Invalid command');
+  });
+
+  it('should handle rate limit error (429)', async () => {
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    deleteFolderSpy.mockRejectedValue(
+      new ZiplineError(
+        'Rate limit exceeded',
+        McpErrorCode.RATE_LIMIT_EXCEEDED,
+        429
+      )
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'DELETE', id: 'folder-123' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('DELETE FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Rate limit exceeded');
+  });
+
+  it('should handle internal server error (500)', async () => {
+    const { deleteFolder } = await import('./remoteFolders');
+    const deleteFolderSpy = vi.mocked(deleteFolder);
+    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    deleteFolderSpy.mockRejectedValue(
+      new ZiplineError(
+        'Internal server error',
+        McpErrorCode.INTERNAL_ZIPLINE_ERROR,
+        500
+      )
+    );
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ command: 'DELETE', id: 'folder-123' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('DELETE FOLDER FAILED');
+    expect(result.content[0]?.text).toContain('Internal server error');
+  });
+});
