@@ -116,7 +116,9 @@ function isValidUrl(string: string): boolean {
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} bytes`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 // Format validation and normalization
@@ -1498,36 +1500,137 @@ server.registerTool(
   }
 );
 
-// 11. get_usage_statistics
+// Usage statistics API response types
+interface ApiUserStatsResponse {
+  filesUploaded: number;
+  favoriteFiles: number;
+  views: number;
+  avgViews: number;
+  storageUsed: number;
+  avgStorageUsed: number;
+  urlsCreated: number;
+  urlViews: number;
+  sortTypeCount: { [type: string]: number };
+}
+
+interface UserQuota {
+  filesQuota: 'BY_BYTES' | 'BY_FILES';
+  maxBytes: string | null;
+  maxFiles: number | null;
+  maxUrls: number | null;
+}
+
+interface ApiUserResponse {
+  user: {
+    quota: UserQuota | null;
+  };
+}
+
+// 11. get_usage_stats
 server.registerTool(
-  'get_usage_statistics',
+  'get_usage_stats',
   {
     title: 'Get Usage Statistics',
     description:
-      'Retrieve storage and file usage statistics from the Zipline server.',
+      'Retrieve storage usage, file counts, and quota information from Zipline.',
     inputSchema: {},
   },
   async () => {
     try {
-      const res = await fetch(`${ZIPLINE_ENDPOINT}/api/user/stats`, {
-        headers: { authorization: ZIPLINE_TOKEN },
-      });
-      if (!res.ok) throw new Error(`Stats failed: HTTP ${res.status}`);
-      const stats = (await res.json()) as Record<string, unknown>;
+      const headers = { authorization: ZIPLINE_TOKEN };
+      const signal = AbortSignal.timeout(5000);
+
+      const [statsRes, userRes] = await Promise.all([
+        fetch(`${ZIPLINE_ENDPOINT}/api/user/stats`, { headers, signal }),
+        fetch(`${ZIPLINE_ENDPOINT}/api/user`, { headers, signal }),
+      ]);
+
+      if (!statsRes.ok) {
+        if (statsRes.status === 404) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: maskSensitiveData(
+                  `❌ USAGE STATISTICS UNAVAILABLE\n\nError: FEATURE_NOT_AVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nResolution: Usage statistics require a newer version of Zipline. Update your Zipline instance to access this feature.`
+                ),
+              },
+            ],
+            isError: true,
+          };
+        }
+        const ziplineError = mapHttpStatusToMcpError(statsRes.status);
+        const maskedResolution = maskSensitiveData(
+          ziplineError.resolutionGuidance ?? ''
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ USAGE STATISTICS FAILED\n\nError: ${ziplineError.mcpCode}\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${statsRes.status}\nResolution: ${maskedResolution}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const stats = (await statsRes.json()) as ApiUserStatsResponse;
+      const userData = userRes.ok
+        ? ((await userRes.json()) as ApiUserResponse)
+        : null;
+      const quota = userData?.user?.quota;
+
+      let storageSection = `  Used: ${formatFileSize(stats.storageUsed)} (${stats.storageUsed.toLocaleString()} bytes)`;
+      let filesSection = `  Files: ${stats.filesUploaded.toLocaleString()}`;
+
+      if (quota) {
+        if (quota.maxBytes) {
+          const maxBytes = parseInt(quota.maxBytes, 10);
+          if (!isNaN(maxBytes) && maxBytes > 0) {
+            storageSection += `\n  Quota: ${formatFileSize(maxBytes)} (${quota.filesQuota})`;
+          }
+        }
+        if (quota.maxFiles) {
+          filesSection = `  Files: ${stats.filesUploaded.toLocaleString()} / ${quota.maxFiles.toLocaleString()}`;
+        }
+      }
+
+      let fileTypesSection = '';
+      if (stats.sortTypeCount && Object.keys(stats.sortTypeCount).length > 0) {
+        fileTypesSection =
+          '\n\nFile Types:\n' +
+          Object.entries(stats.sortTypeCount)
+            .map(([type, count]) => `  ${type}: ${count} files`)
+            .join('\n');
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: `📊 ZIPLINE USAGE STATISTICS\n\n${JSON.stringify(stats, null, 2)}`,
+            text: `📊 USAGE STATISTICS
+
+Storage:
+${storageSection}
+
+Activity:
+${filesSection}
+  Favorite Files: ${stats.favoriteFiles.toLocaleString()}
+  URLs Created: ${stats.urlsCreated.toLocaleString()}
+  Total Views: ${stats.views.toLocaleString()} (avg ${Math.round(stats.avgViews)}/file)
+  URL Views: ${stats.urlViews.toLocaleString()}
+${fileTypesSection}`,
           },
         ],
       };
     } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const maskedError = maskSensitiveData(errorMessage);
       return {
         content: [
           {
             type: 'text',
-            text: `❌ FAILED TO GET STATISTICS\n\nError: ${e instanceof Error ? e.message : String(e)}`,
+            text: `❌ USAGE STATISTICS FAILED\n\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`,
           },
         ],
         isError: true,
