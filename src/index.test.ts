@@ -4066,3 +4066,462 @@ describe('remote_folder_manager caching', () => {
     expect(mockGetFolder).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('get_usage_stats tool', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should return usage statistics successfully', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 100,
+            favoriteFiles: 10,
+            views: 5000,
+            avgViews: 50,
+            storageUsed: 1073741824,
+            avgStorageUsed: 10737418,
+            urlsCreated: 25,
+            urlViews: 1000,
+            sortTypeCount: { 'image/png': 60, 'image/jpeg': 40 },
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: {
+              quota: {
+                filesQuota: 'BY_BYTES',
+                maxBytes: '10737418240',
+                maxFiles: null,
+                maxUrls: null,
+              },
+            },
+          }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS');
+    expect(result.content[0]?.text).toContain('1.00 GB');
+    expect(result.content[0]?.text).toContain('100');
+    expect(result.content[0]?.text).toContain('image/png');
+    vi.unstubAllGlobals();
+  });
+
+  it('should include quota information when available', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 234,
+            favoriteFiles: 12,
+            views: 15420,
+            avgViews: 66,
+            storageUsed: 1610612736,
+            avgStorageUsed: 6880000,
+            urlsCreated: 45,
+            urlViews: 3210,
+            sortTypeCount: {
+              'image/png': 120,
+              'image/jpeg': 85,
+              'text/plain': 29,
+            },
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: {
+              quota: {
+                filesQuota: 'BY_BYTES',
+                maxBytes: '5368709120',
+                maxFiles: 1000,
+                maxUrls: null,
+              },
+            },
+          }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('Quota: 5.00 GB (BY_BYTES)');
+    expect(result.content[0]?.text).toContain('Files: 234');
+    expect(result.content[0]?.text).toContain('1000');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle missing quota gracefully', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 50,
+            favoriteFiles: 5,
+            views: 1000,
+            avgViews: 20,
+            storageUsed: 52428800,
+            avgStorageUsed: 1048576,
+            urlsCreated: 10,
+            urlViews: 200,
+            sortTypeCount: {},
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: {
+              quota: null,
+            },
+          }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('50.0 MB');
+    expect(result.content[0]?.text).toContain('Files: 50');
+    expect(result.content[0]?.text).not.toContain('Quota:');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle 401 authentication error', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS FAILED');
+    expect(result.content[0]?.text).toContain('UNAUTHORIZED_ACCESS');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle 403 forbidden error', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS FAILED');
+    expect(result.content[0]?.text).toContain('FORBIDDEN_OPERATION');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle 404 feature not available (older Zipline version)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('FEATURE_NOT_AVAILABLE');
+    expect(result.content[0]?.text).toContain('newer version of Zipline');
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle network timeout', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(new Error('AbortError: The operation was aborted'));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS FAILED');
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    vi.unstubAllGlobals();
+  });
+
+  it('should format file sizes correctly in GB', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 500,
+            favoriteFiles: 50,
+            views: 10000,
+            avgViews: 20,
+            storageUsed: 5368709120,
+            avgStorageUsed: 10737418,
+            urlsCreated: 100,
+            urlViews: 2000,
+            sortTypeCount: {},
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: { quota: null },
+          }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('5.00 GB');
+    vi.unstubAllGlobals();
+  });
+
+  it('should include file type breakdown', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 200,
+            favoriteFiles: 15,
+            views: 3000,
+            avgViews: 15,
+            storageUsed: 209715200,
+            avgStorageUsed: 1048576,
+            urlsCreated: 30,
+            urlViews: 500,
+            sortTypeCount: {
+              'image/png': 100,
+              'image/jpeg': 75,
+              'text/plain': 25,
+            },
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: { quota: null },
+          }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('File Types:');
+    expect(result.content[0]?.text).toContain('image/png: 100 files');
+    expect(result.content[0]?.text).toContain('image/jpeg: 75 files');
+    expect(result.content[0]?.text).toContain('text/plain: 25 files');
+    vi.unstubAllGlobals();
+  });
+
+  it('should use 5 second timeout for requests', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockImplementation((_url: string, options: RequestInit) => {
+        expect(options).toBeDefined();
+        expect(options?.signal).toBeDefined();
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              _url.includes('/api/user/stats')
+                ? {
+                    filesUploaded: 10,
+                    favoriteFiles: 1,
+                    views: 100,
+                    avgViews: 10,
+                    storageUsed: 1048576,
+                    avgStorageUsed: 104857,
+                    urlsCreated: 5,
+                    urlViews: 50,
+                    sortTypeCount: {},
+                  }
+                : { user: { quota: null } }
+            ),
+        } as Response);
+      });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({}, {});
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal) as AbortSignal,
+      })
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('should handle user API failure gracefully', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 75,
+            favoriteFiles: 8,
+            views: 2000,
+            avgViews: 27,
+            storageUsed: 52428800,
+            avgStorageUsed: 699050,
+            urlsCreated: 15,
+            urlViews: 300,
+            sortTypeCount: {},
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('USAGE STATISTICS');
+    expect(result.content[0]?.text).toContain('75');
+    vi.unstubAllGlobals();
+  });
+
+  it('should mask sensitive data in error messages', async () => {
+    process.env.ZIPLINE_TOKEN = 'super-secret-token-for-testing';
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          'Connection failed with token: super-secret-token-for-testing'
+        )
+      );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).not.toContain(
+      'super-secret-token-for-testing'
+    );
+    expect(result.content[0]?.text).toContain('[REDACTED]');
+    vi.unstubAllGlobals();
+  });
+
+  it('should call correct API endpoint URLs', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            filesUploaded: 10,
+            favoriteFiles: 1,
+            views: 100,
+            avgViews: 10,
+            storageUsed: 1048576,
+            avgStorageUsed: 104857,
+            urlsCreated: 5,
+            urlViews: 50,
+            sortTypeCount: {},
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ user: { quota: null } }),
+      } as Response);
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({}, {});
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const calledUrls = mockFetch.mock.calls.map(
+      (call: unknown[]) => call[0] as string
+    );
+    expect(
+      calledUrls.some((url: string) => url.includes('/api/user/stats'))
+    ).toBe(true);
+    expect(calledUrls.some((url: string) => url.endsWith('/api/user'))).toBe(
+      true
+    );
+    vi.unstubAllGlobals();
+  });
+});

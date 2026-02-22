@@ -83,9 +83,9 @@ development_status:
   5-5-implement-folder-deletion: done
   epic-5-retrospective: optional
 
-  epic-6: in-progress
+  epic-6: done
   6-1-implement-host-health-status-indicator: done
   6-2-implement-time-bound-result-caching-for-file-lists: done
   6-3-implement-folder-metadata-caching: done
-  6-4-implement-usage-statistics-endpoint: backlog
+  6-4-implement-usage-statistics-endpoint: done
   epic-6-retrospective: optional
