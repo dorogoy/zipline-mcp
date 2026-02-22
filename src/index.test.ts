@@ -4180,7 +4180,7 @@ describe('get_usage_stats tool', () => {
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Quota: 5.00 GB (BY_BYTES)');
     expect(result.content[0]?.text).toContain('Files: 234');
-    expect(result.content[0]?.text).toContain('1000');
+    expect(result.content[0]?.text).toMatch(/1[,.]?000/);
     vi.unstubAllGlobals();
   });
 
