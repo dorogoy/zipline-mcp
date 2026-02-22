@@ -1464,7 +1464,7 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `✅ HEALTH CHECK PASSED\n\nStatus: healthy\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nResponse Time: ${latency}ms`,
+              text: `✅ HEALTH CHECK PASSED\n\nStatus: healthy\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms`,
             },
           ],
         };
