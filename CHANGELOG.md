@@ -6,6 +6,17 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.11.0](https://github.com/dorogoy/zipline-mcp/compare/v1.10.0...v1.11.0) (2026-02-22)
+
+
+### Features
+
+* **api:** Implement usage statistics endpoint with dual API calls and comprehensive error handling ([1ae9d96](https://github.com/dorogoy/zipline-mcp/commit/1ae9d96d55a17cbbf70f7adb9cccaf12691bbecf))
+* **cache:** Implement folder metadata caching with TTL-based expiration ([48a375d](https://github.com/dorogoy/zipline-mcp/commit/48a375d227ee83e87c0ff9c2cf87a0e1c7a9096a))
+* **cache:** Implement time-bound result caching for file lists with TTL-based expiration ([d106fd7](https://github.com/dorogoy/zipline-mcp/commit/d106fd7624061d0a76d24ab384979e493b889c9a))
+* **health:** Complete host health status indicator implementation ([47cf898](https://github.com/dorogoy/zipline-mcp/commit/47cf898f7e48fe5085b795aab430d7b058af8371))
+* **health:** Implement host health status indicator with structured responses ([05f22ad](https://github.com/dorogoy/zipline-mcp/commit/05f22ad36b4274912de7d2dfa4ccb3f05ba0636e))
+
 ## [1.10.0](https://github.com/dorogoy/zipline-mcp/compare/v1.9.4...v1.10.0) (2026-02-21)
 
 
