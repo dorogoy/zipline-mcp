@@ -1,4 +1,5 @@
 import type { ListUserFilesResponse } from '../userFiles';
+import type { FullFolder } from '../remoteFolders';
 
 export interface CacheEntry<T> {
   data: T;
@@ -60,3 +61,6 @@ export class FileListCache<T> {
 }
 
 export const fileListCache = new FileListCache<ListUserFilesResponse>();
+
+export const folderListCache = new FileListCache<FullFolder[]>();
+export const folderInfoCache = new FileListCache<FullFolder>();
