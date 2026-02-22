@@ -1,7 +1,15 @@
 // Set required environment variables for tests
 process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
-import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
+import {
+  vi,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Dirent, Stats } from 'fs';
 
@@ -3389,5 +3397,381 @@ describe('check_health tool', () => {
       })
     );
     vi.unstubAllGlobals();
+  });
+});
+
+describe('list_user_files caching', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should cache list results and return cached data within TTL', async () => {
+    const { listUserFiles } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    mockListUserFiles.mockClear();
+    mockListUserFiles.mockResolvedValue({
+      page: [
+        {
+          id: '1',
+          name: 'test.png',
+          url: '/test.png',
+          originalName: null,
+          size: 100,
+          type: 'image/png',
+          views: 0,
+          maxViews: null,
+          favorite: false,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01',
+          deletesAt: null,
+          folderId: null,
+          thumbnail: null,
+          tags: [],
+          password: null,
+        },
+      ],
+      total: 1,
+      pages: 1,
+    });
+
+    const handler = getToolHandler('list_user_files');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+    expect(result1.isError).toBeFalsy();
+    expect(result1.content[0]?.text).toContain('test.png');
+
+    vi.advanceTimersByTime(10000);
+
+    const result2 = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+
+    expect(result2.isError).toBeFalsy();
+    expect(result2.content[0]?.text).toContain('test.png');
+  });
+
+  it('should refresh cache after TTL expires', async () => {
+    const { listUserFiles } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    mockListUserFiles.mockClear();
+    mockListUserFiles
+      .mockResolvedValueOnce({
+        page: [
+          {
+            id: '1',
+            name: 'first.png',
+            url: '/first.png',
+            originalName: null,
+            size: 100,
+            type: 'image/png',
+            views: 0,
+            maxViews: null,
+            favorite: false,
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            deletesAt: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+          },
+        ],
+        total: 1,
+        pages: 1,
+      })
+      .mockResolvedValueOnce({
+        page: [
+          {
+            id: '2',
+            name: 'second.png',
+            url: '/second.png',
+            originalName: null,
+            size: 100,
+            type: 'image/png',
+            views: 0,
+            maxViews: null,
+            favorite: false,
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            deletesAt: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+          },
+        ],
+        total: 1,
+        pages: 1,
+      });
+
+    const handler = getToolHandler('list_user_files');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+    expect(result1.content[0]?.text).toContain('first.png');
+
+    vi.advanceTimersByTime(30001);
+
+    const result2 = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+    expect(result2.content[0]?.text).toContain('second.png');
+  });
+
+  it('should invalidate cache after file upload', async () => {
+    const { listUserFiles } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    mockListUserFiles.mockClear();
+    mockListUserFiles.mockResolvedValue({
+      page: [
+        {
+          id: '1',
+          name: 'test.png',
+          url: '/test.png',
+          originalName: null,
+          size: 100,
+          type: 'image/png',
+          views: 0,
+          maxViews: null,
+          favorite: false,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01',
+          deletesAt: null,
+          folderId: null,
+          thumbnail: null,
+          tags: [],
+          password: null,
+        },
+      ],
+      total: 1,
+      pages: 1,
+    });
+
+    const listHandler = getToolHandler('list_user_files');
+    if (!listHandler) throw new Error('Handler not found');
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+
+    const pngData = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    mockFileContent(pngData);
+
+    const uploadHandler = getToolHandler('upload_file_to_zipline');
+    if (!uploadHandler) throw new Error('Handler not found');
+
+    await uploadHandler({ filePath: '/path/to/upload.png' }, {});
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+  });
+
+  it('should invalidate cache after file delete', async () => {
+    const { listUserFiles, deleteUserFile } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    const mockDeleteUserFile = vi.mocked(deleteUserFile);
+    mockListUserFiles.mockClear();
+    mockDeleteUserFile.mockClear();
+    mockListUserFiles.mockResolvedValue({
+      page: [
+        {
+          id: '1',
+          name: 'test.png',
+          url: '/test.png',
+          originalName: null,
+          size: 100,
+          type: 'image/png',
+          views: 0,
+          maxViews: null,
+          favorite: false,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01',
+          deletesAt: null,
+          folderId: null,
+          thumbnail: null,
+          tags: [],
+          password: null,
+        },
+      ],
+      total: 1,
+      pages: 1,
+    });
+    mockDeleteUserFile.mockResolvedValue({
+      id: 'deleted-file',
+      name: 'deleted.png',
+      url: '/deleted.png',
+      originalName: null,
+      size: 100,
+      type: 'image/png',
+      views: 0,
+      maxViews: null,
+      favorite: false,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      deletesAt: null,
+      folderId: null,
+      thumbnail: null,
+      tags: [],
+      password: null,
+    });
+
+    const listHandler = getToolHandler('list_user_files');
+    if (!listHandler) throw new Error('Handler not found');
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+
+    const deleteHandler = getToolHandler('delete_user_file');
+    if (!deleteHandler) throw new Error('Handler not found');
+
+    await deleteHandler({ id: '1' }, {});
+    expect(mockDeleteUserFile).toHaveBeenCalledTimes(1);
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+  });
+
+  it('should invalidate cache after file update', async () => {
+    const { listUserFiles } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    mockListUserFiles.mockClear();
+    mockListUserFiles.mockResolvedValue({
+      page: [
+        {
+          id: '1',
+          name: 'test.png',
+          url: '/test.png',
+          originalName: null,
+          size: 100,
+          type: 'image/png',
+          views: 0,
+          maxViews: null,
+          favorite: false,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01',
+          deletesAt: null,
+          folderId: null,
+          thumbnail: null,
+          tags: [],
+          password: null,
+        },
+      ],
+      total: 1,
+      pages: 1,
+    });
+
+    const listHandler = getToolHandler('list_user_files');
+    if (!listHandler) throw new Error('Handler not found');
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+
+    const updateHandler = getToolHandler('update_user_file');
+    if (!updateHandler) throw new Error('Handler not found');
+
+    await updateHandler({ id: '1', favorite: true }, {});
+
+    await listHandler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+  });
+
+  it('should cache different entries for different parameters', async () => {
+    const { listUserFiles } = await import('./userFiles');
+    const mockListUserFiles = vi.mocked(listUserFiles);
+    mockListUserFiles.mockClear();
+    mockListUserFiles
+      .mockResolvedValueOnce({
+        page: [
+          {
+            id: '1',
+            name: 'page1.png',
+            url: '/page1.png',
+            originalName: null,
+            size: 100,
+            type: 'image/png',
+            views: 0,
+            maxViews: null,
+            favorite: false,
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            deletesAt: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+          },
+        ],
+        total: 1,
+        pages: 2,
+      })
+      .mockResolvedValueOnce({
+        page: [
+          {
+            id: '2',
+            name: 'page2.png',
+            url: '/page2.png',
+            originalName: null,
+            size: 100,
+            type: 'image/png',
+            views: 0,
+            maxViews: null,
+            favorite: false,
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            deletesAt: null,
+            folderId: null,
+            thumbnail: null,
+            tags: [],
+            password: null,
+          },
+        ],
+        total: 1,
+        pages: 2,
+      });
+
+    const handler = getToolHandler('list_user_files');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(1);
+    expect(result1.content[0]?.text).toContain('page1.png');
+
+    const result2 = await handler({ page: 2 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+    expect(result2.content[0]?.text).toContain('page2.png');
+
+    vi.advanceTimersByTime(10000);
+
+    const result1Cached = await handler({ page: 1 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+    expect(result1Cached.content[0]?.text).toContain('page1.png');
+
+    const result2Cached = await handler({ page: 2 }, {});
+    expect(mockListUserFiles).toHaveBeenCalledTimes(2);
+    expect(result2Cached.content[0]?.text).toContain('page2.png');
   });
 });

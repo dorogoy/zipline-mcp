@@ -85,7 +85,7 @@ development_status:
 
   epic-6: in-progress
   6-1-implement-host-health-status-indicator: done
-  6-2-implement-time-bound-result-caching-for-file-lists: backlog
+  6-2-implement-time-bound-result-caching-for-file-lists: done
   6-3-implement-folder-metadata-caching: backlog
   6-4-implement-usage-statistics-endpoint: backlog
   epic-6-retrospective: optional
