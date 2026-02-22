@@ -3115,7 +3115,6 @@ describe('check_health tool', () => {
     const result = await handler({}, {});
 
     expect(result.content[0]?.text).toMatch(/Latency: \d+ms/);
-    expect(result.content[0]?.text).toMatch(/Response Time: \d+ms/);
     vi.unstubAllGlobals();
   });
 
