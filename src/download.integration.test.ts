@@ -188,7 +188,10 @@ describe('download_external_url tool (integration)', () => {
     );
 
     // Mock as executable but named .png
-    mockFileType.mockResolvedValueOnce({ mime: 'application/x-msdownload', ext: 'exe' });
+    mockFileType.mockResolvedValueOnce({
+      mime: 'application/x-msdownload',
+      ext: 'exe',
+    });
     mockMimeLookup.mockReturnValueOnce('image/png'); // Extension expects png
 
     const imported = await import('./index');
@@ -198,7 +201,10 @@ describe('download_external_url tool (integration)', () => {
       .mock.calls.find((c: unknown[]) => c[0] === 'download_external_url');
     const handler = call?.[2] as Function;
 
-    const result = await handler({ url: 'https://example.com/malicious.png' }, {});
+    const result = await handler(
+      { url: 'https://example.com/malicious.png' },
+      {}
+    );
 
     expect(result.isError).toBe(true);
     expect(result.content?.[0]?.text).toContain('MIME type mismatch');
@@ -210,11 +216,14 @@ describe('download_external_url tool (integration)', () => {
 
   it('rejects and cleans up unsupported file type', async () => {
     httpClientMock.downloadExternalUrl.mockResolvedValue(
-        '/home/user/.zipline_tmp/users/hash/test.exe'
+      '/home/user/.zipline_tmp/users/hash/test.exe'
     );
 
     // Mock as exe
-    mockFileType.mockResolvedValueOnce({ mime: 'application/x-msdownload', ext: 'exe' });
+    mockFileType.mockResolvedValueOnce({
+      mime: 'application/x-msdownload',
+      ext: 'exe',
+    });
     mockMimeLookup.mockReturnValueOnce('application/x-msdownload');
 
     const imported = await import('./index');
@@ -229,10 +238,12 @@ describe('download_external_url tool (integration)', () => {
     expect(result.isError).toBe(true);
     // Note: The error message might vary based on ALLOWED_EXTENSIONS in index.ts
     // Assuming .exe is not in ALLOWED_EXTENSIONS
-    expect(result.content?.[0]?.text).toMatch(/Unsupported file type|not supported/);
+    expect(result.content?.[0]?.text).toMatch(
+      /Unsupported file type|not supported/
+    );
     expect(fsMock.rm).toHaveBeenCalledWith(
-        '/home/user/.zipline_tmp/users/hash/test.exe',
-        { force: true }
+      '/home/user/.zipline_tmp/users/hash/test.exe',
+      { force: true }
     );
   });
 

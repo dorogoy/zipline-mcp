@@ -20,7 +20,7 @@ dev:
 	npm run dev
 
 # Run tests
-test: lint
+test: lint format-check
 	npm run test:run
 
 # Format the code
