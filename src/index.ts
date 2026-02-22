@@ -43,6 +43,7 @@ import {
   SecretDetectionError,
 } from './sandboxUtils.js';
 import { McpErrorCode, mapHttpStatusToMcpError } from './utils/errorMapper.js';
+import { fileListCache } from './utils/cache.js';
 import * as mime from 'mime-types';
 import { fileTypeFromBuffer } from 'file-type';
 
@@ -529,6 +530,7 @@ server.registerTool(
 
         const url = await uploadFile(opts);
         if (!isValidUrl(url)) throw new Error(`Invalid URL returned: ${url}`);
+        fileListCache.invalidate();
         const formattedSize = formatFileSize(fileSize);
         const fileName = path.basename(filePath);
         let text = `✅ FILE UPLOADED SUCCESSFULLY!\n\n📁 File: ${fileName}\n📊 Size: ${formattedSize}\n🏷️  Format: ${format}\n🔗 DOWNLOAD URL: ${url}`;
@@ -974,11 +976,34 @@ server.registerTool(
   },
   async (args) => {
     try {
+      const cacheKey = fileListCache.generateKey(args);
+
+      const cachedResult = fileListCache.get(cacheKey);
+      if (cachedResult) {
+        const list = cachedResult.page
+          .map(
+            (f, i) =>
+              `${i + 1}. ${f.name}\n   🆔 ID: ${f.id}\n   🔗 URL: ${f.url}`
+          )
+          .join('\n\n');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `📁 USER FILES\n\n${list}\n\nTotal files: ${cachedResult.total}`,
+            },
+          ],
+        };
+      }
+
       const result = await listUserFiles({
         endpoint: ZIPLINE_ENDPOINT,
         token: ZIPLINE_TOKEN,
         ...args,
       });
+
+      fileListCache.set(cacheKey, result);
+
       const list = result.page
         .map(
           (f, i) =>
@@ -1076,6 +1101,7 @@ server.registerTool(
       if (args.folderId !== undefined) opts.folderId = args.folderId;
 
       const file = await updateUserFile(opts);
+      fileListCache.invalidate();
       return {
         content: [
           {
@@ -1115,6 +1141,7 @@ server.registerTool(
         token: ZIPLINE_TOKEN,
         id,
       });
+      fileListCache.invalidate();
       return {
         content: [
           {
@@ -1380,6 +1407,10 @@ server.registerTool(
           secureLog('Batch operation error:', error);
         }
       }
+    }
+
+    if (results.success.length > 0) {
+      fileListCache.invalidate();
     }
 
     const failedDetails =
