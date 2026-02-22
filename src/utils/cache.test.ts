@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FileListCache, type CacheEntry } from './cache';
+import {
+  FileListCache,
+  type CacheEntry,
+  folderListCache,
+  folderInfoCache,
+} from './cache';
 import type { ListUserFilesResponse } from '../userFiles';
+import type { FullFolder } from '../remoteFolders';
 
 describe('FileListCache', () => {
   let cache: FileListCache<ListUserFilesResponse>;
@@ -476,5 +482,163 @@ describe('FileListCache', () => {
       const key2 = cache.generateKey({ page: 1 });
       expect(key1).toBe(key2);
     });
+  });
+});
+
+describe('folderListCache', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    folderListCache.invalidate();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should store and retrieve folder lists', () => {
+    const testFolders: FullFolder[] = [
+      {
+        id: 'folder-1',
+        name: 'Test Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ];
+
+    const key = folderListCache.generateKey({});
+    folderListCache.set(key, testFolders);
+
+    const result = folderListCache.get(key);
+    expect(result).toEqual(testFolders);
+  });
+
+  it('should expire after TTL', () => {
+    const testFolders: FullFolder[] = [
+      {
+        id: 'folder-1',
+        name: 'Test Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ];
+
+    const key = folderListCache.generateKey({});
+    folderListCache.set(key, testFolders);
+
+    vi.advanceTimersByTime(30001);
+
+    const result = folderListCache.get(key);
+    expect(result).toBeNull();
+  });
+
+  it('should support invalidation', () => {
+    const testFolders: FullFolder[] = [
+      {
+        id: 'folder-1',
+        name: 'Test Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ];
+
+    const key = folderListCache.generateKey({});
+    folderListCache.set(key, testFolders);
+    folderListCache.invalidate();
+
+    const result = folderListCache.get(key);
+    expect(result).toBeNull();
+  });
+});
+
+describe('folderInfoCache', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    folderInfoCache.invalidate();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should store and retrieve folder info', () => {
+    const testFolder: FullFolder = {
+      id: 'folder-1',
+      name: 'Test Folder',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      files: ['file-1', 'file-2'],
+    };
+
+    const key = folderInfoCache.generateKey({ id: 'folder-1' });
+    folderInfoCache.set(key, testFolder);
+
+    const result = folderInfoCache.get(key);
+    expect(result).toEqual(testFolder);
+  });
+
+  it('should expire after TTL', () => {
+    const testFolder: FullFolder = {
+      id: 'folder-1',
+      name: 'Test Folder',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    };
+
+    const key = folderInfoCache.generateKey({ id: 'folder-1' });
+    folderInfoCache.set(key, testFolder);
+
+    vi.advanceTimersByTime(30001);
+
+    const result = folderInfoCache.get(key);
+    expect(result).toBeNull();
+  });
+
+  it('should support invalidation', () => {
+    const testFolder: FullFolder = {
+      id: 'folder-1',
+      name: 'Test Folder',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    };
+
+    const key = folderInfoCache.generateKey({ id: 'folder-1' });
+    folderInfoCache.set(key, testFolder);
+    folderInfoCache.invalidate();
+
+    const result = folderInfoCache.get(key);
+    expect(result).toBeNull();
+  });
+
+  it('should cache different folders by ID', () => {
+    const folder1: FullFolder = {
+      id: 'folder-1',
+      name: 'Folder One',
+      public: false,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    };
+    const folder2: FullFolder = {
+      id: 'folder-2',
+      name: 'Folder Two',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    };
+
+    const key1 = folderInfoCache.generateKey({ id: 'folder-1' });
+    const key2 = folderInfoCache.generateKey({ id: 'folder-2' });
+    folderInfoCache.set(key1, folder1);
+    folderInfoCache.set(key2, folder2);
+
+    expect(folderInfoCache.get(key1)).toEqual(folder1);
+    expect(folderInfoCache.get(key2)).toEqual(folder2);
   });
 });

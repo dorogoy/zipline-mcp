@@ -3775,3 +3775,294 @@ describe('list_user_files caching', () => {
     expect(result2Cached.content[0]?.text).toContain('page2.png');
   });
 });
+
+describe('remote_folder_manager caching', () => {
+  let server: MockServer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    Object.values(fsMock).forEach((fn) => fn.mockReset());
+
+    const imported = (await import('./index')) as unknown as {
+      server: MockServer;
+    };
+    server = imported.server;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const getToolHandler = (toolName: string): ToolHandler | undefined => {
+    const calls = server.registerTool.mock.calls as Array<
+      [string, unknown, ToolHandler]
+    >;
+    const call = calls.find((c) => c[0] === toolName);
+    return call?.[2];
+  };
+
+  it('should cache LIST results and return cached data within TTL', async () => {
+    const { listFolders } = await import('./remoteFolders');
+    const mockListFolders = vi.mocked(listFolders);
+    mockListFolders.mockClear();
+    mockListFolders.mockResolvedValue([
+      {
+        id: 'folder-1',
+        name: 'Test Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ]);
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(1);
+    expect(result1.isError).toBeFalsy();
+    expect(result1.content[0]?.text).toContain('Test Folder');
+
+    vi.advanceTimersByTime(10000);
+
+    const result2 = await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(1);
+
+    expect(result2.isError).toBeFalsy();
+    expect(result2.content[0]?.text).toContain('Test Folder');
+  });
+
+  it('should cache INFO results by folder ID', async () => {
+    const { getFolder } = await import('./remoteFolders');
+    const mockGetFolder = vi.mocked(getFolder);
+    mockGetFolder.mockClear();
+    mockGetFolder.mockResolvedValue({
+      id: 'folder-1',
+      name: 'Info Folder',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      files: ['file-1'],
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(1);
+    expect(result1.isError).toBeFalsy();
+    expect(result1.content[0]?.text).toContain('Info Folder');
+
+    vi.advanceTimersByTime(10000);
+
+    const result2 = await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(1);
+    expect(result2.isError).toBeFalsy();
+    expect(result2.content[0]?.text).toContain('Info Folder');
+  });
+
+  it('should invalidate caches on successful ADD', async () => {
+    const { listFolders, createFolder } = await import('./remoteFolders');
+    const mockListFolders = vi.mocked(listFolders);
+    const mockCreateFolder = vi.mocked(createFolder);
+    mockListFolders.mockClear();
+    mockCreateFolder.mockClear();
+
+    mockListFolders.mockResolvedValue([
+      {
+        id: 'folder-1',
+        name: 'Existing Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ]);
+    mockCreateFolder.mockResolvedValue({
+      id: 'folder-2',
+      name: 'New Folder',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(1);
+
+    await handler({ command: 'ADD', name: 'New Folder' }, {});
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(2);
+  });
+
+  it('should invalidate caches on successful EDIT', async () => {
+    const { getFolder, editFolder } = await import('./remoteFolders');
+    const mockGetFolder = vi.mocked(getFolder);
+    const mockEditFolder = vi.mocked(editFolder);
+    mockGetFolder.mockClear();
+    mockEditFolder.mockClear();
+
+    mockGetFolder.mockResolvedValue({
+      id: 'folder-1',
+      name: 'Original Name',
+      public: false,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    });
+    mockEditFolder.mockResolvedValue({
+      id: 'folder-1',
+      name: 'Updated Name',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(1);
+
+    await handler(
+      { command: 'EDIT', id: 'folder-1', name: 'Updated Name' },
+      {}
+    );
+
+    await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(2);
+  });
+
+  it('should invalidate caches on successful DELETE', async () => {
+    const { listFolders, deleteFolder } = await import('./remoteFolders');
+    const mockListFolders = vi.mocked(listFolders);
+    const mockDeleteFolder = vi.mocked(deleteFolder);
+    mockListFolders.mockClear();
+    mockDeleteFolder.mockClear();
+
+    mockListFolders.mockResolvedValue([
+      {
+        id: 'folder-1',
+        name: 'Folder to Delete',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ]);
+    mockDeleteFolder.mockResolvedValue({
+      id: 'folder-1',
+      name: 'Deleted Folder',
+      public: false,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(1);
+
+    await handler({ command: 'DELETE', id: 'folder-1' }, {});
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(2);
+  });
+
+  it('should cache different INFO entries for different folder IDs', async () => {
+    const { getFolder } = await import('./remoteFolders');
+    const mockGetFolder = vi.mocked(getFolder);
+    mockGetFolder.mockClear();
+
+    mockGetFolder
+      .mockResolvedValueOnce({
+        id: 'folder-1',
+        name: 'Folder One',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      })
+      .mockResolvedValueOnce({
+        id: 'folder-2',
+        name: 'Folder Two',
+        public: true,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    const result1 = await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(1);
+    expect(result1.content[0]?.text).toContain('Folder One');
+
+    const result2 = await handler({ command: 'INFO', id: 'folder-2' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(2);
+    expect(result2.content[0]?.text).toContain('Folder Two');
+
+    vi.advanceTimersByTime(10000);
+
+    const result1Cached = await handler(
+      { command: 'INFO', id: 'folder-1' },
+      {}
+    );
+    expect(mockGetFolder).toHaveBeenCalledTimes(2);
+    expect(result1Cached.content[0]?.text).toContain('Folder One');
+
+    const result2Cached = await handler(
+      { command: 'INFO', id: 'folder-2' },
+      {}
+    );
+    expect(mockGetFolder).toHaveBeenCalledTimes(2);
+    expect(result2Cached.content[0]?.text).toContain('Folder Two');
+  });
+
+  it('should expire LIST cache after TTL and make new API call', async () => {
+    const { listFolders } = await import('./remoteFolders');
+    const mockListFolders = vi.mocked(listFolders);
+    mockListFolders.mockClear();
+    mockListFolders.mockResolvedValue([
+      {
+        id: 'folder-1',
+        name: 'Test Folder',
+        public: false,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ]);
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(30001);
+
+    await handler({ command: 'LIST' }, {});
+    expect(mockListFolders).toHaveBeenCalledTimes(2);
+  });
+
+  it('should expire INFO cache after TTL and make new API call', async () => {
+    const { getFolder } = await import('./remoteFolders');
+    const mockGetFolder = vi.mocked(getFolder);
+    mockGetFolder.mockClear();
+    mockGetFolder.mockResolvedValue({
+      id: 'folder-1',
+      name: 'Info Folder',
+      public: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      files: ['file-1'],
+    });
+
+    const handler = getToolHandler('remote_folder_manager');
+    if (!handler) throw new Error('Handler not found');
+
+    await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(30001);
+
+    await handler({ command: 'INFO', id: 'folder-1' }, {});
+    expect(mockGetFolder).toHaveBeenCalledTimes(2);
+  });
+});

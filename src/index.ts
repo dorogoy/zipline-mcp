@@ -21,6 +21,7 @@ import {
   getFolder,
   deleteFolder,
   EditFolderOptions,
+  FullFolder,
 } from './remoteFolders.js';
 import {
   getUserSandbox,
@@ -43,7 +44,11 @@ import {
   SecretDetectionError,
 } from './sandboxUtils.js';
 import { McpErrorCode, mapHttpStatusToMcpError } from './utils/errorMapper.js';
-import { fileListCache } from './utils/cache.js';
+import {
+  fileListCache,
+  folderListCache,
+  folderInfoCache,
+} from './utils/cache.js';
 import * as mime from 'mime-types';
 import { fileTypeFromBuffer } from 'file-type';
 
@@ -433,6 +438,18 @@ export const remoteFolderManagerInputSchema = {
     .optional()
     .describe(
       'Optional: File ID to add to the folder (for EDIT command). Retrieve the file ID first (default: no file added).'
+    ),
+  page: z
+    .number()
+    .optional()
+    .describe(
+      'Optional: Page number for pagination (for LIST command, default: none).'
+    ),
+  noincl: z
+    .boolean()
+    .optional()
+    .describe(
+      'Optional: Whether to exclude files from the response (for LIST command, default: false).'
     ),
 };
 
@@ -1167,6 +1184,40 @@ server.registerTool(
 );
 
 // 9. remote_folder_manager
+// Helper function to format folder list response
+function formatFolderListResponse(folders: FullFolder[]): {
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+} {
+  if (folders.length === 0) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: '📂 REMOTE FOLDERS\n\nNo folders found.',
+        },
+      ],
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: `📂 REMOTE FOLDERS\n\n${folders
+          .map((f, i) => {
+            let folderInfo = `${i + 1}. 📁 ${f.name}\n   🆔 ID: ${f.id}`;
+            if (f.files && f.files.length > 0) {
+              folderInfo += `\n   📄 Files: ${f.files.length}`;
+            }
+            return folderInfo;
+          })
+          .join('\n\n')}`,
+      },
+    ],
+  };
+}
+
 server.registerTool(
   'remote_folder_manager',
   {
@@ -1184,42 +1235,32 @@ server.registerTool(
       id,
       allowUploads,
       fileId,
+      page,
+      noincl,
     } = args;
     const upperCmd = command.trim().split(/\s+/)[0]?.toUpperCase() || '';
     if (upperCmd === 'LIST') {
       try {
-        const folders = await listFolders({
+        const cacheKey = folderListCache.generateKey({ page, noincl });
+        const cachedFolders = folderListCache.get(cacheKey);
+        if (cachedFolders) {
+          return formatFolderListResponse(cachedFolders);
+        }
+        const listOptions: {
+          endpoint: string;
+          token: string;
+          page?: number;
+          noincl?: boolean;
+        } = {
           endpoint: ZIPLINE_ENDPOINT,
           token: ZIPLINE_TOKEN,
-        });
-
-        if (folders.length === 0) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: '📂 REMOTE FOLDERS\n\nNo folders found.',
-              },
-            ],
-          };
-        }
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `📂 REMOTE FOLDERS\n\n${folders
-                .map((f, i) => {
-                  let folderInfo = `${i + 1}. 📁 ${f.name}\n   🆔 ID: ${f.id}`;
-                  if (f.files && f.files.length > 0) {
-                    folderInfo += `\n   📄 Files: ${f.files.length}`;
-                  }
-                  return folderInfo;
-                })
-                .join('\n\n')}`,
-            },
-          ],
         };
+        if (page !== undefined) listOptions.page = page;
+        if (noincl !== undefined) listOptions.noincl = noincl;
+        const folders = await listFolders(listOptions);
+        folderListCache.set(cacheKey, folders);
+
+        return formatFolderListResponse(folders);
       } catch (error) {
         return {
           content: [
@@ -1243,6 +1284,8 @@ server.registerTool(
           isPublic: isPublic ?? false,
           files,
         });
+        folderListCache.invalidate();
+        folderInfoCache.invalidate();
         return {
           content: [
             {
@@ -1265,7 +1308,7 @@ server.registerTool(
         };
       }
     }
-    if (upperCmd === 'EDIT' && id) {
+    if (upperCmd === 'EDIT' && id && id.trim()) {
       try {
         const opts: EditFolderOptions = {
           endpoint: ZIPLINE_ENDPOINT,
@@ -1277,6 +1320,8 @@ server.registerTool(
         if (allowUploads !== undefined) opts.allowUploads = allowUploads;
         if (fileId !== undefined) opts.fileId = fileId;
         const folder = await editFolder(opts);
+        folderListCache.invalidate();
+        folderInfoCache.invalidate();
         return {
           content: [
             {
@@ -1299,9 +1344,24 @@ server.registerTool(
         };
       }
     }
-    if (upperCmd === 'INFO' && id) {
+    if (upperCmd === 'INFO' && id && id.trim()) {
       try {
+        const cacheKey = folderInfoCache.generateKey({ id });
+        const cachedFolder = folderInfoCache.get(cacheKey);
+        if (cachedFolder) {
+          const fileCount = cachedFolder.files?.length ?? 0;
+          const visibility = cachedFolder.public ? '🌐 Public' : '🔒 Private';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `📁 FOLDER INFORMATION\n\n📁 ${cachedFolder.name}\n   🆔 ID: ${cachedFolder.id}\n   ${visibility}\n   📂 Files: ${fileCount}\n   📅 Created: ${cachedFolder.createdAt}\n   🔄 Updated: ${cachedFolder.updatedAt}`,
+              },
+            ],
+          };
+        }
         const folder = await getFolder(id);
+        folderInfoCache.set(cacheKey, folder);
         const fileCount = folder.files?.length ?? 0;
         const visibility = folder.public ? '🌐 Public' : '🔒 Private';
         return {
@@ -1326,9 +1386,11 @@ server.registerTool(
         };
       }
     }
-    if (upperCmd === 'DELETE' && id) {
+    if (upperCmd === 'DELETE' && id && id.trim()) {
       try {
         const folder = await deleteFolder(id);
+        folderListCache.invalidate();
+        folderInfoCache.invalidate();
         return {
           content: [
             {
