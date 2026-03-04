@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.11.2](https://github.com/dorogoy/zipline-mcp/compare/v1.11.1...v1.11.2) (2026-03-04)
+
+
+### Bug Fixes
+
+* **deps:** bump ajv from 6.12.6 to 6.14.0 ([5666fe9](https://github.com/dorogoy/zipline-mcp/commit/5666fe98bffb094afcd0824093357cd1a99d6f8f))
+
 ## [1.11.1](https://github.com/dorogoy/zipline-mcp/compare/v1.11.0...v1.11.1) (2026-03-04)
 
 
