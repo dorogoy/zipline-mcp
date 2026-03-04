@@ -23,3 +23,14 @@ Large and complex tasks must be broken down into smaller, manageable sub-tasks. 
 - Better collaboration within the team
 
 Consistently apply this decomposition, adding tests before code implementation for each sub-task and repeating the TDD cycle until all tasks are finished.
+
+## ESM and Module Resolution
+
+The project uses `NodeNext` for module resolution. To ensure compatibility with Node.js ESM and successful npm publication:
+
+1. **Explicit Extensions**: ALWAYS include the `.js` extension in relative import paths within TypeScript files.
+   - ✅ `import { utils } from './utils.js';`
+   - ❌ `import { utils } from './utils';`
+2. **Dynamic Imports**: Use the same extension requirement for dynamic `import()` calls.
+3. **TSConfig**: The `tsconfig.json` must maintain `module: NodeNext` and `moduleResolution: NodeNext`.
+4. **Pre-publication Check**: Run `npm run build` to verify that all modules are correctly resolved before publishing.

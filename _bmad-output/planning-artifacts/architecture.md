@@ -68,9 +68,9 @@ API/Backend (MCP Server) based on project requirements analysis.
 
 ### Starter Options Considered
 
-1.  **Official MCP TypeScript SDK (Selected)**: Provides the `McpServer` class and `StdioServerTransport` for direct, standard implementation. This is the official path and ensures maximum compatibility with MCP clients.
-2.  **`nickytonline/mcp-typescript-template`**: Evaluated for its inclusion of Vite, Express, and Docker. While robust, the current custom setup already implements similar patterns (Vitest, Makefile, modular structure) without the added complexity of a full-stack template.
-3.  **`alexanderop/mcp-server-starter-ts`**: Provides an auto-loading architecture. Useful for very large projects, but for `zipline-mcp`, the explicit tool registration in `src/index.ts` provides better visibility for AI agents and maintainers during the migration phase.
+1. **Official MCP TypeScript SDK (Selected)**: Provides the `McpServer` class and `StdioServerTransport` for direct, standard implementation. This is the official path and ensures maximum compatibility with MCP clients.
+2. **`nickytonline/mcp-typescript-template`**: Evaluated for its inclusion of Vite, Express, and Docker. While robust, the current custom setup already implements similar patterns (Vitest, Makefile, modular structure) without the added complexity of a full-stack template.
+3. **`alexanderop/mcp-server-starter-ts`**: Provides an auto-loading architecture. Useful for very large projects, but for `zipline-mcp`, the explicit tool registration in `src/index.ts` provides better visibility for AI agents and maintainers during the migration phase.
 
 ### Selected Starter: Official MCP TypeScript SDK
 
@@ -86,7 +86,7 @@ npm install @modelcontextprotocol/sdk zod
 **Architectural Decisions Provided by Starter:**
 
 **Language & Runtime:**
-TypeScript (Target ES2022) running on Node.js 18+ to leverage native `fetch`, `Blob`, and `FormData`.
+TypeScript (Target ES2022, Module NodeNext) running on Node.js 18+ to leverage native `fetch`, `Blob`, and `FormData`. Using `NodeNext` for modern ESM module resolution compatibility.
 
 **Styling Solution:**
 N/A (Headless API / CLI Tool).
@@ -169,6 +169,12 @@ Modular structure with core logic in `src/index.ts` and domain-specific utilitie
 - **Code Naming:** Use `camelCase` for variables and functions (e.g., `sanitizeLog`) and `PascalCase` for types and classes (e.g., `ZiplineError`).
 - **File Naming:** Use `camelCase` for all source files (e.g., `sandboxUtils.ts`).
 - **JSON Field Naming:** Use `camelCase` for all MCP tool response fields (e.g., `downloadUrl`) to maintain consistency with the TypeScript ecosystem.
+
+### ESM Module Resolution
+
+- **Decision:** Use `module: NodeNext` and `moduleResolution: NodeNext` in `tsconfig.json`.
+- **Requirement:** Relative imports in source files MUST include the `.js` extension (e.g., `import { foo } from './bar.js'`). This is mandatory for Node.js ESM compliance and prevents "Cannot find module" errors in published packages.
+- **Rationale:** Aligns with modern Node.js standards and ensures correct resolution in both compiled code and published npm packages.
 
 ### Structural Patterns
 

@@ -5,7 +5,8 @@ This project, the Zipline MCP Server, is built using the following key technolog
 ## Core Technologies
 
 - **Node.js**: The JavaScript runtime environment. The project specifies Node.js v18 or higher.
-- **TypeScript**: A superset of JavaScript that adds static typing. Used for improved code quality, maintainability, and developer experience.
+- **TypeScript**: A superset of JavaScript that adds static typing. Configured with `module: NodeNext` for modern ESM module resolution.
+- **ESM Modules**: Mandatory use of `.js` extensions in all relative imports (e.g., `./utils/security.js`) to ensure Node.js compatibility.
 - **@modelcontextprotocol/sdk**: The SDK for implementing MCP (Model Context Protocol) servers. This is fundamental for enabling communication with MCP clients.
 - **Zod**: A TypeScript-first schema declaration and validation library. Used for robust input validation of tool arguments.
 - **Fetch API**: Used for making HTTP requests. Available natively in Node.js >= 18.
