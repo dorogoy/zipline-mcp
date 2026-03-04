@@ -97,7 +97,7 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('downloads a file and returns absolute path', async () => {
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
 
     const result = await downloadExternalUrl(url, { timeout: 10000 });
 
@@ -110,7 +110,7 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects unsupported URL schemes', async () => {
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl('ftp://example.com/file')).rejects.toThrow(
       /unsupported scheme|invalid url/i
     );
@@ -124,7 +124,7 @@ describe('downloadExternalUrl (TDD)', () => {
       text: async () => 'Not Found',
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
       /HTTP 404|Not Found/i
     );
@@ -156,7 +156,7 @@ describe('downloadExternalUrl (TDD)', () => {
       }) as any;
     });
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url, { timeout: 5 })).rejects.toThrow(
       /abort|timeout/i
     );
@@ -179,7 +179,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
       /exceed|too large|100MB/i
     );
@@ -209,7 +209,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
       /exceeded|too large|100MB/i
     );
@@ -222,7 +222,7 @@ describe('downloadExternalUrl (TDD)', () => {
       throw new Error('Network failure');
     });
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(/Network failure/i);
 
     expect(fsMock.rm).toHaveBeenCalledWith(
@@ -257,7 +257,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     const result = await downloadExternalUrl(url);
 
     expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
@@ -290,7 +290,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     const result = await downloadExternalUrl(url);
 
     expect(result).toBe('/home/user/.zipline_tmp/users/hash/test.txt');
@@ -327,7 +327,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
       /exceeded|too large|100MB/i
     );
@@ -359,7 +359,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(/Connection lost/i);
 
     expect(fsMock.rm).toHaveBeenCalledWith(
@@ -393,7 +393,7 @@ describe('downloadExternalUrl (TDD)', () => {
       url,
     } as any);
 
-    const { downloadExternalUrl } = await import('./httpClient');
+    const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(
       downloadExternalUrl(url, { maxFileSizeBytes: customLimit })
     ).rejects.toThrow(/exceed/i);

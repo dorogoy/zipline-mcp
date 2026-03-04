@@ -4,9 +4,9 @@ import {
   type CacheEntry,
   folderListCache,
   folderInfoCache,
-} from './cache';
-import type { ListUserFilesResponse } from '../userFiles';
-import type { FullFolder } from '../remoteFolders';
+} from './cache.js';
+import type { ListUserFilesResponse } from '../userFiles.js';
+import type { FullFolder } from '../remoteFolders.js';
 
 describe('FileListCache', () => {
   let cache: FileListCache<ListUserFilesResponse>;

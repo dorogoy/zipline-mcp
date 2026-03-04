@@ -1,5 +1,5 @@
-import type { ListUserFilesResponse } from '../userFiles';
-import type { FullFolder } from '../remoteFolders';
+import type { ListUserFilesResponse } from '../userFiles.js';
+import type { FullFolder } from '../remoteFolders.js';
 
 export interface CacheEntry<T> {
   data: T;

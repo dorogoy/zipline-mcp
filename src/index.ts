@@ -938,6 +938,10 @@ server.registerTool(
 
       downloadedPath = await downloadExternalUrl(url, opts);
 
+      if (!downloadedPath) {
+        throw new Error('Download failed: no path returned');
+      }
+
       const fileExt = path.extname(downloadedPath).toLowerCase();
       const { detectedMimeType, mimeMatch, isSupported } =
         await validateFileContent(downloadedPath, fileExt);

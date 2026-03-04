@@ -8,7 +8,7 @@ import {
   secureLog,
   detectSecretPatterns,
   SecretDetectionError,
-} from './security';
+} from './security.js';
 import path from 'path';
 import os from 'os';
 

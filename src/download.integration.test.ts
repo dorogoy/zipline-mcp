@@ -95,7 +95,10 @@ vi.mock('mime-types', () => {
 
 import { fileTypeFromBuffer } from 'file-type';
 import mime from 'mime-types';
-import { validateFileForSecrets, SecretDetectionError } from './sandboxUtils';
+import {
+  validateFileForSecrets,
+  SecretDetectionError,
+} from './sandboxUtils.js';
 
 describe('download_external_url tool (integration)', () => {
   const mockFileType = vi.mocked(fileTypeFromBuffer);
@@ -129,7 +132,7 @@ describe('download_external_url tool (integration)', () => {
       '/home/user/.zipline_tmp/users/hash/test.txt'
     );
 
-    const imported = await import('./index');
+    const imported = await import('./index.js');
     const server = imported.server as unknown as any;
 
     const calls = server.registerTool?.mock?.calls ?? [];
@@ -165,7 +168,7 @@ describe('download_external_url tool (integration)', () => {
       new Error('Network failure')
     );
 
-    const imported = await import('./index');
+    const imported = await import('./index.js');
     const server = imported.server as any;
 
     const call = vi
@@ -194,7 +197,7 @@ describe('download_external_url tool (integration)', () => {
     });
     mockMimeLookup.mockReturnValueOnce('image/png'); // Extension expects png
 
-    const imported = await import('./index');
+    const imported = await import('./index.js');
     const server = imported.server as any;
     const call = vi
       .mocked(server.registerTool)
@@ -226,7 +229,7 @@ describe('download_external_url tool (integration)', () => {
     });
     mockMimeLookup.mockReturnValueOnce('application/x-msdownload');
 
-    const imported = await import('./index');
+    const imported = await import('./index.js');
     const server = imported.server as any;
     const call = vi
       .mocked(server.registerTool)
@@ -259,7 +262,7 @@ describe('download_external_url tool (integration)', () => {
       new SecretDetectionError('Secret found: API Key', 'api_key', 'API_KEY=')
     );
 
-    const imported = await import('./index');
+    const imported = await import('./index.js');
     const server = imported.server as any;
     const call = vi
       .mocked(server.registerTool)
