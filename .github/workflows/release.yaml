@@ -31,9 +31,9 @@ jobs:
 
       - name: Setup Node.js
         if: ${{ steps.release.outputs.release_created }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Cache npm dependencies
@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         if: ${{ steps.release.outputs.release_created }}
-        run: npm ci --prefer-offline
+        run: npm ci
 
       - name: Publish to npm
         if: ${{ steps.release.outputs.release_created }}

@@ -16,16 +16,16 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --prefer-offline
+        run: npm ci
+
+      - name: Check the build
+        run: make build --if-present
 
       - name: Run linter and test
         run: make test
-
-      - name: Check the build
-        run: make build
