@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.1](https://github.com/dorogoy/zipline-mcp/compare/v1.12.0...v1.12.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* **refactor:** Migrate to NodeNext module resolution and update import spe… ([#93](https://github.com/dorogoy/zipline-mcp/issues/93)) ([f05e048](https://github.com/dorogoy/zipline-mcp/commit/f05e04881c925edced0f1f8c23a19635ae7fa7f4))
+
 ## [1.12.0](https://github.com/dorogoy/zipline-mcp/compare/v1.11.3...v1.12.0) (2026-03-04)
 
 
