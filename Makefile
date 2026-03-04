@@ -9,7 +9,7 @@ install:
 
 # Build the project
 build: clean
-	npm run build
+	npm run build --if-present
 
 # Start the server
 start:
