@@ -8,7 +8,7 @@ import {
   secureLog,
   detectSecretPatterns,
   SecretDetectionError,
-} from './utils/security';
+} from './utils/security.js';
 
 // Re-export SandboxPathError for backward compatibility
 export { SandboxPathError, SecretDetectionError };

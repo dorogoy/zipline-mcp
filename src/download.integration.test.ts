@@ -95,7 +95,10 @@ vi.mock('mime-types', () => {
 
 import { fileTypeFromBuffer } from 'file-type';
 import mime from 'mime-types';
-import { validateFileForSecrets, SecretDetectionError } from './sandboxUtils';
+import {
+  validateFileForSecrets,
+  SecretDetectionError,
+} from './sandboxUtils.js';
 
 describe('download_external_url tool (integration)', () => {
   const mockFileType = vi.mocked(fileTypeFromBuffer);

@@ -4,7 +4,7 @@ import {
   type CacheEntry,
   folderListCache,
   folderInfoCache,
-} from './cache';
+} from './cache.js';
 import type { ListUserFilesResponse } from '../userFiles';
 import type { FullFolder } from '../remoteFolders';
 
