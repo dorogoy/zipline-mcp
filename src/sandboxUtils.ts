@@ -8,7 +8,7 @@ import {
   secureLog,
   detectSecretPatterns,
   SecretDetectionError,
-} from './utils/security';
+} from './utils/security.js';
 
 // Re-export SandboxPathError for backward compatibility
 export { SandboxPathError, SecretDetectionError };
@@ -73,7 +73,7 @@ export function getUserSandbox(): string {
 
 /**
  * Validate filename for sandbox operations
- * @deprecated Use sanitizePath() from './utils/security.ts' for enhanced security validation.
+ * @deprecated Use sanitizePath() from './utils/security.js' for enhanced security validation.
  * This function remains for backward compatibility with existing code that validates bare filenames.
  * For path validation with directory support, use sanitizePath() instead.
  */

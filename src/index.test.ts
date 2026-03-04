@@ -41,7 +41,7 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 }));
 
 // Mock the httpClient module
-vi.mock('./httpClient', () => ({
+vi.mock('./httpClient.js', () => ({
   uploadFile: vi.fn().mockResolvedValue('https://example.com/file.txt'),
   downloadExternalUrl: vi
     .fn()
@@ -49,7 +49,7 @@ vi.mock('./httpClient', () => ({
 }));
 
 // Mock userFiles module
-vi.mock('./userFiles', () => ({
+vi.mock('./userFiles.js', () => ({
   listUserFiles: vi.fn(),
   getUserFile: vi.fn(),
   updateUserFile: vi.fn(),
@@ -60,7 +60,7 @@ vi.mock('./userFiles', () => ({
 }));
 
 // Mock remoteFolders module
-vi.mock('./remoteFolders', () => ({
+vi.mock('./remoteFolders.js', () => ({
   listFolders: vi.fn(),
   createFolder: vi.fn(),
   editFolder: vi.fn().mockResolvedValue({
@@ -72,7 +72,7 @@ vi.mock('./remoteFolders', () => ({
 }));
 
 // Mock sandboxUtils for clearStagedContent
-vi.mock('./sandboxUtils', () => ({
+vi.mock('./sandboxUtils.js', () => ({
   getUserSandbox: vi.fn(() => '/home/user/.zipline_tmp/users/testhash'),
   validateFilename: vi.fn((filename: string) => {
     if (
@@ -195,7 +195,7 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should create an McpServer instance', async () => {
-    await import('./index');
+    await import('./index.js');
     // Check that McpServer is called with a valid semver version string
     const calls = vi.mocked(McpServer).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
@@ -208,7 +208,7 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the upload_file_to_zipline tool', async () => {
-    const { server } = (await import('./index')) as unknown as {
+    const { server } = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     expect(server.registerTool).toHaveBeenCalledWith(
@@ -219,7 +219,7 @@ describe('Zipline MCP Server', () => {
   });
 
   it('should register the validate_file tool', async () => {
-    const { server } = (await import('./index')) as unknown as {
+    const { server } = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     expect(server.registerTool).toHaveBeenCalledWith(
@@ -235,7 +235,7 @@ describe('Zipline MCP Server', () => {
     beforeEach(async () => {
       vi.resetModules();
       Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as {
+      const imported = (await import('./index.js')) as unknown as {
         server: MockServer;
       };
       server = imported.server;
@@ -286,7 +286,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should validate file successfully without upload side effects', async () => {
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
       const uploadSpy = uploadFile as Mock;
 
       mockFileContent('test content');
@@ -443,7 +443,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should integrate with upload_file_to_zipline flow', async () => {
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
       const uploadSpy = uploadFile as Mock;
 
       const pngData = Buffer.concat([
@@ -573,7 +573,7 @@ describe('upload_file_to_zipline tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -662,7 +662,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(!result.isError).toBe(true);
 
     // Verify uploadFile was called with the correct deleteAt parameter
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     expect(uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({
         deletesAt: '1d',
@@ -687,7 +687,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(!result.isError).toBe(true);
 
     // Verify uploadFile was called with the correct password parameter
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     expect(uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({
         password: 'secret123',
@@ -712,7 +712,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(!result.isError).toBe(true);
 
     // Verify uploadFile was called with the correct maxViews parameter
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     expect(uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({
         maxViews: 10,
@@ -737,7 +737,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(!result.isError).toBe(true);
 
     // Verify uploadFile was called with the correct folder parameter
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     expect(uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({
         folder: 'testfolder',
@@ -765,7 +765,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(!result.isError).toBe(true);
 
     // Verify uploadFile was called with all parameters
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     expect(uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({
         deletesAt: '2h',
@@ -922,7 +922,7 @@ describe('upload_file_to_zipline tool', () => {
     const result = await handler({ filePath: '/path/to/file.txt' }, {});
     expect(result.isError).toBeFalsy();
 
-    const { clearStagedContent } = await import('./sandboxUtils');
+    const { clearStagedContent } = await import('./sandboxUtils.js');
     expect(clearStagedContent).toHaveBeenCalled();
   });
 
@@ -934,13 +934,13 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const uploadError = new Error('Upload failed');
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
     vi.mocked(uploadFile).mockRejectedValueOnce(uploadError);
 
     const result = await handler({ filePath: '/path/to/file.txt' }, {});
     expect(result.isError).toBe(true);
 
-    const { clearStagedContent } = await import('./sandboxUtils');
+    const { clearStagedContent } = await import('./sandboxUtils.js');
     expect(clearStagedContent).toHaveBeenCalled();
   });
 
@@ -952,7 +952,7 @@ describe('upload_file_to_zipline tool', () => {
     const handler = getToolHandler('upload_file_to_zipline');
     if (!handler) throw new Error('Handler not found');
 
-    const { stageFile } = await import('./sandboxUtils');
+    const { stageFile } = await import('./sandboxUtils.js');
     vi.mocked(stageFile).mockImplementationOnce((filepath: string) => {
       return Promise.resolve({ type: 'disk', path: filepath });
     });
@@ -961,7 +961,7 @@ describe('upload_file_to_zipline tool', () => {
     expect(result.isError).toBeFalsy();
 
     // clearStagedContent IS called for disk files, it just does nothing internally
-    const { clearStagedContent } = await import('./sandboxUtils');
+    const { clearStagedContent } = await import('./sandboxUtils.js');
     expect(clearStagedContent).toHaveBeenCalled();
   });
 });
@@ -983,7 +983,7 @@ describe('tmp_file_manager tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -993,21 +993,21 @@ describe('tmp_file_manager tool', () => {
     it.skip('should create different sandbox directories for different tokens', async () => {
       // Test with first token
       process.env.ZIPLINE_TOKEN = 'token1';
-      vi.doMock('./index', async () => {
-        const actual = await vi.importActual('./index');
+      vi.doMock('./index.js', async () => {
+        const actual = await vi.importActual('./index.js');
         return { ...actual };
       });
-      const { getUserSandbox: getSandbox1 } = await import('./index');
+      const { getUserSandbox: getSandbox1 } = await import('./index.js');
       const sandbox1 = getSandbox1();
 
       // Reset modules and test with second token
       vi.resetModules();
       process.env.ZIPLINE_TOKEN = 'token2';
-      vi.doMock('./index', async () => {
-        const actual = await vi.importActual('./index');
+      vi.doMock('./index.js', async () => {
+        const actual = await vi.importActual('./index.js');
         return { ...actual };
       });
-      const { getUserSandbox: getSandbox2 } = await import('./index');
+      const { getUserSandbox: getSandbox2 } = await import('./index.js');
       const sandbox2 = getSandbox2();
 
       expect(sandbox1).not.toBe(sandbox2);
@@ -1018,11 +1018,11 @@ describe('tmp_file_manager tool', () => {
     it('should create the same sandbox directory for the same token', async () => {
       process.env.ZIPLINE_TOKEN = 'same-token';
 
-      const { getUserSandbox: getSandbox1 } = await import('./index');
+      const { getUserSandbox: getSandbox1 } = await import('./index.js');
       const sandbox1 = getSandbox1();
 
       // Import again with same token
-      const { getUserSandbox: getSandbox2 } = await import('./index');
+      const { getUserSandbox: getSandbox2 } = await import('./index.js');
       const sandbox2 = getSandbox2();
 
       expect(sandbox1).toBe(sandbox2);
@@ -1031,17 +1031,17 @@ describe('tmp_file_manager tool', () => {
     it.skip('should use hashed token for sandbox directory name', async () => {
       process.env.ZIPLINE_TOKEN = 'test-token';
 
-      const { getUserSandbox: getSandbox1 } = await import('./index');
+      const { getUserSandbox: getSandbox1 } = await import('./index.js');
       const sandbox1 = getSandbox1();
 
       // Reset modules and test with different token
       vi.resetModules();
       process.env.ZIPLINE_TOKEN = 'different-token';
-      vi.doMock('./index', async () => {
-        const actual = await vi.importActual('./index');
+      vi.doMock('./index.js', async () => {
+        const actual = await vi.importActual('./index.js');
         return { ...actual };
       });
-      const { getUserSandbox: getSandbox2 } = await import('./index');
+      const { getUserSandbox: getSandbox2 } = await import('./index.js');
       const sandbox2 = getSandbox2();
 
       // Should be different
@@ -1055,7 +1055,7 @@ describe('tmp_file_manager tool', () => {
     it('should create files in user sandbox directory', async () => {
       process.env.ZIPLINE_TOKEN = 'test-token-user1';
 
-      const { getUserSandbox } = await import('./index');
+      const { getUserSandbox } = await import('./index.js');
       const userSandbox = getUserSandbox();
 
       const handler = getToolHandler('tmp_file_manager');
@@ -1087,7 +1087,7 @@ describe('tmp_file_manager tool', () => {
     it('should list files only from user sandbox directory', async () => {
       process.env.ZIPLINE_TOKEN = 'test-token-user1';
 
-      const { getUserSandbox } = await import('./index');
+      const { getUserSandbox } = await import('./index.js');
       const userSandbox = getUserSandbox();
 
       const handler = getToolHandler('tmp_file_manager');
@@ -1115,7 +1115,7 @@ describe('tmp_file_manager tool', () => {
     it('should read files only from user sandbox directory', async () => {
       process.env.ZIPLINE_TOKEN = 'test-token-user1';
 
-      const { getUserSandbox } = await import('./index');
+      const { getUserSandbox } = await import('./index.js');
       const userSandbox = getUserSandbox();
 
       const handler = getToolHandler('tmp_file_manager');
@@ -1146,7 +1146,9 @@ describe('tmp_file_manager tool', () => {
       it('should identify sandboxes older than 24 hours for cleanup', async () => {
         process.env.ZIPLINE_TOKEN = 'test-token';
 
-        const { getUserSandbox, cleanupOldSandboxes } = await import('./index');
+        const { getUserSandbox, cleanupOldSandboxes } = await import(
+          './index.js'
+        );
         const tmpDir = getUserSandbox().replace(/\/users\/[^/]+$/, '');
 
         // Mock file system operations
@@ -1185,7 +1187,7 @@ describe('tmp_file_manager tool', () => {
       it('should not clean sandboxes newer than 24 hours', async () => {
         process.env.ZIPLINE_TOKEN = 'test-token';
 
-        const { cleanupOldSandboxes } = await import('./index');
+        const { cleanupOldSandboxes } = await import('./index.js');
 
         // Mock file system operations
         fsMock.readdir.mockResolvedValue(['recenthash']);
@@ -1205,7 +1207,7 @@ describe('tmp_file_manager tool', () => {
       it('should handle errors during cleanup gracefully', async () => {
         process.env.ZIPLINE_TOKEN = 'test-token';
 
-        const { cleanupOldSandboxes } = await import('./index');
+        const { cleanupOldSandboxes } = await import('./index.js');
 
         fsMock.readdir.mockResolvedValue(['problematic']);
         fsMock.stat.mockResolvedValue({
@@ -1224,7 +1226,7 @@ describe('tmp_file_manager tool', () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
           const { getUserSandbox, acquireSandboxLock } = await import(
-            './index'
+            './index.js'
           );
           const userSandbox = getUserSandbox();
 
@@ -1245,7 +1247,7 @@ describe('tmp_file_manager tool', () => {
         it('should fail to acquire a lock if already locked', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { acquireSandboxLock } = await import('./index');
+          const { acquireSandboxLock } = await import('./index.js');
 
           // Mock file system operations - first call succeeds, second fails
           fsMock.mkdir.mockResolvedValue(undefined);
@@ -1266,7 +1268,7 @@ describe('tmp_file_manager tool', () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
           const { getUserSandbox, releaseSandboxLock } = await import(
-            './index'
+            './index.js'
           );
           const userSandbox = getUserSandbox();
 
@@ -1285,7 +1287,7 @@ describe('tmp_file_manager tool', () => {
         it('should handle release when no lock exists', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { releaseSandboxLock } = await import('./index');
+          const { releaseSandboxLock } = await import('./index.js');
 
           // Mock file system operations - file doesn't exist
           fsMock.rm.mockRejectedValue(
@@ -1300,7 +1302,9 @@ describe('tmp_file_manager tool', () => {
         it('should check if a sandbox is locked', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { getUserSandbox, isSandboxLocked } = await import('./index');
+          const { getUserSandbox, isSandboxLocked } = await import(
+            './index.js'
+          );
           const userSandbox = getUserSandbox();
 
           // Mock file system operations - file exists and contains valid lock data
@@ -1323,7 +1327,7 @@ describe('tmp_file_manager tool', () => {
         it('should return false when checking an unlocked sandbox', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { isSandboxLocked } = await import('./index');
+          const { isSandboxLocked } = await import('./index.js');
 
           // Mock file system operations - file doesn't exist
           fsMock.stat.mockRejectedValue(
@@ -1339,7 +1343,7 @@ describe('tmp_file_manager tool', () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
           const { acquireSandboxLock, isSandboxLocked } = await import(
-            './index'
+            './index.js'
           );
 
           // Mock file system operations
@@ -1376,7 +1380,7 @@ describe('tmp_file_manager tool', () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
             const { acquireSandboxLock, releaseSandboxLock } = await import(
-              './index'
+              './index.js'
             );
 
             // Mock file system operations
@@ -1414,7 +1418,7 @@ describe('tmp_file_manager tool', () => {
             });
 
             // Verify sandbox is locked
-            const { isSandboxLocked } = await import('./index');
+            const { isSandboxLocked } = await import('./index.js');
             const isLocked = await isSandboxLocked();
             expect(isLocked).toBe(true);
 
@@ -1441,7 +1445,7 @@ describe('tmp_file_manager tool', () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
             const { acquireSandboxLock, releaseSandboxLock } = await import(
-              './index'
+              './index.js'
             );
 
             // Mock file system operations
@@ -1510,7 +1514,7 @@ describe('tmp_file_manager tool', () => {
               acquireSandboxLock,
               cleanupOldSandboxes,
               isSandboxLocked,
-            } = await import('./index');
+            } = await import('./index.js');
             const tmpDir = getUserSandbox().replace(/\/users\/[^/]+$/, '');
 
             // Mock file system operations
@@ -1589,7 +1593,7 @@ describe('tmp_file_manager tool', () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
             const { acquireSandboxLock, isSandboxLocked } = await import(
-              './index'
+              './index.js'
             );
 
             // Mock file system operations
@@ -1932,7 +1936,7 @@ describe('tmp_file_manager tool', () => {
     beforeEach(async () => {
       vi.resetModules();
       Object.values(fsMock).forEach((fn) => fn.mockReset());
-      const imported = (await import('./index')) as unknown as {
+      const imported = (await import('./index.js')) as unknown as {
         server: MockServer;
       };
       server = imported.server;
@@ -2017,7 +2021,7 @@ describe('batch_file_operation tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2033,7 +2037,7 @@ describe('batch_file_operation tool', () => {
 
   describe('DELETE command', () => {
     it('should delete multiple files successfully', async () => {
-      const { deleteUserFile } = await import('./userFiles');
+      const { deleteUserFile } = await import('./userFiles.js');
       const deleteSpy = vi.mocked(deleteUserFile);
       deleteSpy.mockResolvedValue({ id: 'file1', name: 'test.png' } as never);
 
@@ -2053,7 +2057,7 @@ describe('batch_file_operation tool', () => {
     });
 
     it('should handle partial failures in DELETE', async () => {
-      const { deleteUserFile } = await import('./userFiles');
+      const { deleteUserFile } = await import('./userFiles.js');
       const deleteSpy = vi.mocked(deleteUserFile);
       deleteSpy
         .mockResolvedValueOnce({ id: 'file1', name: 'test1.png' } as never)
@@ -2074,7 +2078,7 @@ describe('batch_file_operation tool', () => {
     });
 
     it('should report all failures when all DELETE operations fail', async () => {
-      const { deleteUserFile } = await import('./userFiles');
+      const { deleteUserFile } = await import('./userFiles.js');
       const deleteSpy = vi.mocked(deleteUserFile);
       deleteSpy.mockRejectedValue(new Error('Delete failed'));
 
@@ -2095,7 +2099,7 @@ describe('batch_file_operation tool', () => {
 
   describe('MOVE command', () => {
     it('should move multiple files successfully', async () => {
-      const { editFolder } = await import('./remoteFolders');
+      const { editFolder } = await import('./remoteFolders.js');
       const editFolderSpy = vi.mocked(editFolder);
       editFolderSpy.mockResolvedValue({ id: 'folder1', name: 'Test' } as never);
 
@@ -2130,7 +2134,7 @@ describe('batch_file_operation tool', () => {
     });
 
     it('should handle partial failures in MOVE', async () => {
-      const { editFolder } = await import('./remoteFolders');
+      const { editFolder } = await import('./remoteFolders.js');
       const editFolderSpy = vi.mocked(editFolder);
       editFolderSpy
         .mockResolvedValueOnce({ id: 'folder1', name: 'Test' } as never)
@@ -2179,7 +2183,7 @@ describe('batch_file_operation tool', () => {
     it('should not expose sensitive token in output', async () => {
       process.env.ZIPLINE_TOKEN = 'super-secret-token-12345';
 
-      const { deleteUserFile } = await import('./userFiles');
+      const { deleteUserFile } = await import('./userFiles.js');
       const deleteSpy = vi.mocked(deleteUserFile);
       deleteSpy.mockRejectedValue(
         new Error('Delete failed with token: super-secret-token-12345')
@@ -2204,7 +2208,7 @@ describe('remote_folder_manager tool - LIST command', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2219,7 +2223,7 @@ describe('remote_folder_manager tool - LIST command', () => {
   };
 
   it('should list folders successfully with multiple folders', async () => {
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const listFoldersSpy = vi.mocked(listFolders);
     listFoldersSpy.mockResolvedValue([
       {
@@ -2254,7 +2258,7 @@ describe('remote_folder_manager tool - LIST command', () => {
   });
 
   it('should handle empty folders list gracefully', async () => {
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const listFoldersSpy = vi.mocked(listFolders);
     listFoldersSpy.mockResolvedValue([] as never);
 
@@ -2270,7 +2274,7 @@ describe('remote_folder_manager tool - LIST command', () => {
 
   it('should handle errors with security masking', async () => {
     process.env.ZIPLINE_TOKEN = 'secret-token-for-testing';
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const listFoldersSpy = vi.mocked(listFolders);
     listFoldersSpy.mockRejectedValue(
       new Error('Failed with token: secret-token-for-testing')
@@ -2288,7 +2292,7 @@ describe('remote_folder_manager tool - LIST command', () => {
 
   it('should mask sensitive data in error messages', async () => {
     process.env.ZIPLINE_TOKEN = 'another-secret-123';
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const listFoldersSpy = vi.mocked(listFolders);
     listFoldersSpy.mockRejectedValue(
       new Error('Auth failed with another-secret-123')
@@ -2310,7 +2314,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2325,7 +2329,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   };
 
   it('should create folder successfully with name only', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       id: 'new-folder-123',
@@ -2349,7 +2353,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   });
 
   it('should create folder successfully with isPublic parameter', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       id: 'public-folder-456',
@@ -2376,7 +2380,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   });
 
   it('should create folder successfully with files array parameter', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       id: 'folder-with-files-789',
@@ -2407,7 +2411,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   });
 
   it('should create folder with all parameters combined', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       id: 'complete-folder-999',
@@ -2441,7 +2445,7 @@ describe('remote_folder_manager tool - ADD command', () => {
 
   it('should handle errors with security masking', async () => {
     process.env.ZIPLINE_TOKEN = 'secret-token-for-testing';
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockRejectedValue(
       new Error('Failed with token: secret-token-for-testing')
@@ -2459,7 +2463,7 @@ describe('remote_folder_manager tool - ADD command', () => {
 
   it('should mask sensitive data in error messages', async () => {
     process.env.ZIPLINE_TOKEN = 'another-sensitive-token-xyz';
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockRejectedValue(
       new Error('Auth error with another-sensitive-token-xyz')
@@ -2478,7 +2482,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   });
 
   it('should use default name when name is not provided', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       id: 'default-folder',
@@ -2500,7 +2504,7 @@ describe('remote_folder_manager tool - ADD command', () => {
   });
 
   it('should handle folder creation when ID is undefined', async () => {
-    const { createFolder } = await import('./remoteFolders');
+    const { createFolder } = await import('./remoteFolders.js');
     const createFolderSpy = vi.mocked(createFolder);
     createFolderSpy.mockResolvedValue({
       name: 'Folder Without ID',
@@ -2528,7 +2532,7 @@ describe('remote_folder_manager tool - INFO command', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2543,7 +2547,7 @@ describe('remote_folder_manager tool - INFO command', () => {
   };
 
   it('should get folder information successfully', async () => {
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const getFolderSpy = vi.mocked(getFolder);
     getFolderSpy.mockResolvedValue({
       id: 'folder-123',
@@ -2569,9 +2573,11 @@ describe('remote_folder_manager tool - INFO command', () => {
   });
 
   it('should handle non-existent folder ID', async () => {
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const getFolderSpy = vi.mocked(getFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     getFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -2593,7 +2599,7 @@ describe('remote_folder_manager tool - INFO command', () => {
 
   it('should handle errors with security masking', async () => {
     vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const getFolderSpy = vi.mocked(getFolder);
     getFolderSpy.mockRejectedValue(
       new Error('Failed with token: secret-token-for-testing')
@@ -2627,7 +2633,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2642,7 +2648,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   };
 
   it('should edit folder name successfully', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockResolvedValue({
       id: 'folder-123',
@@ -2670,9 +2676,11 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should handle non-existent folder ID', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     editFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -2691,7 +2699,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should edit multiple folder properties', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockResolvedValue({
       id: 'folder-456',
@@ -2727,7 +2735,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
 
   it('should handle errors with security masking', async () => {
     vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockRejectedValue(
       new Error('Failed with token: secret-token-for-testing')
@@ -2748,7 +2756,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should add file to folder with fileId (PUT operation)', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockResolvedValue({
       id: 'folder-789',
@@ -2774,9 +2782,11 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should handle duplicate folder name conflict', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     editFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Folder name already exists',
@@ -2810,7 +2820,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
 
   it('should mask sensitive data in error messages', async () => {
     vi.stubEnv('ZIPLINE_TOKEN', 'another-sensitive-token-xyz');
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockRejectedValue(
       new Error('Auth error with another-sensitive-token-xyz')
@@ -2833,7 +2843,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should edit folder with only isPublic property', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockResolvedValue({
       id: 'folder-visibility',
@@ -2859,7 +2869,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should edit folder with only allowUploads property', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockResolvedValue({
       id: 'folder-uploads',
@@ -2885,7 +2895,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
   });
 
   it('should return error when called without any update parameters', async () => {
-    const { editFolder } = await import('./remoteFolders');
+    const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
     editFolderSpy.mockRejectedValue(
       new Error(
@@ -2911,7 +2921,7 @@ describe('remote_folder_manager tool - DELETE command', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -2926,7 +2936,7 @@ describe('remote_folder_manager tool - DELETE command', () => {
   };
 
   it('should delete folder successfully', async () => {
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
     deleteFolderSpy.mockResolvedValue({
       id: 'folder-123',
@@ -2949,9 +2959,11 @@ describe('remote_folder_manager tool - DELETE command', () => {
   });
 
   it('should handle non-existent folder ID', async () => {
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -2971,7 +2983,7 @@ describe('remote_folder_manager tool - DELETE command', () => {
 
   it('should handle errors with security masking', async () => {
     vi.stubEnv('ZIPLINE_TOKEN', 'secret-token-for-testing');
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
     deleteFolderSpy.mockRejectedValue(
       new Error('Failed with token: secret-token-for-testing')
@@ -2989,9 +3001,11 @@ describe('remote_folder_manager tool - DELETE command', () => {
   });
 
   it('should handle folder containing files (403 Forbidden)', async () => {
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Folder contains files and cannot be deleted',
@@ -3026,9 +3040,11 @@ describe('remote_folder_manager tool - DELETE command', () => {
   });
 
   it('should handle rate limit error (429)', async () => {
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Rate limit exceeded',
@@ -3048,9 +3064,11 @@ describe('remote_folder_manager tool - DELETE command', () => {
   });
 
   it('should handle internal server error (500)', async () => {
-    const { deleteFolder } = await import('./remoteFolders');
+    const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import('./utils/errorMapper');
+    const { ZiplineError, McpErrorCode } = await import(
+      './utils/errorMapper.js'
+    );
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Internal server error',
@@ -3076,7 +3094,7 @@ describe('check_health tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -3295,7 +3313,7 @@ describe('check_health tool', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     // Re-import to pick up new environment variable
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -3409,7 +3427,7 @@ describe('list_user_files caching', () => {
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
     Object.values(fsMock).forEach((fn) => fn.mockReset());
 
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -3428,7 +3446,7 @@ describe('list_user_files caching', () => {
   };
 
   it('should cache list results and return cached data within TTL', async () => {
-    const { listUserFiles } = await import('./userFiles');
+    const { listUserFiles } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     mockListUserFiles.mockClear();
     mockListUserFiles.mockResolvedValue({
@@ -3474,7 +3492,7 @@ describe('list_user_files caching', () => {
   });
 
   it('should refresh cache after TTL expires', async () => {
-    const { listUserFiles } = await import('./userFiles');
+    const { listUserFiles } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     mockListUserFiles.mockClear();
     mockListUserFiles
@@ -3542,7 +3560,7 @@ describe('list_user_files caching', () => {
   });
 
   it('should invalidate cache after file upload', async () => {
-    const { listUserFiles } = await import('./userFiles');
+    const { listUserFiles } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     mockListUserFiles.mockClear();
     mockListUserFiles.mockResolvedValue({
@@ -3591,7 +3609,7 @@ describe('list_user_files caching', () => {
   });
 
   it('should invalidate cache after file delete', async () => {
-    const { listUserFiles, deleteUserFile } = await import('./userFiles');
+    const { listUserFiles, deleteUserFile } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     const mockDeleteUserFile = vi.mocked(deleteUserFile);
     mockListUserFiles.mockClear();
@@ -3656,7 +3674,7 @@ describe('list_user_files caching', () => {
   });
 
   it('should invalidate cache after file update', async () => {
-    const { listUserFiles } = await import('./userFiles');
+    const { listUserFiles } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     mockListUserFiles.mockClear();
     mockListUserFiles.mockResolvedValue({
@@ -3700,7 +3718,7 @@ describe('list_user_files caching', () => {
   });
 
   it('should cache different entries for different parameters', async () => {
-    const { listUserFiles } = await import('./userFiles');
+    const { listUserFiles } = await import('./userFiles.js');
     const mockListUserFiles = vi.mocked(listUserFiles);
     mockListUserFiles.mockClear();
     mockListUserFiles
@@ -3785,7 +3803,7 @@ describe('remote_folder_manager caching', () => {
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
     Object.values(fsMock).forEach((fn) => fn.mockReset());
 
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;
@@ -3804,7 +3822,7 @@ describe('remote_folder_manager caching', () => {
   };
 
   it('should cache LIST results and return cached data within TTL', async () => {
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const mockListFolders = vi.mocked(listFolders);
     mockListFolders.mockClear();
     mockListFolders.mockResolvedValue([
@@ -3835,7 +3853,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should cache INFO results by folder ID', async () => {
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const mockGetFolder = vi.mocked(getFolder);
     mockGetFolder.mockClear();
     mockGetFolder.mockResolvedValue({
@@ -3864,7 +3882,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should invalidate caches on successful ADD', async () => {
-    const { listFolders, createFolder } = await import('./remoteFolders');
+    const { listFolders, createFolder } = await import('./remoteFolders.js');
     const mockListFolders = vi.mocked(listFolders);
     const mockCreateFolder = vi.mocked(createFolder);
     mockListFolders.mockClear();
@@ -3897,7 +3915,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should invalidate caches on successful EDIT', async () => {
-    const { getFolder, editFolder } = await import('./remoteFolders');
+    const { getFolder, editFolder } = await import('./remoteFolders.js');
     const mockGetFolder = vi.mocked(getFolder);
     const mockEditFolder = vi.mocked(editFolder);
     mockGetFolder.mockClear();
@@ -3931,7 +3949,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should invalidate caches on successful DELETE', async () => {
-    const { listFolders, deleteFolder } = await import('./remoteFolders');
+    const { listFolders, deleteFolder } = await import('./remoteFolders.js');
     const mockListFolders = vi.mocked(listFolders);
     const mockDeleteFolder = vi.mocked(deleteFolder);
     mockListFolders.mockClear();
@@ -3967,7 +3985,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should cache different INFO entries for different folder IDs', async () => {
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const mockGetFolder = vi.mocked(getFolder);
     mockGetFolder.mockClear();
 
@@ -4016,7 +4034,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should expire LIST cache after TTL and make new API call', async () => {
-    const { listFolders } = await import('./remoteFolders');
+    const { listFolders } = await import('./remoteFolders.js');
     const mockListFolders = vi.mocked(listFolders);
     mockListFolders.mockClear();
     mockListFolders.mockResolvedValue([
@@ -4042,7 +4060,7 @@ describe('remote_folder_manager caching', () => {
   });
 
   it('should expire INFO cache after TTL and make new API call', async () => {
-    const { getFolder } = await import('./remoteFolders');
+    const { getFolder } = await import('./remoteFolders.js');
     const mockGetFolder = vi.mocked(getFolder);
     mockGetFolder.mockClear();
     mockGetFolder.mockResolvedValue({
@@ -4073,7 +4091,7 @@ describe('get_usage_stats tool', () => {
   beforeEach(async () => {
     vi.resetModules();
     Object.values(fsMock).forEach((fn) => fn.mockReset());
-    const imported = (await import('./index')) as unknown as {
+    const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
     server = imported.server;

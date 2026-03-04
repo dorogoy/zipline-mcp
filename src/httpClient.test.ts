@@ -65,7 +65,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
   it('posts multipart/form-data with headers and returns files[0].url on success', async () => {
     fsMock.readFile.mockResolvedValue(sampleContent);
 
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
 
     const url = await uploadFile({
       endpoint,
@@ -100,7 +100,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       text: () => Promise.resolve('Internal error'),
     } as any);
 
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
 
     await expect(
       uploadFile({
@@ -135,7 +135,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       text: () => Promise.resolve(JSON.stringify({ files: [] })),
     } as any);
 
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
 
     await expect(
       uploadFile({
@@ -177,7 +177,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       }) as any;
     });
 
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
 
     await expect(
       uploadFile({
@@ -218,7 +218,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       return res as any;
     });
 
-    const { uploadFile } = await import('./httpClient');
+    const { uploadFile } = await import('./httpClient.js');
 
     const url = await uploadFile({
       endpoint,
@@ -236,7 +236,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
 describe('Header Validation', () => {
   describe('validateDeleteAt', () => {
     it('accepts valid relative duration strings', async () => {
-      const { validateDeleteAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient.js');
 
       expect(() => validateDeleteAt('1d')).not.toThrow();
       expect(() => validateDeleteAt('2h')).not.toThrow();
@@ -245,7 +245,7 @@ describe('Header Validation', () => {
     });
 
     it('accepts valid absolute date format with date= prefix', async () => {
-      const { validateDeleteAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient.js');
 
       // Use dates that are definitely in the future
       const futureDate1 = new Date();
@@ -263,7 +263,7 @@ describe('Header Validation', () => {
     });
 
     it('rejects invalid relative duration strings', async () => {
-      const { validateDeleteAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient.js');
 
       expect(() => validateDeleteAt('')).toThrow();
       expect(() => validateDeleteAt('1')).toThrow();
@@ -273,7 +273,7 @@ describe('Header Validation', () => {
     });
 
     it('rejects invalid absolute date format', async () => {
-      const { validateDeleteAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient.js');
 
       expect(() => validateDeleteAt('date=')).toThrow();
       expect(() => validateDeleteAt('date=invalid')).toThrow();
@@ -282,7 +282,7 @@ describe('Header Validation', () => {
     });
 
     it('rejects past dates', async () => {
-      const { validateDeleteAt } = await import('./httpClient');
+      const { validateDeleteAt } = await import('./httpClient.js');
 
       // Use a date in the past
       const pastDate = new Date();
@@ -295,7 +295,7 @@ describe('Header Validation', () => {
 
   describe('validatePassword', () => {
     it('accepts non-empty strings', async () => {
-      const { validatePassword } = await import('./httpClient');
+      const { validatePassword } = await import('./httpClient.js');
 
       expect(() => validatePassword('password123')).not.toThrow();
       expect(() => validatePassword('a')).not.toThrow();
@@ -303,14 +303,14 @@ describe('Header Validation', () => {
     });
 
     it('rejects empty strings', async () => {
-      const { validatePassword } = await import('./httpClient');
+      const { validatePassword } = await import('./httpClient.js');
 
       expect(() => validatePassword('')).toThrow();
       expect(() => validatePassword('   ')).toThrow();
     });
 
     it('rejects excessively long strings', async () => {
-      const { validatePassword } = await import('./httpClient');
+      const { validatePassword } = await import('./httpClient.js');
 
       expect(() => validatePassword('a'.repeat(513))).toThrow(
         /exceeds maximum length/
@@ -320,7 +320,7 @@ describe('Header Validation', () => {
 
   describe('validateMaxViews', () => {
     it('accepts valid non-negative integers', async () => {
-      const { validateMaxViews } = await import('./httpClient');
+      const { validateMaxViews } = await import('./httpClient.js');
 
       expect(() => validateMaxViews(0)).not.toThrow();
       expect(() => validateMaxViews(1)).not.toThrow();
@@ -328,14 +328,14 @@ describe('Header Validation', () => {
     });
 
     it('rejects negative integers', async () => {
-      const { validateMaxViews } = await import('./httpClient');
+      const { validateMaxViews } = await import('./httpClient.js');
 
       expect(() => validateMaxViews(-1)).toThrow();
       expect(() => validateMaxViews(-100)).toThrow();
     });
 
     it('rejects non-integer values', async () => {
-      const { validateMaxViews } = await import('./httpClient');
+      const { validateMaxViews } = await import('./httpClient.js');
 
       expect(() => validateMaxViews(1.5)).toThrow();
       expect(() => validateMaxViews('1' as unknown as number)).toThrow();
@@ -346,7 +346,7 @@ describe('Header Validation', () => {
 
   describe('validateFolder', () => {
     it('accepts valid folder IDs', async () => {
-      const { validateFolder } = await import('./httpClient');
+      const { validateFolder } = await import('./httpClient.js');
 
       expect(() => validateFolder(' folder123 ')).not.toThrow();
       expect(() => validateFolder('abc')).not.toThrow();
@@ -357,14 +357,14 @@ describe('Header Validation', () => {
     });
 
     it('rejects empty or whitespace-only strings', async () => {
-      const { validateFolder } = await import('./httpClient');
+      const { validateFolder } = await import('./httpClient.js');
 
       expect(() => validateFolder('')).toThrow();
       expect(() => validateFolder('   ')).toThrow();
     });
 
     it('rejects strings with special characters', async () => {
-      const { validateFolder } = await import('./httpClient');
+      const { validateFolder } = await import('./httpClient.js');
 
       expect(() => validateFolder('folder/123')).toThrow();
       expect(() => validateFolder('folder\\123')).toThrow();
@@ -373,7 +373,7 @@ describe('Header Validation', () => {
       expect(() => validateFolder('folder 123')).toThrow();
     });
     it('rejects folder IDs exceeding max length', async () => {
-      const { validateFolder } = await import('./httpClient');
+      const { validateFolder } = await import('./httpClient.js');
 
       expect(() => validateFolder('a'.repeat(256))).toThrow(
         'folder header exceeds maximum length'
@@ -428,7 +428,7 @@ describe('Header Validation', () => {
     it('includes x-zipline-deletes-at header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -451,7 +451,7 @@ describe('Header Validation', () => {
     it('includes x-zipline-password header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -474,7 +474,7 @@ describe('Header Validation', () => {
     it('includes x-zipline-max-views header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -497,7 +497,7 @@ describe('Header Validation', () => {
     it('includes x-zipline-folder header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -520,7 +520,7 @@ describe('Header Validation', () => {
     it('includes multiple new headers when provided together', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -549,7 +549,7 @@ describe('Header Validation', () => {
     it('rejects upload with invalid delete-at header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       await expect(
         uploadFile({
@@ -568,7 +568,7 @@ describe('Header Validation', () => {
     it('rejects upload with invalid password header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       await expect(
         uploadFile({
@@ -587,7 +587,7 @@ describe('Header Validation', () => {
     it('rejects upload with invalid max-views header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       await expect(
         uploadFile({
@@ -606,7 +606,7 @@ describe('Header Validation', () => {
     it('rejects upload with invalid folder header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       await expect(
         uploadFile({
@@ -627,7 +627,7 @@ describe('Header Validation', () => {
     it('works correctly without any new headers (backward compatibility)', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -653,7 +653,7 @@ describe('Header Validation', () => {
     it('includes x-zipline-original-name header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       const url = await uploadFile({
         endpoint,
@@ -676,7 +676,7 @@ describe('Header Validation', () => {
     it('rejects upload with invalid originalName header before making request', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
-      const { uploadFile } = await import('./httpClient');
+      const { uploadFile } = await import('./httpClient.js');
 
       await expect(
         uploadFile({

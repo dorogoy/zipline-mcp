@@ -5,7 +5,12 @@ import { z } from 'zod';
 import path from 'path';
 import fs from 'fs/promises';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { uploadFile, UploadOptions, DownloadOptions } from './httpClient.js';
+import {
+  uploadFile,
+  downloadExternalUrl,
+  UploadOptions,
+  DownloadOptions,
+} from './httpClient.js';
 import { secureLog, maskSensitiveData } from './utils/security.js';
 import {
   listUserFiles,
@@ -931,12 +936,15 @@ server.registerTool(
 
     try {
       if (!isValidUrl(url)) throw new Error('Invalid URL');
-      const { downloadExternalUrl } = await import('./httpClient.js');
       const opts: DownloadOptions = { timeout: timeoutMs };
       if (maxFileSizeBytes !== undefined)
         opts.maxFileSizeBytes = maxFileSizeBytes;
 
       downloadedPath = await downloadExternalUrl(url, opts);
+
+      if (!downloadedPath) {
+        throw new Error('Download failed: no path returned');
+      }
 
       const fileExt = path.extname(downloadedPath).toLowerCase();
       const { detectedMimeType, mimeMatch, isSupported } =

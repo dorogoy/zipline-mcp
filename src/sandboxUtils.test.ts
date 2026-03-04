@@ -23,7 +23,7 @@ import {
   SandboxPathError,
   stageFile,
   clearStagedContent,
-} from './sandboxUtils';
+} from './sandboxUtils.js';
 import * as fs from 'fs/promises';
 import path from 'path';
 import os from 'os';

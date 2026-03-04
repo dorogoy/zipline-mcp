@@ -3,7 +3,7 @@ import {
   McpErrorCode,
   ZiplineError,
   mapHttpStatusToMcpError,
-} from './errorMapper';
+} from './errorMapper.js';
 
 describe('errorMapper', () => {
   describe('McpErrorCode enum', () => {

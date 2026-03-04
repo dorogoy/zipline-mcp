@@ -11,8 +11,8 @@ import {
   AddFileToFolderRequestSchema,
   getFolder,
   deleteFolder,
-} from './remoteFolders';
-import { McpErrorCode } from './utils/errorMapper';
+} from './remoteFolders.js';
+import { McpErrorCode } from './utils/errorMapper.js';
 
 // Mock fetch function
 const mockFetch = vi.fn();

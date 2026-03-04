@@ -49,6 +49,7 @@ graph LR
 - **Secure Sandboxing**: Implemented for temporary file management to prevent path traversal and ensure per-user isolation.
 - **Environment Variables**: For sensitive information like `ZIPLINE_TOKEN` and `ZIPLINE_ENDPOINT`.
 - **URL Normalization**: Centralized URL construction through the `normalizeUrl` utility to ensure consistent URL formatting regardless of endpoint configuration.
+- **NodeNext Migration**: Migrated to `module: NodeNext` to resolve ESM import issues during npm publication. Mandatory use of `.js` extensions for all relative imports in TypeScript source files.
 
 ## Design Patterns in Use
 
