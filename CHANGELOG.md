@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.3](https://github.com/dorogoy/zipline-mcp/compare/v1.12.2...v1.12.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* **deps:** bump file-type from 21.3.0 to 21.3.2 ([533b32b](https://github.com/dorogoy/zipline-mcp/commit/533b32b405f66e7bc65e1dc2c6f37a020bedfaad))
+* **deps:** bump flatted from 3.3.3 to 3.4.1 ([f1dfe29](https://github.com/dorogoy/zipline-mcp/commit/f1dfe29baa037524117dfbbd409b3641b7faf5db))
+* **deps:** bump hono from 4.12.5 to 4.12.7 ([4a0e997](https://github.com/dorogoy/zipline-mcp/commit/4a0e997eb65984f7225ad3e0c5227d707023cd25))
+
 ## [1.12.2](https://github.com/dorogoy/zipline-mcp/compare/v1.12.1...v1.12.2) (2026-03-06)
 
 
