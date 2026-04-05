@@ -6,6 +6,17 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.4](https://github.com/dorogoy/zipline-mcp/compare/v1.12.3...v1.12.4) (2026-04-05)
+
+
+### Bug Fixes
+
+* **deps:** bump brace-expansion from 1.1.12 to 1.1.13 ([834c458](https://github.com/dorogoy/zipline-mcp/commit/834c4582acfba64be0beb41deac24687f6e4cfa6))
+* **deps:** bump flatted from 3.4.1 to 3.4.2 ([c40b5e7](https://github.com/dorogoy/zipline-mcp/commit/c40b5e7debcd504026f3073e79ef0e65e5c0832c))
+* **deps:** bump path-to-regexp from 8.3.0 to 8.4.0 ([c5d1125](https://github.com/dorogoy/zipline-mcp/commit/c5d11252b63281ad508c94f3cc2d497140510892))
+* **deps:** bump picomatch ([b16bbcf](https://github.com/dorogoy/zipline-mcp/commit/b16bbcf050f4cd92c7857a7a1b7b01f1887bb562))
+* **deps:** bump pkce-challenge from 5.0.0 to 5.0.1 ([3ab97d5](https://github.com/dorogoy/zipline-mcp/commit/3ab97d557c441976ad084adaab4fbb2c7ae01097))
+
 ## [1.12.3](https://github.com/dorogoy/zipline-mcp/compare/v1.12.2...v1.12.3) (2026-03-15)
 
 
