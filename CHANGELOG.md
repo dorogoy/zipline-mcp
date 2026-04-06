@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.5](https://github.com/dorogoy/zipline-mcp/compare/v1.12.4...v1.12.5) (2026-04-06)
+
+
+### Bug Fixes
+
+* **deps:** bump @eslint-community/regexpp from 4.12.1 to 4.12.2 ([b9c01c9](https://github.com/dorogoy/zipline-mcp/commit/b9c01c93f875e6c930b80349e05835b532455658))
+* **deps:** bump path-to-regexp from 8.4.0 to 8.4.2 ([81c6c47](https://github.com/dorogoy/zipline-mcp/commit/81c6c477236b2ac71ef04a06201f635ac5087c81))
+
 ## [1.12.4](https://github.com/dorogoy/zipline-mcp/compare/v1.12.3...v1.12.4) (2026-04-05)
 
 
