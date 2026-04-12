@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.6](https://github.com/dorogoy/zipline-mcp/compare/v1.12.5...v1.12.6) (2026-04-12)
+
+
+### Bug Fixes
+
+* **deps:** bump @hono/node-server from 1.19.11 to 1.19.13 ([a08fb0b](https://github.com/dorogoy/zipline-mcp/commit/a08fb0b5d1c96bd13b8e6d9ff84e1f35a5bccfa7))
+* **deps:** bump hono from 4.12.8 to 4.12.12 ([9265268](https://github.com/dorogoy/zipline-mcp/commit/9265268b10505bbe169725fdc00707a1ccb03384))
+
 ## [1.12.5](https://github.com/dorogoy/zipline-mcp/compare/v1.12.4...v1.12.5) (2026-04-06)
 
 
