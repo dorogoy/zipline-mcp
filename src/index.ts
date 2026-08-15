@@ -49,6 +49,7 @@ import {
   SecretDetectionError,
 } from './sandboxUtils.js';
 import { McpErrorCode, mapHttpStatusToMcpError } from './utils/errorMapper.js';
+import { isMainModule } from './utils/isMain.js';
 import {
   fileListCache,
   folderListCache,
@@ -1743,13 +1744,8 @@ async function main() {
 
 export { server };
 
-// Safer check for direct execution in ESM
-import { fileURLToPath } from 'url';
-const scriptPath = process.argv[1];
-const isMain =
-  scriptPath && fileURLToPath(import.meta.url) === path.resolve(scriptPath);
-
-if (isMain) {
+// Safer check for direct execution in ESM (resolves symlinks so npm/npx bin wrappers work)
+if (isMainModule(process.argv[1], import.meta.url)) {
   main().catch((error) => {
     console.error('❌ Failed to start MCP server:', error);
     process.exit(1);
