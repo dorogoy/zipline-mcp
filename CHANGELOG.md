@@ -6,6 +6,21 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.8](https://github.com/dorogoy/zipline-mcp/compare/v1.12.7...v1.12.8) (2026-08-15)
+
+
+### Bug Fixes
+
+* **deps:** bump @hono/node-server from 1.19.13 to 1.19.17 ([b306f99](https://github.com/dorogoy/zipline-mcp/commit/b306f99caf1d16b6ea455fea8f68fa66453fa73a))
+* **deps:** bump body-parser from 2.2.2 to 2.3.0 ([7af3c54](https://github.com/dorogoy/zipline-mcp/commit/7af3c5448ec404504a10372847e42ca0228a411c))
+* **deps:** bump brace-expansion from 1.1.13 to 1.1.18 ([c867759](https://github.com/dorogoy/zipline-mcp/commit/c867759c28286ce7c88cfba4aba6a946f9f2fe3c))
+* **deps:** bump fast-uri from 3.1.0 to 3.1.5 ([f59d682](https://github.com/dorogoy/zipline-mcp/commit/f59d6827c8760544fec7048fee01548416a26fa5))
+* **deps:** bump hono from 4.12.14 to 4.13.2 ([8921eea](https://github.com/dorogoy/zipline-mcp/commit/8921eea1c9dbc0ff5afabe83147e0f86470f2772))
+* **deps:** bump ip-address and express-rate-limit ([979b194](https://github.com/dorogoy/zipline-mcp/commit/979b19482388d8206465e52fdd8fc1b49096a93b))
+* **deps:** bump js-yaml from 4.1.1 to 4.3.1 ([6665dec](https://github.com/dorogoy/zipline-mcp/commit/6665dec73dd5d1f81a988edefdad48fa476134ae))
+* **deps:** bump qs from 6.15.0 to 6.15.2 ([67207df](https://github.com/dorogoy/zipline-mcp/commit/67207dfa449081069ef114d8b054b86f724a26d1))
+* resolve symlinks in main-module check so npx/bin launches start the server ([#158](https://github.com/dorogoy/zipline-mcp/issues/158)) ([58f8414](https://github.com/dorogoy/zipline-mcp/commit/58f8414af802f8b577b89ef0237792b8563132f4))
+
 ## [1.12.7](https://github.com/dorogoy/zipline-mcp/compare/v1.12.6...v1.12.7) (2026-04-18)
 
 
