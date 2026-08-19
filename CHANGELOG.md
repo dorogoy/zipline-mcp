@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.9](https://github.com/dorogoy/zipline-mcp/compare/v1.12.8...v1.12.9) (2026-08-19)
+
+
+### Bug Fixes
+
+* **deps:** bump typescript-eslint from 8.39.0 to 8.67.0 and remove now-unnecessary type assertions ([b7295b0](https://github.com/dorogoy/zipline-mcp/commit/b7295b06d4f6809ad4d299c3d5c0378f5b568d40))
+* **deps:** bump vitest to 3.2.7, tsx to 4.23.12, esbuild to 0.28.2 ([8cd4e44](https://github.com/dorogoy/zipline-mcp/commit/8cd4e44da1dbbf3b4a44be3022ae61030c06eb0f))
+
 ## [1.12.8](https://github.com/dorogoy/zipline-mcp/compare/v1.12.7...v1.12.8) (2026-08-15)
 
 
