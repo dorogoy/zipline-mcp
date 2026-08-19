@@ -174,9 +174,7 @@ describe('Security Utils', () => {
     });
 
     it('should return false for null paths', () => {
-      expect(validateSandboxPath(null as unknown as string, userSandbox)).toBe(
-        false
-      );
+      expect(validateSandboxPath(null, userSandbox)).toBe(false);
     });
 
     it('should return false for undefined paths', () => {
