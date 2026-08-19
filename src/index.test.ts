@@ -484,7 +484,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const smallFileSize = 1024 * 1024; // 1MB
-      fsMock.stat.mockResolvedValue({ size: smallFileSize } as PartialStats);
+      fsMock.stat.mockResolvedValue({ size: smallFileSize });
 
       const result = await handler({ filePath: '/path/to/small.txt' }, {});
 
@@ -500,7 +500,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const largeFileSize = 10 * 1024 * 1024; // 10MB
-      fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
+      fsMock.stat.mockResolvedValue({ size: largeFileSize });
 
       const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -516,7 +516,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const closeToThreshold = 4.6 * 1024 * 1024; // 4.6MB (92% of 5MB)
-      fsMock.stat.mockResolvedValue({ size: closeToThreshold } as PartialStats);
+      fsMock.stat.mockResolvedValue({ size: closeToThreshold });
 
       const result = await handler(
         { filePath: '/path/to/near-threshold.txt' },
@@ -537,7 +537,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const oversized = 120 * 1024 * 1024; // 120MB (exceeds 100MB default)
-      fsMock.stat.mockResolvedValue({ size: oversized } as PartialStats);
+      fsMock.stat.mockResolvedValue({ size: oversized });
 
       const result = await handler({ filePath: '/path/to/oversized.txt' }, {});
 
@@ -556,7 +556,7 @@ describe('Zipline MCP Server', () => {
       if (!handler) throw new Error('Handler not found');
 
       const normalSize = 2 * 1024 * 1024; // 2MB
-      fsMock.stat.mockResolvedValue({ size: normalSize } as PartialStats);
+      fsMock.stat.mockResolvedValue({ size: normalSize });
 
       const result = await handler({ filePath: '/path/to/valid.txt' }, {});
 
@@ -868,7 +868,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const largeFileSize = 150 * 1024 * 1024; // 150MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize });
 
     const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -885,7 +885,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const largeFileSize = 120 * 1024 * 1024; // 120MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize });
 
     const result = await handler({ filePath: '/path/to/large.txt' }, {});
 
@@ -903,7 +903,7 @@ describe('upload_file_to_zipline tool', () => {
     if (!handler) throw new Error('Handler not found');
 
     const normalSize = 2 * 1024 * 1024; // 2MB
-    fsMock.stat.mockResolvedValue({ size: normalSize } as PartialStats);
+    fsMock.stat.mockResolvedValue({ size: normalSize });
 
     const result = await handler({ filePath: '/path/to/valid.txt' }, {});
 
@@ -947,7 +947,7 @@ describe('upload_file_to_zipline tool', () => {
   it('should call clearStagedContent for disk-staged files (no-op)', async () => {
     mockFileContent(Buffer.alloc(5 * 1024 * 1024, 'x'));
     const largeFileSize = 10 * 1024 * 1024; // 10MB
-    fsMock.stat.mockResolvedValue({ size: largeFileSize } as PartialStats);
+    fsMock.stat.mockResolvedValue({ size: largeFileSize });
 
     const handler = getToolHandler('upload_file_to_zipline');
     if (!handler) throw new Error('Handler not found');
@@ -2101,7 +2101,7 @@ describe('batch_file_operation tool', () => {
     it('should move multiple files successfully', async () => {
       const { editFolder } = await import('./remoteFolders.js');
       const editFolderSpy = vi.mocked(editFolder);
-      editFolderSpy.mockResolvedValue({ id: 'folder1', name: 'Test' } as never);
+      editFolderSpy.mockResolvedValue({ id: 'folder1', name: 'Test' });
 
       const handler = getToolHandler('batch_file_operation');
       if (!handler) throw new Error('Handler not found');
@@ -2137,7 +2137,7 @@ describe('batch_file_operation tool', () => {
       const { editFolder } = await import('./remoteFolders.js');
       const editFolderSpy = vi.mocked(editFolder);
       editFolderSpy
-        .mockResolvedValueOnce({ id: 'folder1', name: 'Test' } as never)
+        .mockResolvedValueOnce({ id: 'folder1', name: 'Test' })
         .mockRejectedValueOnce(new Error('Folder not found'));
 
       const handler = getToolHandler('batch_file_operation');
@@ -3112,7 +3112,7 @@ describe('check_health tool', () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3132,7 +3132,7 @@ describe('check_health tool', () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3187,7 +3187,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3208,7 +3208,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 403,
       statusText: 'Forbidden',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3228,7 +3228,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3248,7 +3248,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 502,
       statusText: 'Bad Gateway',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3267,7 +3267,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 503,
       statusText: 'Service Unavailable',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3309,7 +3309,7 @@ describe('check_health tool', () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     // Re-import to pick up new environment variable
@@ -3337,7 +3337,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3356,7 +3356,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 404,
       statusText: 'Not Found',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -3376,7 +3376,7 @@ describe('check_health tool', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('check_health');
@@ -4122,7 +4122,7 @@ describe('get_usage_stats tool', () => {
             urlViews: 1000,
             sortTypeCount: { 'image/png': 60, 'image/jpeg': 40 },
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -4136,7 +4136,7 @@ describe('get_usage_stats tool', () => {
               },
             },
           }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4173,7 +4173,7 @@ describe('get_usage_stats tool', () => {
               'text/plain': 29,
             },
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -4187,7 +4187,7 @@ describe('get_usage_stats tool', () => {
               },
             },
           }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4219,7 +4219,7 @@ describe('get_usage_stats tool', () => {
             urlViews: 200,
             sortTypeCount: {},
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -4228,7 +4228,7 @@ describe('get_usage_stats tool', () => {
               quota: null,
             },
           }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4248,7 +4248,7 @@ describe('get_usage_stats tool', () => {
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4267,7 +4267,7 @@ describe('get_usage_stats tool', () => {
       ok: false,
       status: 403,
       statusText: 'Forbidden',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4286,7 +4286,7 @@ describe('get_usage_stats tool', () => {
       ok: false,
       status: 404,
       statusText: 'Not Found',
-    } as Response);
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4335,14 +4335,14 @@ describe('get_usage_stats tool', () => {
             urlViews: 2000,
             sortTypeCount: {},
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
             user: { quota: null },
           }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4376,14 +4376,14 @@ describe('get_usage_stats tool', () => {
               'text/plain': 25,
             },
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
             user: { quota: null },
           }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4459,11 +4459,11 @@ describe('get_usage_stats tool', () => {
             urlViews: 300,
             sortTypeCount: {},
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');
@@ -4518,11 +4518,11 @@ describe('get_usage_stats tool', () => {
             urlViews: 50,
             sortTypeCount: {},
           }),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ user: { quota: null } }),
-      } as Response);
+      });
     vi.stubGlobal('fetch', mockFetch);
 
     const handler = getToolHandler('get_usage_stats');

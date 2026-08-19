@@ -1007,7 +1007,7 @@ describe('editFolder', () => {
         ok: false,
         status: 404,
         statusText: 'Not Found',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1029,7 +1029,7 @@ describe('editFolder', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1051,7 +1051,7 @@ describe('editFolder', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1073,7 +1073,7 @@ describe('editFolder', () => {
         ok: false,
         status: 409,
         statusText: 'Conflict',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1095,7 +1095,7 @@ describe('editFolder', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1172,7 +1172,7 @@ describe('editFolder', () => {
         ok: false,
         status: 404,
         statusText: 'Not Found',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1195,7 +1195,7 @@ describe('editFolder', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1218,7 +1218,7 @@ describe('editFolder', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1241,7 +1241,7 @@ describe('editFolder', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as unknown as Response);
+      });
 
       const options: EditFolderOptions = {
         endpoint: mockEndpoint,
@@ -1352,7 +1352,7 @@ describe('getFolder', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockFolder),
-    } as Response);
+    });
 
     const result = await getFolder(folderId);
 
@@ -1381,7 +1381,7 @@ describe('getFolder', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
-    } as Response);
+    });
 
     await expect(getFolder(folderId)).rejects.toMatchObject({
       mcpCode: McpErrorCode.RESOURCE_NOT_FOUND,
@@ -1395,7 +1395,7 @@ describe('getFolder', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
-    } as Response);
+    });
 
     await expect(getFolder(folderId)).rejects.toMatchObject({
       mcpCode: McpErrorCode.INTERNAL_ZIPLINE_ERROR,
@@ -1410,7 +1410,7 @@ describe('getFolder', () => {
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
-    } as Response);
+    });
 
     await expect(getFolder(folderId)).rejects.toMatchObject({
       mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
@@ -1425,7 +1425,7 @@ describe('getFolder', () => {
       ok: false,
       status: 429,
       statusText: 'Too Many Requests',
-    } as Response);
+    });
 
     await expect(getFolder(folderId)).rejects.toMatchObject({
       mcpCode: McpErrorCode.RATE_LIMIT_EXCEEDED,
@@ -1475,7 +1475,7 @@ describe('getFolder', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockFolder),
-    } as Response);
+    });
 
     const result = await getFolder(folderId);
 

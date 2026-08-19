@@ -87,7 +87,7 @@ describe('downloadExternalUrl (TDD)', () => {
           },
           url: url,
         };
-        return res as any;
+        return res;
       });
   });
 
@@ -122,7 +122,7 @@ describe('downloadExternalUrl (TDD)', () => {
       status: 404,
       statusText: 'Not Found',
       text: async () => 'Not Found',
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
@@ -145,15 +145,14 @@ describe('downloadExternalUrl (TDD)', () => {
       }
     }
 
-    globalThis.AbortController =
-      MockAbortController as unknown as typeof AbortController;
+    globalThis.AbortController = MockAbortController;
 
     fetchSpy.mockImplementation(async (_input: any, init?: any) => {
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
           reject(new Error('The operation was aborted.'));
         });
-      }) as any;
+      });
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -177,7 +176,7 @@ describe('downloadExternalUrl (TDD)', () => {
           k.toLowerCase() === 'content-length' ? String(bigSize) : null,
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
@@ -207,7 +206,7 @@ describe('downloadExternalUrl (TDD)', () => {
         }),
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
@@ -255,7 +254,7 @@ describe('downloadExternalUrl (TDD)', () => {
           k.toLowerCase() === 'content-length' ? String(exactSize) : null,
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     const result = await downloadExternalUrl(url);
@@ -288,7 +287,7 @@ describe('downloadExternalUrl (TDD)', () => {
         }),
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     const result = await downloadExternalUrl(url);
@@ -325,7 +324,7 @@ describe('downloadExternalUrl (TDD)', () => {
         }),
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(
@@ -357,7 +356,7 @@ describe('downloadExternalUrl (TDD)', () => {
         }),
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(/Connection lost/i);
@@ -391,7 +390,7 @@ describe('downloadExternalUrl (TDD)', () => {
         }),
       },
       url,
-    } as any);
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(

@@ -98,7 +98,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       status: 500,
       json: () => Promise.resolve({ error: 'Internal error' }),
       text: () => Promise.resolve('Internal error'),
-    } as any);
+    });
 
     const { uploadFile } = await import('./httpClient.js');
 
@@ -133,7 +133,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       status: 200,
       json: () => Promise.resolve({ files: [] }),
       text: () => Promise.resolve(JSON.stringify({ files: [] })),
-    } as any);
+    });
 
     const { uploadFile } = await import('./httpClient.js');
 
@@ -164,8 +164,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
       }
     }
 
-    globalThis.AbortController =
-      MockAbortController as unknown as typeof AbortController;
+    globalThis.AbortController = MockAbortController;
 
     // Simulate fetch that hangs until aborted
     fetchSpy.mockImplementation((_input: any, init?: any) => {
@@ -174,7 +173,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
         requestInit.signal?.addEventListener('abort', () => {
           reject(new Error('The operation was aborted.'));
         });
-      }) as any;
+      });
     });
 
     const { uploadFile } = await import('./httpClient.js');
@@ -215,7 +214,7 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
             })
           ),
       };
-      return res as any;
+      return res;
     });
 
     const { uploadFile } = await import('./httpClient.js');
