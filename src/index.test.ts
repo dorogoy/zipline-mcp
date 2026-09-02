@@ -3409,11 +3409,115 @@ describe('check_health tool', () => {
     await handler({}, {});
 
     expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/healthcheck',
+      expect.objectContaining({
+        signal: expect.any(AbortSignal) as AbortSignal,
+      })
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('should call /api/healthcheck first (Zipline v4)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('HEALTH CHECK PASSED');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/healthcheck',
+      expect.objectContaining({
+        signal: expect.any(AbortSignal) as AbortSignal,
+      })
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('should fall back to legacy /api/health when /api/healthcheck returns 404 (Zipline v3)', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('HEALTH CHECK PASSED');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3000/api/healthcheck',
+      expect.objectContaining({
+        signal: expect.any(AbortSignal) as AbortSignal,
+      })
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
       'http://localhost:3000/api/health',
       expect.objectContaining({
         signal: expect.any(AbortSignal) as AbortSignal,
       })
     );
+    vi.unstubAllGlobals();
+  });
+
+  it('should report host unavailable when both /api/healthcheck and /api/health return 404', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 404');
+    expect(result.content[0]?.text).not.toContain('AUTHENTICATION_ERROR');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
+  });
+
+  it('should not fall back to /api/health on non-404 errors from /api/healthcheck', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('check_health');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
+    expect(result.content[0]?.text).toContain('HTTP Status: 503');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
 });

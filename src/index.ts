@@ -1659,9 +1659,18 @@ server.registerTool(
   async () => {
     const start = Date.now();
     try {
-      const res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`, {
+      // Zipline v4+ exposes /api/healthcheck; fall back to the legacy v3
+      // /api/health endpoint when the new one is not found (404).
+      let res = await fetch(`${ZIPLINE_ENDPOINT}/api/healthcheck`, {
         signal: AbortSignal.timeout(5000), // 5 second timeout
       });
+
+      if (res.status === 404) {
+        res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`, {
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        });
+      }
+
       const latency = Date.now() - start;
 
       if (res.ok) {
