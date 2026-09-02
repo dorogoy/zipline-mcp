@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.11](https://github.com/dorogoy/zipline-mcp/compare/v1.12.10...v1.12.11) (2026-09-02)
+
+
+### Bug Fixes
+
+* **check_health:** use Zipline v4 /api/healthcheck endpoint with v3 fallback ([#168](https://github.com/dorogoy/zipline-mcp/issues/168)) ([29feb2c](https://github.com/dorogoy/zipline-mcp/commit/29feb2cd93e0a5393c991d16b34276bd3c3c06b5))
+
 ## [1.12.10](https://github.com/dorogoy/zipline-mcp/compare/v1.12.9...v1.12.10) (2026-08-31)
 
 
