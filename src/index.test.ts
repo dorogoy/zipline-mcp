@@ -3351,26 +3351,6 @@ describe('check_health tool', () => {
     vi.unstubAllGlobals();
   });
 
-  it('should handle 404 errors as host unavailable (not auth error)', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-    });
-    vi.stubGlobal('fetch', mockFetch);
-
-    const handler = getToolHandler('check_health');
-    if (!handler) throw new Error('Handler not found');
-
-    const result = await handler({}, {});
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
-    expect(result.content[0]?.text).toContain('HTTP Status: 404');
-    expect(result.content[0]?.text).not.toContain('AUTHENTICATION_ERROR');
-    vi.unstubAllGlobals();
-  });
-
   it('should include latency in error responses', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
@@ -3480,7 +3460,7 @@ describe('check_health tool', () => {
     vi.unstubAllGlobals();
   });
 
-  it('should report host unavailable when both /api/healthcheck and /api/health return 404', async () => {
+  it('should report a dedicated message when both /api/healthcheck and /api/health return 404', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 404,
@@ -3495,7 +3475,11 @@ describe('check_health tool', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('HOST_UNAVAILABLE');
-    expect(result.content[0]?.text).toContain('HTTP Status: 404');
+    expect(result.content[0]?.text).toContain(
+      'Neither /api/healthcheck (Zipline v4) nor /api/health (Zipline v3) was found.'
+    );
+    expect(result.content[0]?.text).toContain('Verify ZIPLINE_ENDPOINT');
+    expect(result.content[0]?.text).not.toContain('HTTP Status: 404');
     expect(result.content[0]?.text).not.toContain('AUTHENTICATION_ERROR');
     expect(mockFetch).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
