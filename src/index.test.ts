@@ -11,11 +11,7 @@ import {
   type Mock,
 } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { Dirent, Stats } from 'fs';
-
-interface PartialStats extends Partial<Stats> {
-  size: number;
-}
+import { Dirent } from 'fs';
 
 // Define types for the mock
 interface MockServer {
