@@ -1659,9 +1659,32 @@ server.registerTool(
   async () => {
     const start = Date.now();
     try {
-      const res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`, {
-        signal: AbortSignal.timeout(5000), // 5 second timeout
+      // Zipline v4+ exposes /api/healthcheck; fall back to the legacy v3
+      // /api/health endpoint when the new one is not found (404).
+      const signal = AbortSignal.timeout(5000); // 5s budget for the whole check
+      let res = await fetch(`${ZIPLINE_ENDPOINT}/api/healthcheck`, {
+        signal,
       });
+
+      if (res.status === 404) {
+        res = await fetch(`${ZIPLINE_ENDPOINT}/api/health`, {
+          signal,
+        });
+
+        if (res.status === 404) {
+          // Reachable, but neither Zipline health route exists
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nDetails: Neither /api/healthcheck (Zipline v4) nor /api/health (Zipline v3) was found.\nLatency: ${Date.now() - start}ms\nResolution: Endpoint is reachable but does not look like a Zipline instance. Verify ZIPLINE_ENDPOINT.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
       const latency = Date.now() - start;
 
       if (res.ok) {
