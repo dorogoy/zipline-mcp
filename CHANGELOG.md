@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.12](https://github.com/dorogoy/zipline-mcp/compare/v1.12.11...v1.12.12) (2026-09-06)
+
+
+### Bug Fixes
+
+* **deps:** bump @humanfs/node from 0.16.6 to 0.16.8 ([a434d9c](https://github.com/dorogoy/zipline-mcp/commit/a434d9cb4ace488c1fdc8aa5337d433deec1caa9))
+* **deps:** bump fast-uri from 3.1.5 to 3.1.7 ([c7aa16b](https://github.com/dorogoy/zipline-mcp/commit/c7aa16b47b02a9727d296f969867cad6ff108db6))
+* **deps:** bump qs from 6.15.2 to 6.16.0 ([0199dc2](https://github.com/dorogoy/zipline-mcp/commit/0199dc23ca47fcf806eef59ed21bd31a37941153))
+
 ## [1.12.11](https://github.com/dorogoy/zipline-mcp/compare/v1.12.10...v1.12.11) (2026-09-02)
 
 
