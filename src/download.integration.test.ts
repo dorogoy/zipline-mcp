@@ -5,7 +5,7 @@ process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
-  const McpServer = vi.fn().mockImplementation(() => {
+  const McpServer = vi.fn().mockImplementation(function () {
     const registerToolMock = vi.fn();
     registerToolMock.mockImplementation(() => {});
     return {
@@ -17,7 +17,9 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
 });
 
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
 const httpClientMock = {
