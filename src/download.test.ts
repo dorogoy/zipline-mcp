@@ -116,6 +116,35 @@ describe('downloadExternalUrl (TDD)', () => {
     );
   });
 
+  it('rejects private and loopback URLs (SSRF protection)', async () => {
+    const { downloadExternalUrl, isPrivateHost } = await import(
+      './httpClient.js'
+    );
+
+    expect(isPrivateHost('localhost')).toBe(true);
+    expect(isPrivateHost('127.0.0.1')).toBe(true);
+    expect(isPrivateHost('169.254.169.254')).toBe(true);
+    expect(isPrivateHost('10.0.0.1')).toBe(true);
+    expect(isPrivateHost('172.16.0.1')).toBe(true);
+    expect(isPrivateHost('192.168.1.1')).toBe(true);
+    expect(isPrivateHost('::1')).toBe(true);
+    expect(isPrivateHost('example.com')).toBe(false);
+
+    const privateUrls = [
+      'http://localhost/secret',
+      'http://127.0.0.1:8080/data',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://10.0.0.1/admin',
+      'http://192.168.1.1/router',
+    ];
+
+    for (const privateUrl of privateUrls) {
+      await expect(downloadExternalUrl(privateUrl)).rejects.toThrow(
+        /forbidden|private/i
+      );
+    }
+  });
+
   it('throws on HTTP errors', async () => {
     fetchSpy.mockResolvedValueOnce({
       ok: false,

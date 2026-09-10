@@ -269,6 +269,13 @@ export async function downloadExternalUrl(
     throw new InvalidUrlError(`Unsupported scheme: ${url.protocol}`);
   }
 
+  // Security: SSRF prevention check for loopback, private IP ranges, and cloud metadata IPs
+  if (isPrivateHost(url.hostname)) {
+    throw new InvalidUrlError(
+      `Access to private or local network host is forbidden: ${url.hostname}`
+    );
+  }
+
   // Derive filename from URL path
   const nameFromUrl = path.basename(url.pathname) || 'file';
   const validationError = validateFilename(nameFromUrl);
@@ -454,6 +461,40 @@ export function validateFolder(folder: string): void {
   if (trimmed.length > 255) {
     throw new Error('folder header exceeds maximum length of 255 characters');
   }
+}
+
+/**
+ * Security check for SSRF prevention.
+ * Returns true if host is loopback, local, RFC 1918 private IP, link-local, or cloud metadata IP.
+ */
+export function isPrivateHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    host === 'localhost' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal')
+  ) {
+    return true;
+  }
+  const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4Match) {
+    const p1 = Number(ipv4Match[1]);
+    const p2 = Number(ipv4Match[2]);
+    if (p1 === 0 || p1 === 127 || p1 === 10) return true;
+    if (p1 === 169 && p2 === 254) return true;
+    if (p1 === 172 && p2 >= 16 && p2 <= 31) return true;
+    if (p1 === 192 && p2 === 168) return true;
+  }
+  if (
+    host === '::1' ||
+    host === '::' ||
+    host.startsWith('fe80:') ||
+    host.startsWith('fc00:') ||
+    host.startsWith('fd00:')
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function validateOriginalName(originalName: string): void {
