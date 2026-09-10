@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   sanitizePath,
@@ -505,7 +506,6 @@ describe('Security Utils', () => {
     it('should handle objects with circular references gracefully', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const circular: any = { name: 'test' };
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       circular.self = circular;
       secureLog('Circular:', circular);
       expect(consoleErrorSpy).toHaveBeenCalledWith(

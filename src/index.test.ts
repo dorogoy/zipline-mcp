@@ -21,7 +21,9 @@ interface MockServer {
 
 // Mock the McpServer and its methods
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
-  const McpServer = vi.fn().mockImplementation((): MockServer => {
+  const McpServer = vi.fn().mockImplementation(function (
+    this: MockServer
+  ): MockServer {
     const registerToolMock = vi.fn();
     registerToolMock.mockImplementation(() => {});
     return {
@@ -33,7 +35,9 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
 });
 
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
 // Mock the httpClient module

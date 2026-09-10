@@ -323,7 +323,7 @@ describe('Sandbox Utils', () => {
         const staged = await stageFile(filePath);
         expect(staged.type).toBe('memory');
         if (staged.type === 'memory') {
-          expect(staged.content).toEqual(content);
+          expect(staged.content.equals(content)).toBe(true);
           expect(staged.content).toBeInstanceOf(Buffer);
           expect(staged.content.length).toBe(Math.floor(size));
         }
