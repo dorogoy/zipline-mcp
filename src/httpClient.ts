@@ -251,26 +251,31 @@ export interface DownloadOptions {
   followRedirects?: boolean;
 }
 
+/**
+ * Note: URL string checking provides early SSRF validation against obvious private targets.
+ * Note that DNS-level resolution/rebinding is not prevented by URL string checks alone.
+ */
 export async function downloadExternalUrl(
   urlStr: string,
   options: DownloadOptions = {}
 ): Promise<string> {
   const timeout = options.timeout ?? 30_000;
   const maxFileSize = options.maxFileSizeBytes ?? 100 * 1024 * 1024; // 100MB
+  const maxRedirects = 5;
 
-  let url: URL;
+  let currentUrl: URL;
   try {
-    url = new URL(urlStr);
+    currentUrl = new URL(urlStr);
   } catch {
     throw new InvalidUrlError('Invalid URL');
   }
 
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new InvalidUrlError(`Unsupported scheme: ${url.protocol}`);
-  }
+  // Setup abort/timeout
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeout);
 
-  // Derive filename from URL path
-  const nameFromUrl = path.basename(url.pathname) || 'file';
+  // Derive filename from initial URL path
+  const nameFromUrl = path.basename(currentUrl.pathname) || 'file';
   const validationError = validateFilename(nameFromUrl);
   const filename = validationError ? `download-${Date.now()}` : nameFromUrl;
 
@@ -278,16 +283,51 @@ export async function downloadExternalUrl(
   await ensureUserSandbox();
   const finalPath = resolveSandboxPath(filename);
 
-  // Setup abort/timeout
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeout);
-
   try {
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      redirect: 'follow',
-      signal: ac.signal,
-    });
+    let res: Response | null = null;
+    let redirectCount = 0;
+
+    // Manual redirect loop to re-validate URL scheme and SSRF checks on every redirect hop
+    while (true) {
+      if (!['http:', 'https:'].includes(currentUrl.protocol)) {
+        throw new InvalidUrlError(`Unsupported scheme: ${currentUrl.protocol}`);
+      }
+
+      // Security: SSRF prevention check for loopback, private IP ranges, and cloud metadata IPs
+      if (isPrivateHost(currentUrl.hostname)) {
+        throw new InvalidUrlError(
+          `Access to private or local network host is forbidden: ${currentUrl.hostname}`
+        );
+      }
+
+      res = await fetch(currentUrl.toString(), {
+        method: 'GET',
+        redirect: 'manual',
+        signal: ac.signal,
+      });
+
+      if ([301, 302, 303, 307, 308].includes(res.status)) {
+        const location = res.headers.get('location');
+        if (!location) {
+          throw new HttpError(
+            res.status,
+            `Redirect status ${res.status} missing Location header`
+          );
+        }
+        redirectCount++;
+        if (redirectCount > maxRedirects) {
+          throw new Error('Too many redirects');
+        }
+        try {
+          currentUrl = new URL(location, currentUrl);
+        } catch {
+          throw new InvalidUrlError(`Invalid redirect URL: ${location}`);
+        }
+        continue;
+      }
+
+      break;
+    }
 
     if (!res.ok) {
       let bodyText = '';
@@ -345,10 +385,12 @@ export async function downloadExternalUrl(
     return finalPath;
   } catch (err) {
     // Attempt cleanup of partial file
-    try {
-      await rm(finalPath, { force: true });
-    } catch {
-      // ignore cleanup failures
+    if (finalPath) {
+      try {
+        await rm(finalPath, { force: true });
+      } catch {
+        // ignore cleanup failures
+      }
     }
 
     const message = err instanceof Error ? err.message : String(err);
@@ -454,6 +496,93 @@ export function validateFolder(folder: string): void {
   if (trimmed.length > 255) {
     throw new Error('folder header exceeds maximum length of 255 characters');
   }
+}
+
+function isPrivateIPv4(p1: number, p2: number): boolean {
+  if (p1 === 0 || p1 === 127 || p1 === 10) return true; // 0.0.0.0/8, 127.0.0.0/8, 10.0.0.0/8
+  if (p1 === 169 && p2 === 254) return true; // 169.254.0.0/16 (link-local / cloud metadata)
+  if (p1 === 172 && p2 >= 16 && p2 <= 31) return true; // 172.16.0.0/12
+  if (p1 === 192 && p2 === 168) return true; // 192.168.0.0/16
+  return false;
+}
+
+/**
+ * Security check for SSRF prevention.
+ * Returns true if host is loopback, local domain alias, RFC 1918 private IP, link-local, IPv4-mapped IPv6, or cloud metadata IP.
+ */
+export function isPrivateHost(hostname: string): boolean {
+  if (!hostname) return false;
+  let host = hostname
+    .toLowerCase()
+    .trim()
+    .replace(/^\[|\]$/g, '');
+  // Strip trailing dots (e.g. "localhost." -> "localhost")
+  host = host.replace(/\.+$/, '');
+
+  // Local hostnames and domain aliases (RFC 6761)
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === 'localhost.localdomain' ||
+    host.endsWith('.localhost.localdomain') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal')
+  ) {
+    return true;
+  }
+
+  // IPv4 dotted-decimal check
+  const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4Match) {
+    const p1 = Number(ipv4Match[1]);
+    const p2 = Number(ipv4Match[2]);
+    const p3 = Number(ipv4Match[3]);
+    const p4 = Number(ipv4Match[4]);
+    if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
+      return isPrivateIPv4(p1, p2);
+    }
+  }
+
+  // IPv4-mapped IPv6 check (e.g., ::ffff:127.0.0.1 or ::ffff:7f00:1 or ::ffff:a9fe:a9fe)
+  if (host.startsWith('::ffff:')) {
+    const mapped = host.slice(7);
+    const mappedDotted = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(
+      mapped
+    );
+    if (mappedDotted) {
+      const p1 = Number(mappedDotted[1]);
+      const p2 = Number(mappedDotted[2]);
+      const p3 = Number(mappedDotted[3]);
+      const p4 = Number(mappedDotted[4]);
+      if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
+        return isPrivateIPv4(p1, p2);
+      }
+    }
+    // Hex representation like 7f00:1 or a9fe:a9fe
+    const parts = mapped.split(':');
+    if (parts.length === 2) {
+      const high = parseInt(parts[0]!, 16);
+      const low = parseInt(parts[1]!, 16);
+      if (!Number.isNaN(high) && !Number.isNaN(low)) {
+        const p1 = (high >> 8) & 0xff;
+        const p2 = high & 0xff;
+        return isPrivateIPv4(p1, p2);
+      }
+    }
+  }
+
+  // General IPv6 loopback / link-local / ULA check
+  if (
+    host === '::1' ||
+    host === '::' ||
+    host.startsWith('fe80:') ||
+    host.startsWith('fc00:') ||
+    host.startsWith('fd00:')
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function validateOriginalName(originalName: string): void {
