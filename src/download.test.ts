@@ -122,20 +122,32 @@ describe('downloadExternalUrl (TDD)', () => {
     );
 
     expect(isPrivateHost('localhost')).toBe(true);
+    expect(isPrivateHost('localhost.')).toBe(true);
+    expect(isPrivateHost('foo.localhost')).toBe(true);
+    expect(isPrivateHost('localhost.localdomain')).toBe(true);
     expect(isPrivateHost('127.0.0.1')).toBe(true);
     expect(isPrivateHost('169.254.169.254')).toBe(true);
     expect(isPrivateHost('10.0.0.1')).toBe(true);
     expect(isPrivateHost('172.16.0.1')).toBe(true);
     expect(isPrivateHost('192.168.1.1')).toBe(true);
     expect(isPrivateHost('::1')).toBe(true);
+    expect(isPrivateHost('::ffff:127.0.0.1')).toBe(true);
+    expect(isPrivateHost('::ffff:7f00:1')).toBe(true);
+    expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
     expect(isPrivateHost('example.com')).toBe(false);
 
     const privateUrls = [
       'http://localhost/secret',
+      'http://localhost./secret',
+      'http://foo.localhost/secret',
+      'http://localhost.localdomain/secret',
       'http://127.0.0.1:8080/data',
       'http://169.254.169.254/latest/meta-data/',
       'http://10.0.0.1/admin',
       'http://192.168.1.1/router',
+      'http://[::ffff:127.0.0.1]/secret',
+      'http://[::ffff:7f00:1]/secret',
+      'http://[::ffff:a9fe:a9fe]/latest/meta-data/',
     ];
 
     for (const privateUrl of privateUrls) {
@@ -143,6 +155,40 @@ describe('downloadExternalUrl (TDD)', () => {
         /forbidden|private/i
       );
     }
+  });
+
+  it('blocks redirects to private URLs (SSRF redirect protection)', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 302,
+      headers: {
+        get: (h: string) =>
+          h.toLowerCase() === 'location'
+            ? 'http://169.254.169.254/latest/meta-data/'
+            : null,
+      },
+    });
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(
+      downloadExternalUrl('https://example.com/redirect')
+    ).rejects.toThrow(/forbidden|private/i);
+  });
+
+  it('rejects redirect loop exceeding max redirects', async () => {
+    fetchSpy.mockImplementation(async () => ({
+      ok: false,
+      status: 302,
+      headers: {
+        get: (h: string) =>
+          h.toLowerCase() === 'location' ? 'https://example.com/loop' : null,
+      },
+    }));
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(
+      downloadExternalUrl('https://example.com/loop')
+    ).rejects.toThrow(/too many redirects/i);
   });
 
   it('throws on HTTP errors', async () => {
