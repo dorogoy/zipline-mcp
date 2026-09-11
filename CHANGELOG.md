@@ -6,6 +6,16 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.13](https://github.com/dorogoy/zipline-mcp/compare/v1.12.12...v1.12.13) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** bump @eslint/object-schema from 2.1.6 to 2.1.7 ([d0056cd](https://github.com/dorogoy/zipline-mcp/commit/d0056cd4df8f84fe0a172e01b6791f438b0dfcde))
+* **deps:** bump hono from 4.13.2 to 4.13.7 ([5aa4319](https://github.com/dorogoy/zipline-mcp/commit/5aa4319170ffb81cd88fcd89007fbd2002249972))
+* **deps:** bump js-yaml from 4.3.1 to 4.3.2 ([6f52c32](https://github.com/dorogoy/zipline-mcp/commit/6f52c32d89bd95912e3cc945a4c13346845fb91e))
+* **deps:** bump vitest to 4.1.11 to fix security vulnerability ([152f8dc](https://github.com/dorogoy/zipline-mcp/commit/152f8dce2b00cdeada1bcdee25c887da13897a93))
+
 ## [1.12.12](https://github.com/dorogoy/zipline-mcp/compare/v1.12.11...v1.12.12) (2026-09-06)
 
 
