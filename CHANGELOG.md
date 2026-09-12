@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.14](https://github.com/dorogoy/zipline-mcp/compare/v1.12.13...v1.12.14) (2026-09-12)
+
+
+### Bug Fixes
+
+* **security:** prevent SSRF bypass via IPv4-compatible IPv6 addresses ([d774b57](https://github.com/dorogoy/zipline-mcp/commit/d774b57d18a34d59a4a7a2e6b62284c8552ee059))
+* SSRF vulnerability in downloadExternalUrl ([#180](https://github.com/dorogoy/zipline-mcp/issues/180)) ([fcb6b09](https://github.com/dorogoy/zipline-mcp/commit/fcb6b09df7836aa6ceda481bdaa872efb81183bc))
+
 ## [1.12.12](https://github.com/dorogoy/zipline-mcp/compare/v1.12.11...v1.12.12) (2026-09-06)
 
 
