@@ -543,31 +543,30 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // IPv4-mapped IPv6 check (e.g., ::ffff:127.0.0.1 or ::ffff:7f00:1 or ::ffff:a9fe:a9fe)
-  if (host.startsWith('::ffff:')) {
-    const mapped = host.slice(7);
-    const mappedDotted = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(
-      mapped
+  // IPv4-mapped or IPv4-compatible IPv6 check (e.g., ::ffff:127.0.0.1, ::ffff:7f00:1, ::127.0.0.1, ::7f00:1)
+  const ipv4MappedDotted =
+    /^(?:0*:)*?(?:ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
+      host
     );
-    if (mappedDotted) {
-      const p1 = Number(mappedDotted[1]);
-      const p2 = Number(mappedDotted[2]);
-      const p3 = Number(mappedDotted[3]);
-      const p4 = Number(mappedDotted[4]);
-      if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
-        return isPrivateIPv4(p1, p2);
-      }
+  if (ipv4MappedDotted) {
+    const p1 = Number(ipv4MappedDotted[1]);
+    const p2 = Number(ipv4MappedDotted[2]);
+    const p3 = Number(ipv4MappedDotted[3]);
+    const p4 = Number(ipv4MappedDotted[4]);
+    if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
+      return isPrivateIPv4(p1, p2);
     }
-    // Hex representation like 7f00:1 or a9fe:a9fe
-    const parts = mapped.split(':');
-    if (parts.length === 2) {
-      const high = parseInt(parts[0]!, 16);
-      const low = parseInt(parts[1]!, 16);
-      if (!Number.isNaN(high) && !Number.isNaN(low)) {
-        const p1 = (high >> 8) & 0xff;
-        const p2 = high & 0xff;
-        return isPrivateIPv4(p1, p2);
-      }
+  }
+
+  const ipv4MappedHex =
+    /^(?:0*:)*?(?:ffff:)?([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(host);
+  if (ipv4MappedHex) {
+    const high = parseInt(ipv4MappedHex[1]!, 16);
+    const low = parseInt(ipv4MappedHex[2]!, 16);
+    if (!Number.isNaN(high) && !Number.isNaN(low)) {
+      const p1 = (high >> 8) & 0xff;
+      const p2 = high & 0xff;
+      return isPrivateIPv4(p1, p2);
     }
   }
 
