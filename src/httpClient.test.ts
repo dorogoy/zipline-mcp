@@ -676,6 +676,13 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
 
+      // URL host canonicalization test cases
+      expect(isPrivateHost(new URL('http://[::127.0.0.1]/').hostname)).toBe(
+        true
+      );
+      expect(isPrivateHost(new URL('http://2130706433/').hostname)).toBe(true);
+      expect(isPrivateHost(new URL('http://0x7f000001/').hostname)).toBe(true);
+
       // Public IP addresses should return false
       expect(isPrivateHost('8.8.8.8')).toBe(false);
       expect(isPrivateHost('1.1.1.1')).toBe(false);
