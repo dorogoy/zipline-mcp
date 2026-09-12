@@ -649,6 +649,48 @@ describe('Header Validation', () => {
       expect(headers['x-zipline-original-name']).toBeUndefined();
     });
 
+    it('identifies private IPv4, IPv4-mapped, and IPv4-compatible IPv6 addresses in isPrivateHost', async () => {
+      const { isPrivateHost } = await import('./httpClient.js');
+
+      // Loopback and private IPv4
+      expect(isPrivateHost('127.0.0.1')).toBe(true);
+      expect(isPrivateHost('10.0.0.1')).toBe(true);
+      expect(isPrivateHost('192.168.1.1')).toBe(true);
+      expect(isPrivateHost('172.16.0.1')).toBe(true);
+      expect(isPrivateHost('169.254.169.254')).toBe(true);
+
+      // IPv4-mapped IPv6
+      expect(isPrivateHost('::ffff:127.0.0.1')).toBe(true);
+      expect(isPrivateHost('::ffff:7f00:1')).toBe(true);
+      expect(isPrivateHost('::ffff:10.0.0.1')).toBe(true);
+      expect(isPrivateHost('::ffff:a00:1')).toBe(true);
+      expect(isPrivateHost('::ffff:169.254.169.254')).toBe(true);
+      expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
+
+      // IPv4-compatible IPv6
+      expect(isPrivateHost('::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('::7f00:1')).toBe(true);
+      expect(isPrivateHost('0:0:0:0:0:0:127.0.0.1')).toBe(true);
+      expect(isPrivateHost('::10.0.0.1')).toBe(true);
+      expect(isPrivateHost('::a00:1')).toBe(true);
+      expect(isPrivateHost('::169.254.169.254')).toBe(true);
+      expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
+
+      // URL host canonicalization test cases
+      expect(isPrivateHost(new URL('http://[::127.0.0.1]/').hostname)).toBe(
+        true
+      );
+      expect(isPrivateHost(new URL('http://2130706433/').hostname)).toBe(true);
+      expect(isPrivateHost(new URL('http://0x7f000001/').hostname)).toBe(true);
+
+      // Public IP addresses should return false
+      expect(isPrivateHost('8.8.8.8')).toBe(false);
+      expect(isPrivateHost('1.1.1.1')).toBe(false);
+      expect(isPrivateHost('93.184.216.34')).toBe(false);
+      expect(isPrivateHost('::ffff:93.184.216.34')).toBe(false);
+      expect(isPrivateHost('::5db8:d822')).toBe(false);
+    });
+
     it('includes x-zipline-original-name header when provided', async () => {
       fsMock.readFile.mockResolvedValue(sampleContent);
 
