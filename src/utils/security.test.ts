@@ -432,6 +432,19 @@ describe('Security Utils', () => {
       const result = maskSensitiveData(undefined as unknown as string);
       expect(result).toBe('');
     });
+
+    it('should mask raw JWT tokens', () => {
+      const jwt =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+      const result = maskSensitiveData(`Authorization: Bearer ${jwt}`);
+      expect(result).toBe('Authorization: Bearer [REDACTED]');
+    });
+
+    it('should mask every JWT in a message', () => {
+      const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dBjftJeZ4CVP';
+      const result = maskSensitiveData(`first=${jwt} second=${jwt}`);
+      expect(result).toBe('first=[REDACTED] second=[REDACTED]');
+    });
   });
 
   describe('secureLog', () => {
@@ -500,6 +513,15 @@ describe('Security Utils', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Nested:', {
         token: '[REDACTED]',
         nested: { value: '[REDACTED]' },
+      });
+    });
+
+    it('should mask raw JWT tokens inside object arguments', () => {
+      const jwt =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+      secureLog('Headers:', { authorization: `Bearer ${jwt}` });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Headers:', {
+        authorization: 'Bearer [REDACTED]',
       });
     });
 
@@ -653,6 +675,43 @@ describe('Security Utils', () => {
         );
         expect(result.detected).toBe(true);
         expect(result.secretType).toBe('token');
+      });
+
+      it('should detect raw JWT tokens with no key name', () => {
+        const jwt =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+        const result = detectSecretPatterns(`Bearer ${jwt}`, 'headers.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('token');
+      });
+
+      it('should detect unsigned JWT tokens (alg: none, empty signature)', () => {
+        const result = detectSecretPatterns(
+          'eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.',
+          'headers.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('token');
+      });
+
+      it('should report raw JWTs as the JWT pattern, not TOKEN=', () => {
+        const jwt =
+          'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+        const result = detectSecretPatterns(`Bearer ${jwt}`, 'headers.txt');
+        expect(result.pattern).toBe('JWT');
+      });
+
+      it('should report keyed tokens as TOKEN=', () => {
+        const result = detectSecretPatterns('TOKEN=bearer_xyz', 'config.txt');
+        expect(result.pattern).toBe('TOKEN=');
+      });
+
+      it('should ignore base64 fragments that are not three-segment JWTs', () => {
+        const result = detectSecretPatterns(
+          'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0',
+          'notes.txt'
+        );
+        expect(result.detected).toBe(false);
       });
     });
 
