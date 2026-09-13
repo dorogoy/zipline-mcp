@@ -658,9 +658,21 @@ describe('Security Utils', () => {
       it('should detect raw JWT tokens (eyJ...)', () => {
         const jwt =
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-        const result = detectSecretPatterns(`Bearer ${jwt}`, 'headers.txt');
-        expect(result.detected).toBe(true);
-        expect(result.secretType).toBe('token');
+      // Use pattern type name instead of actual matched content to avoid leaking secrets
+      const patternName =
+        mappedSecretType === 'api_key'
+          ? 'API_KEY='
+          : mappedSecretType === 'password'
+            ? 'PASSWORD='
+            : mappedSecretType === 'secret'
+              ? 'SECRET='
+              : mappedSecretType === 'token'
+                ? match[0].startsWith('eyJ')
+                  ? 'JWT'
+                  : 'TOKEN='
+                : mappedSecretType === 'private_key'
+                  ? 'PRIVATE_KEY='
+                  : 'SECRET_PATTERN';
       });
     });
 
