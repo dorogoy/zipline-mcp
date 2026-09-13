@@ -197,7 +197,21 @@ const SECRET_PATTERNS = {
   secret:
     /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   token:
-    /(?:token|auth[_-]?token|refresh_token|access_token)\s*[:=]\s*['"]?[a-z0-9_-]{3,}['"]?|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/i,
+  let masked = input;
+
+  // Mask ZIPLINE_TOKEN from environment
+  const token = process.env.ZIPLINE_TOKEN ?? '';
+  if (token) {
+    masked = maskToken(masked, token);
+  }
+
+  // Mask any pattern recognized by the secret scanner (covers raw JWTs)
+  for (const pattern of Object.values(SECRET_PATTERNS)) {
+    masked = masked.replace(new RegExp(pattern.source, 'gi'), '[REDACTED]');
+  }
+
+  return masked;
+}
   privateKey:
     /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|private[_-]?key\s*[:=]/i,
 } as const;
