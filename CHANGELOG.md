@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.15](https://github.com/dorogoy/zipline-mcp/compare/v1.12.14...v1.12.15) (2026-09-13)
+
+
+### Bug Fixes
+
+* **security:** detect and redact raw JWT bearer tokens ([f1e9973](https://github.com/dorogoy/zipline-mcp/commit/f1e99732020465088759d92067da89c976f1c1d6))
+
 ## [1.12.14](https://github.com/dorogoy/zipline-mcp/compare/v1.12.13...v1.12.14) (2026-09-12)
 
 
