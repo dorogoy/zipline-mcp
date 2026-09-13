@@ -131,6 +131,19 @@ export function maskToken(input: string, token: string): string {
   return input.replaceAll(token, '[REDACTED]');
 }
 
+/**
+ * Raw JWT bearer tokens (RFC 7519): three dot-separated base64url segments.
+ *
+ * The leading `ey` is the base64url encoding of a JSON segment opening with `{`.
+ * The signature segment is allowed to be empty so unsigned (`alg: none`) tokens
+ * are matched as well.
+ *
+ * Shared by the upload-time scanner (SECRET_PATTERNS.token) and the log-time
+ * redactor (maskSensitiveData) so the two cannot drift apart. Not global, so
+ * `.test()` stays stateless.
+ */
+const JWT_TOKEN_PATTERN = /ey[0-9A-Za-z_-]+\.[0-9A-Za-z_-]+\.[0-9A-Za-z_-]*/;
+
 export function maskSensitiveData(input: string): string {
   if (!input || typeof input !== 'string') {
     return '';
@@ -144,13 +157,22 @@ export function maskSensitiveData(input: string): string {
     masked = maskToken(masked, token);
   }
 
+  // Mask raw JWTs, which carry credentials with no key name to match against
+  masked = masked.replace(
+    new RegExp(JWT_TOKEN_PATTERN.source, 'gi'),
+    '[REDACTED]'
+  );
+
   // Future: Add additional sensitive patterns here
   // Example patterns that could be added:
   // - API keys (generic pattern: /[A-Za-z0-9]{32,}/)
-  // - JWT tokens (pattern: /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)
   // - Private keys (pattern: /-----BEGIN.*PRIVATE KEY-----/)
   // - Email addresses in certain contexts
   // - Credit card numbers
+  //
+  // This function also runs over tool response bodies (see index.ts), so keep
+  // additions narrow: masking a whole secret family here rewrites legitimate
+  // output rather than protecting a credential.
   //
   // Implementation approach for future patterns:
   // const sensitivePatterns = [
@@ -196,8 +218,10 @@ const SECRET_PATTERNS = {
   password: /(?:password|passwd|pass|pwd)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   secret:
     /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
-  token:
-    /(?:token|auth[_-]?token|refresh_token|access_token)\s*[:=]\s*['"]?[a-z0-9_-]{3,}['"]?/i,
+  token: new RegExp(
+    `(?:token|auth[_-]?token|refresh_token|access_token)\\s*[:=]\\s*['"]?[a-z0-9_-]{3,}['"]?|${JWT_TOKEN_PATTERN.source}`,
+    'i'
+  ),
   privateKey:
     /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|private[_-]?key\s*[:=]/i,
 } as const;
@@ -260,7 +284,9 @@ function scanForSecretPatterns(content: string): SecretDetectionResult {
             : mappedSecretType === 'secret'
               ? 'SECRET='
               : mappedSecretType === 'token'
-                ? 'TOKEN='
+                ? JWT_TOKEN_PATTERN.test(match[0])
+                  ? 'JWT'
+                  : 'TOKEN='
                 : mappedSecretType === 'private_key'
                   ? 'PRIVATE_KEY='
                   : 'SECRET_PATTERN';
