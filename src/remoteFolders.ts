@@ -299,14 +299,17 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
     // Validate the request body before sending
     AddFileToFolderRequestSchema.parse(requestBody);
 
-    const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
-      method: 'PUT',
-      headers: {
-        authorization: token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,
+      {
+        method: 'PUT',
+        headers: {
+          authorization: token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       throw mapHttpStatusToMcpError(response.status, response.statusText);
@@ -350,14 +353,17 @@ export async function editFolder(options: EditFolderOptions): Promise<Folder> {
     // Validate the request body before sending
     EditFolderPropertiesRequestSchema.parse(requestBody);
 
-    const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
-      method: 'PATCH',
-      headers: {
-        authorization: token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          authorization: token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       throw mapHttpStatusToMcpError(response.status, response.statusText);
@@ -438,12 +444,15 @@ export async function getFolder(id: string): Promise<FullFolder> {
     throw new Error('ZIPLINE_ENDPOINT and ZIPLINE_TOKEN must be set');
   }
 
-  const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
-    headers: {
-      authorization: token,
-      'Content-Type': 'application/json',
-    },
-  });
+  const response = await fetch(
+    `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,
+    {
+      headers: {
+        authorization: token,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   if (!response.ok) {
     throw mapHttpStatusToMcpError(response.status, response.statusText);
@@ -485,14 +494,17 @@ export async function deleteFolder(id: string): Promise<FullFolder> {
     throw new Error('ZIPLINE_TOKEN environment variable is not set');
   }
 
-  const response = await fetch(`${endpoint}/api/user/folders/${id}`, {
-    method: 'DELETE',
-    headers: {
-      authorization: token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ delete: 'folder' }),
-  });
+  const response = await fetch(
+    `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        authorization: token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ delete: 'folder' }),
+    }
+  );
 
   if (!response.ok) {
     throw mapHttpStatusToMcpError(response.status, response.statusText);

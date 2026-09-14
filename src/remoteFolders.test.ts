@@ -851,6 +851,72 @@ describe('editFolder', () => {
     vi.resetAllMocks();
   });
 
+  describe('URL encoding of folder IDs', () => {
+    it('should encode special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
+      const specialId = 'folder/with/slashes?query=1';
+      const encodedId = encodeURIComponent(specialId);
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({
+          id: specialId,
+          name: 'Special Folder',
+          public: false,
+          createdAt: '2023-01-01T00:00:00Z',
+          updatedAt: '2023-01-01T00:00:00Z',
+        }),
+      } as unknown as Response;
+
+      mockFetch.mockResolvedValue(mockResponse);
+
+      // Test editFolder PATCH
+      await editFolder({
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: specialId,
+        name: 'Updated Folder',
+      });
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${encodedId}`,
+        expect.objectContaining({ method: 'PATCH' })
+      );
+
+      // Test editFolder PUT
+      await editFolder({
+        endpoint: mockEndpoint,
+        token: mockToken,
+        id: specialId,
+        fileId: 'file123',
+      });
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${encodedId}`,
+        expect.objectContaining({ method: 'PUT' })
+      );
+
+      // Test getFolder
+      vi.stubEnv('ZIPLINE_ENDPOINT', mockEndpoint);
+      vi.stubEnv('ZIPLINE_TOKEN', mockToken);
+      await getFolder(specialId);
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${encodedId}`,
+        expect.objectContaining({
+          headers: {
+            authorization: mockToken,
+            'Content-Type': 'application/json',
+          },
+        })
+      );
+
+      // Test deleteFolder
+      await deleteFolder(specialId);
+      expect(fetch).toHaveBeenCalledWith(
+        `${mockEndpoint}/api/user/folders/${encodedId}`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
   describe('PATCH - Update folder properties', () => {
     it('should update folder name', async () => {
       // Arrange
