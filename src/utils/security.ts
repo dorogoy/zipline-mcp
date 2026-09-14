@@ -223,7 +223,7 @@ const SECRET_PATTERNS = {
     'i'
   ),
   privateKey:
-    /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|private[_-]?key\s*[:=]/i,
+    /-----BEGIN (?:[A-Z0-9_-]+\s+)*PRIVATE KEY(?: BLOCK)?-----|private[_-]?key\s*[:=]/i,
 } as const;
 
 function isEnvFile(filename: string): boolean {

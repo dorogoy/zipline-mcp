@@ -725,6 +725,70 @@ describe('Security Utils', () => {
         expect(result.secretType).toBe('private_key');
       });
 
+      it('should detect -----BEGIN RSA PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN RSA PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC=',
+          'key.pem'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect -----BEGIN EC PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIG...',
+          'ec.pem'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect -----BEGIN OPENSSH PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAABG...',
+          'id_ed25519'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect -----BEGIN DSA PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN DSA PRIVATE KEY-----\nMIIBuwIBAAKCAQEA...',
+          'id_dsa'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect -----BEGIN ENCRYPTED PRIVATE KEY-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIIFDjBABgkqhkiG9w0BBQ0w...',
+          'key.enc'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should detect -----BEGIN PGP PRIVATE KEY BLOCK-----', () => {
+        const result = detectSecretPatterns(
+          '-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: GnuPG v2...',
+          'gpg.key'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
+      });
+
+      it('should not detect public keys or certificates as private keys', () => {
+        for (const content of [
+          '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...',
+          '-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2...',
+          '-----BEGIN CERTIFICATE-----\nMIIB...',
+        ]) {
+          expect(detectSecretPatterns(content, 'key.pem').detected).toBe(false);
+        }
+      });
+
       it('should detect PRIVATE_KEY= pattern', () => {
         const result = detectSecretPatterns(
           'PRIVATE_KEY=some_key_value',
