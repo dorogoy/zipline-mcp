@@ -1146,9 +1146,8 @@ describe('tmp_file_manager tool', () => {
       it('should identify sandboxes older than 24 hours for cleanup', async () => {
         process.env.ZIPLINE_TOKEN = 'test-token';
 
-        const { getUserSandbox, cleanupOldSandboxes } = await import(
-          './index.js'
-        );
+        const { getUserSandbox, cleanupOldSandboxes } =
+          await import('./index.js');
         const tmpDir = getUserSandbox().replace(/\/users\/[^/]+$/, '');
 
         // Mock file system operations
@@ -1225,9 +1224,8 @@ describe('tmp_file_manager tool', () => {
         it('should acquire a lock for a user sandbox', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { getUserSandbox, acquireSandboxLock } = await import(
-            './index.js'
-          );
+          const { getUserSandbox, acquireSandboxLock } =
+            await import('./index.js');
           const userSandbox = getUserSandbox();
 
           // Mock file system operations
@@ -1267,9 +1265,8 @@ describe('tmp_file_manager tool', () => {
         it('should release a lock for a user sandbox', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { getUserSandbox, releaseSandboxLock } = await import(
-            './index.js'
-          );
+          const { getUserSandbox, releaseSandboxLock } =
+            await import('./index.js');
           const userSandbox = getUserSandbox();
 
           // Mock file system operations
@@ -1302,9 +1299,8 @@ describe('tmp_file_manager tool', () => {
         it('should check if a sandbox is locked', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { getUserSandbox, isSandboxLocked } = await import(
-            './index.js'
-          );
+          const { getUserSandbox, isSandboxLocked } =
+            await import('./index.js');
           const userSandbox = getUserSandbox();
 
           // Mock file system operations - file exists and contains valid lock data
@@ -1342,9 +1338,8 @@ describe('tmp_file_manager tool', () => {
         it('should automatically release lock after timeout', async () => {
           process.env.ZIPLINE_TOKEN = 'test-token';
 
-          const { acquireSandboxLock, isSandboxLocked } = await import(
-            './index.js'
-          );
+          const { acquireSandboxLock, isSandboxLocked } =
+            await import('./index.js');
 
           // Mock file system operations
           fsMock.mkdir.mockResolvedValue(undefined);
@@ -1379,9 +1374,8 @@ describe('tmp_file_manager tool', () => {
           it('should integrate locking with file operations', async () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
-            const { acquireSandboxLock, releaseSandboxLock } = await import(
-              './index.js'
-            );
+            const { acquireSandboxLock, releaseSandboxLock } =
+              await import('./index.js');
 
             // Mock file system operations
             fsMock.mkdir.mockResolvedValue(undefined);
@@ -1444,9 +1438,8 @@ describe('tmp_file_manager tool', () => {
           it('should prevent concurrent access to the same sandbox', async () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
-            const { acquireSandboxLock, releaseSandboxLock } = await import(
-              './index.js'
-            );
+            const { acquireSandboxLock, releaseSandboxLock } =
+              await import('./index.js');
 
             // Mock file system operations
             fsMock.mkdir.mockResolvedValue(undefined);
@@ -1592,9 +1585,8 @@ describe('tmp_file_manager tool', () => {
           it('should handle lock expiration during file operations', async () => {
             process.env.ZIPLINE_TOKEN = 'test-token';
 
-            const { acquireSandboxLock, isSandboxLocked } = await import(
-              './index.js'
-            );
+            const { acquireSandboxLock, isSandboxLocked } =
+              await import('./index.js');
 
             // Mock file system operations
             fsMock.mkdir.mockResolvedValue(undefined);
@@ -2575,9 +2567,8 @@ describe('remote_folder_manager tool - INFO command', () => {
   it('should handle non-existent folder ID', async () => {
     const { getFolder } = await import('./remoteFolders.js');
     const getFolderSpy = vi.mocked(getFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     getFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -2678,9 +2669,8 @@ describe('remote_folder_manager tool - EDIT command', () => {
   it('should handle non-existent folder ID', async () => {
     const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     editFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -2784,9 +2774,8 @@ describe('remote_folder_manager tool - EDIT command', () => {
   it('should handle duplicate folder name conflict', async () => {
     const { editFolder } = await import('./remoteFolders.js');
     const editFolderSpy = vi.mocked(editFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     editFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Folder name already exists',
@@ -2961,9 +2950,8 @@ describe('remote_folder_manager tool - DELETE command', () => {
   it('should handle non-existent folder ID', async () => {
     const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError('Folder not found', McpErrorCode.RESOURCE_NOT_FOUND, 404)
     );
@@ -3003,9 +2991,8 @@ describe('remote_folder_manager tool - DELETE command', () => {
   it('should handle folder containing files (403 Forbidden)', async () => {
     const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Folder contains files and cannot be deleted',
@@ -3042,9 +3029,8 @@ describe('remote_folder_manager tool - DELETE command', () => {
   it('should handle rate limit error (429)', async () => {
     const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Rate limit exceeded',
@@ -3066,9 +3052,8 @@ describe('remote_folder_manager tool - DELETE command', () => {
   it('should handle internal server error (500)', async () => {
     const { deleteFolder } = await import('./remoteFolders.js');
     const deleteFolderSpy = vi.mocked(deleteFolder);
-    const { ZiplineError, McpErrorCode } = await import(
-      './utils/errorMapper.js'
-    );
+    const { ZiplineError, McpErrorCode } =
+      await import('./utils/errorMapper.js');
     deleteFolderSpy.mockRejectedValue(
       new ZiplineError(
         'Internal server error',
