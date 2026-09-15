@@ -3,12 +3,7 @@ import path from 'path';
 export interface SecretDetectionResult {
   detected: boolean;
   secretType?:
-    | 'env_file'
-    | 'api_key'
-    | 'password'
-    | 'secret'
-    | 'token'
-    | 'private_key';
+    'env_file' | 'api_key' | 'password' | 'secret' | 'token' | 'private_key';
   pattern?: string;
   message?: string;
 }

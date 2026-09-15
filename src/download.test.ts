@@ -117,9 +117,8 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects private and loopback URLs (SSRF protection)', async () => {
-    const { downloadExternalUrl, isPrivateHost } = await import(
-      './httpClient.js'
-    );
+    const { downloadExternalUrl, isPrivateHost } =
+      await import('./httpClient.js');
 
     expect(isPrivateHost('localhost')).toBe(true);
     expect(isPrivateHost('localhost.')).toBe(true);
