@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.16](https://github.com/dorogoy/zipline-mcp/compare/v1.12.15...v1.12.16) (2026-09-15)
+
+
+### Bug Fixes
+
+* **deps:** bump @modelcontextprotocol/sdk from 1.26.0 to 1.30.0 ([#188](https://github.com/dorogoy/zipline-mcp/issues/188)) ([2d08f47](https://github.com/dorogoy/zipline-mcp/commit/2d08f47df550fb9ccbdd0bb738c59ec585228f29))
+* encode folder ID in remote folder API requests ([7849526](https://github.com/dorogoy/zipline-mcp/commit/78495269040fdb861cc19a1508445d18731e589f))
+* fix private key secret detection gap for OpenSSH, DSA, and PGP keys ([#186](https://github.com/dorogoy/zipline-mcp/issues/186)) ([f87f382](https://github.com/dorogoy/zipline-mcp/commit/f87f382e3da5a713d2d5d87553387855eb9ee450))
+
 ## [1.12.15](https://github.com/dorogoy/zipline-mcp/compare/v1.12.14...v1.12.15) (2026-09-13)
 
 
