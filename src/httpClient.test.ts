@@ -677,7 +677,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
 
-      // IPv6 Link-Local (fe80::/10) and ULA (fc00::/7)
+      // IPv6 Link-Local (fe80::/10), ULA (fc00::/7), and Multicast (ff00::/8)
       expect(isPrivateHost('fe90::1')).toBe(true);
       expect(isPrivateHost('fd12:3456::1')).toBe(true);
       expect(isPrivateHost('fe80::1')).toBe(true);
@@ -685,6 +685,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('fc00::1')).toBe(true);
       expect(isPrivateHost('fdff::1')).toBe(true);
       expect(isPrivateHost('FE90::1')).toBe(true);
+      expect(isPrivateHost('ff02::1')).toBe(true);
+      expect(isPrivateHost('ff05::2')).toBe(true);
+
+      // Multicast IPv4 (224.0.0.0/4) and Reserved / Broadcast IPv4 (240.0.0.0/4)
+      expect(isPrivateHost('224.0.0.1')).toBe(true);
+      expect(isPrivateHost('239.255.255.250')).toBe(true);
+      expect(isPrivateHost('255.255.255.255')).toBe(true);
+
       // Just outside the ranges — must stay public
       expect(isPrivateHost('100.63.255.255')).toBe(false);
       expect(isPrivateHost('100.128.0.0')).toBe(false);
