@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.17](https://github.com/dorogoy/zipline-mcp/compare/v1.12.16...v1.12.17) (2026-09-16)
+
+
+### Bug Fixes
+
+* SSRF validation bypasses for IPv4 CGNAT and IPv6 Link-Local/ULA ranges ([#191](https://github.com/dorogoy/zipline-mcp/issues/191)) ([3481b3d](https://github.com/dorogoy/zipline-mcp/commit/3481b3d7bdec51db757d5d1ff662dab9d3708cd8))
+
 ## [1.12.16](https://github.com/dorogoy/zipline-mcp/compare/v1.12.15...v1.12.16) (2026-09-15)
 
 
