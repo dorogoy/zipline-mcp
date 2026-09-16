@@ -500,6 +500,7 @@ export function validateFolder(folder: string): void {
 
 function isPrivateIPv4(p1: number, p2: number): boolean {
   if (p1 === 0 || p1 === 127 || p1 === 10) return true; // 0.0.0.0/8, 127.0.0.0/8, 10.0.0.0/8
+  if (p1 === 100 && p2 >= 64 && p2 <= 127) return true; // 100.64.0.0/10 (CGNAT / Shared Address Space)
   if (p1 === 169 && p2 === 254) return true; // 169.254.0.0/16 (link-local / cloud metadata)
   if (p1 === 172 && p2 >= 16 && p2 <= 31) return true; // 172.16.0.0/12
   if (p1 === 192 && p2 === 168) return true; // 192.168.0.0/16
@@ -508,7 +509,7 @@ function isPrivateIPv4(p1: number, p2: number): boolean {
 
 /**
  * Security check for SSRF prevention.
- * Returns true if host is loopback, local domain alias, RFC 1918 private IP, link-local, IPv4-mapped IPv6, or cloud metadata IP.
+ * Returns true if host is loopback, local domain alias, RFC 1918 private IP, RFC 6598 CGNAT IP, link-local, Unique Local Address (ULA), IPv4-mapped IPv6, or cloud metadata IP.
  */
 export function isPrivateHost(hostname: string): boolean {
   if (!hostname) return false;
@@ -570,13 +571,12 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // General IPv6 loopback / link-local / ULA check
+  // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) check
   if (
     host === '::1' ||
     host === '::' ||
-    host.startsWith('fe80:') ||
-    host.startsWith('fc00:') ||
-    host.startsWith('fd00:')
+    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    /^f[cd][0-9a-f]{2}:/i.test(host)
   ) {
     return true;
   }

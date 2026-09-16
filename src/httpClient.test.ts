@@ -655,6 +655,7 @@ describe('Header Validation', () => {
       // Loopback and private IPv4
       expect(isPrivateHost('127.0.0.1')).toBe(true);
       expect(isPrivateHost('10.0.0.1')).toBe(true);
+      expect(isPrivateHost('100.64.1.1')).toBe(true);
       expect(isPrivateHost('192.168.1.1')).toBe(true);
       expect(isPrivateHost('172.16.0.1')).toBe(true);
       expect(isPrivateHost('169.254.169.254')).toBe(true);
@@ -675,6 +676,10 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::a00:1')).toBe(true);
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
+
+      // IPv6 Link-Local (fe80::/10) and ULA (fc00::/7)
+      expect(isPrivateHost('fe90::1')).toBe(true);
+      expect(isPrivateHost('fd12:3456::1')).toBe(true);
 
       // URL host canonicalization test cases
       expect(isPrivateHost(new URL('http://[::127.0.0.1]/').hostname)).toBe(
