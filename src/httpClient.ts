@@ -518,6 +518,18 @@ export function isPrivateHost(hostname: string): boolean {
     .toLowerCase()
     .trim()
     .replace(/^\[|\]$/g, '');
+
+  // Security: normalize alternative IP formats (e.g., hex 0x7f000001, octal 017700000001,
+  // integer 2130706433, shorthand 127.1) via URL parser normalization before inspection.
+  try {
+    const dummyUrl = new URL(
+      `http://${host.startsWith('[') ? host : host.includes(':') ? `[${host}]` : host}`
+    );
+    host = dummyUrl.hostname.replace(/^\[|\]$/g, '');
+  } catch {
+    // Fall back to raw host if URL normalization fails
+  }
+
   // Strip trailing dots (e.g. "localhost." -> "localhost")
   host = host.replace(/\.+$/, '');
 
