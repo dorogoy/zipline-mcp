@@ -510,7 +510,7 @@ function isPrivateIPv4(p1: number, p2: number): boolean {
 
 /**
  * Security check for SSRF prevention.
- * Returns true if host is loopback, local domain alias, RFC 1918 private IP, RFC 6598 CGNAT IP, link-local, Unique Local Address (ULA), multicast, or cloud metadata IP.
+ * Returns true if host is loopback, local domain alias, RFC 1918 private IP, RFC 6598 CGNAT IP, link-local, Unique Local Address (ULA), IPv4-mapped IPv6, multicast, or cloud metadata IP.
  */
 export function isPrivateHost(hostname: string): boolean {
   if (!hostname) return false;
