@@ -504,12 +504,13 @@ function isPrivateIPv4(p1: number, p2: number): boolean {
   if (p1 === 169 && p2 === 254) return true; // 169.254.0.0/16 (link-local / cloud metadata)
   if (p1 === 172 && p2 >= 16 && p2 <= 31) return true; // 172.16.0.0/12
   if (p1 === 192 && p2 === 168) return true; // 192.168.0.0/16
+  if (p1 >= 224) return true; // 224.0.0.0/4 (multicast) and 240.0.0.0/4 (reserved/broadcast)
   return false;
 }
 
 /**
  * Security check for SSRF prevention.
- * Returns true if host is loopback, local domain alias, RFC 1918 private IP, RFC 6598 CGNAT IP, link-local, Unique Local Address (ULA), IPv4-mapped IPv6, or cloud metadata IP.
+ * Returns true if host is loopback, local domain alias, RFC 1918 private IP, RFC 6598 CGNAT IP, link-local, Unique Local Address (ULA), IPv4-mapped IPv6, multicast, or cloud metadata IP.
  */
 export function isPrivateHost(hostname: string): boolean {
   if (!hostname) return false;
@@ -571,12 +572,13 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) check
+  // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) / Multicast (ff00::/8) check
   if (
     host === '::1' ||
     host === '::' ||
     /^fe[89ab][0-9a-f]:/i.test(host) ||
-    /^f[cd][0-9a-f]{2}:/i.test(host)
+    /^f[cd][0-9a-f]{2}:/i.test(host) ||
+    /^ff[0-9a-f]{2}:/i.test(host)
   ) {
     return true;
   }
