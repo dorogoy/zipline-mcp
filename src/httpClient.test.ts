@@ -699,7 +699,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('223.255.255.255')).toBe(false);
       expect(isPrivateHost('fbff::1')).toBe(false);
 
-      // URL host canonicalization test cases
+      // URL host canonicalization & alternative IP format test cases
+      expect(isPrivateHost('2130706433')).toBe(true); // 2130706433 = 127.0.0.1
+      expect(isPrivateHost('0x7f000001')).toBe(true); // 127.0.0.1 in hex
+      expect(isPrivateHost('017700000001')).toBe(true); // 127.0.0.1 in octal
+      expect(isPrivateHost('127.1')).toBe(true); // 127.0.0.1 shorthand
+      expect(isPrivateHost('0x0a000001')).toBe(true); // 10.0.0.1 in hex
+      expect(isPrivateHost('012.0.0.1')).toBe(true); // 10.0.0.1 in octal
+      expect(isPrivateHost('167772161')).toBe(true); // 10.0.0.1 in decimal integer
       expect(isPrivateHost(new URL('http://[::127.0.0.1]/').hostname)).toBe(
         true
       );
