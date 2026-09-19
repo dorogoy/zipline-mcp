@@ -114,8 +114,13 @@ export function validateSandboxPath(
     return false;
   }
 
-  // Resolve to absolute path before validation (security: catches relative traversals)
-  const absolutePath = path.resolve(trimmedPath);
+  if (isAbsoluteWindowsPath(trimmedPath)) {
+    return false;
+  }
+
+  // Normalize separators and resolve relative to sandboxRoot
+  const normalizedSeparators = normalizePathSeparators(trimmedPath);
+  const absolutePath = path.resolve(sandboxRoot, normalizedSeparators);
   const normalizedPath = path.normalize(absolutePath);
   const normalizedRoot = path.normalize(sandboxRoot);
 
