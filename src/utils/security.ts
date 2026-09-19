@@ -55,6 +55,14 @@ function normalizePathSeparators(inputPath: string): string {
   return inputPath.replace(/\\/g, '/');
 }
 
+function isPathWithinRoot(targetPath: string, rootPath: string): boolean {
+  if (targetPath === rootPath) {
+    return true;
+  }
+  const safeRoot = rootPath.endsWith(path.sep) ? rootPath : rootPath + path.sep;
+  return targetPath.startsWith(safeRoot);
+}
+
 export function sanitizePath(inputPath: string, sandboxRoot: string): string {
   validatePathInput(inputPath);
   checkNullBytes(inputPath);
@@ -78,7 +86,7 @@ export function sanitizePath(inputPath: string, sandboxRoot: string): string {
   const normalizedPath = path.normalize(absolutePath);
 
   const normalizedSandboxRoot = path.normalize(sandboxRoot);
-  if (!normalizedPath.startsWith(normalizedSandboxRoot)) {
+  if (!isPathWithinRoot(normalizedPath, normalizedSandboxRoot)) {
     throw new SandboxPathError(`Path traversal attempt detected: ${inputPath}`);
   }
 
@@ -111,7 +119,7 @@ export function validateSandboxPath(
   const normalizedPath = path.normalize(absolutePath);
   const normalizedRoot = path.normalize(sandboxRoot);
 
-  return normalizedPath.startsWith(normalizedRoot);
+  return isPathWithinRoot(normalizedPath, normalizedRoot);
 }
 
 export function maskToken(input: string, token: string): string {

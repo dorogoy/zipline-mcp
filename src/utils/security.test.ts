@@ -135,6 +135,12 @@ describe('Security Utils', () => {
       ).toThrow(SandboxPathError);
     });
 
+    it('should throw SandboxPathError for path targeting adjacent directory with matching prefix', () => {
+      expect(() =>
+        sanitizePath('../test-hash-other/escape.txt', userSandbox)
+      ).toThrow(SandboxPathError);
+    });
+
     it('should handle paths with consecutive separators', () => {
       const result = sanitizePath('folder//file.txt', userSandbox);
       expect(result).toBeDefined();
@@ -172,6 +178,11 @@ describe('Security Utils', () => {
       const escapedPath = path.join(userSandbox, '..', 'escape.txt');
       const normalizedEscaped = path.normalize(escapedPath);
       expect(validateSandboxPath(normalizedEscaped, userSandbox)).toBe(false);
+    });
+
+    it('should return false for paths in adjacent directory with matching prefix', () => {
+      const adjacentPath = path.join(userSandbox + '-other', 'escape.txt');
+      expect(validateSandboxPath(adjacentPath, userSandbox)).toBe(false);
     });
 
     it('should return false for null paths', () => {
