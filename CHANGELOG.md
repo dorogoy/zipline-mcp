@@ -6,6 +6,13 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.20](https://github.com/dorogoy/zipline-mcp/compare/v1.12.19...v1.12.20) (2026-09-20)
+
+
+### Bug Fixes
+
+* resolve relative paths against sandbox root in validateSandboxPath ([#198](https://github.com/dorogoy/zipline-mcp/issues/198)) ([fec323c](https://github.com/dorogoy/zipline-mcp/commit/fec323c1686938deff42e9ac0287700157acf1af))
+
 ## [1.12.19](https://github.com/dorogoy/zipline-mcp/compare/v1.12.18...v1.12.19) (2026-09-19)
 
 
