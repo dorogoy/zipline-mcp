@@ -63,6 +63,24 @@ function isPathWithinRoot(targetPath: string, rootPath: string): boolean {
   return targetPath.startsWith(safeRoot);
 }
 
+function resolveWithinSandbox(
+  trimmedPath: string,
+  sandboxRoot: string
+): string | null {
+  if (isAbsoluteWindowsPath(trimmedPath)) {
+    return null;
+  }
+
+  const normalizedSeparators = normalizePathSeparators(trimmedPath);
+  const absolutePath = path.resolve(sandboxRoot, normalizedSeparators);
+  const normalizedPath = path.normalize(absolutePath);
+  const normalizedSandboxRoot = path.normalize(sandboxRoot);
+
+  return isPathWithinRoot(normalizedPath, normalizedSandboxRoot)
+    ? normalizedPath
+    : null;
+}
+
 export function sanitizePath(inputPath: string, sandboxRoot: string): string {
   validatePathInput(inputPath);
   checkNullBytes(inputPath);
@@ -80,17 +98,12 @@ export function sanitizePath(inputPath: string, sandboxRoot: string): string {
     throw new SandboxPathError(`Absolute paths are not allowed: ${inputPath}`);
   }
 
-  const normalizedSeparators = normalizePathSeparators(trimmedPath);
-
-  const absolutePath = path.resolve(sandboxRoot, normalizedSeparators);
-  const normalizedPath = path.normalize(absolutePath);
-
-  const normalizedSandboxRoot = path.normalize(sandboxRoot);
-  if (!isPathWithinRoot(normalizedPath, normalizedSandboxRoot)) {
+  const resolved = resolveWithinSandbox(trimmedPath, sandboxRoot);
+  if (!resolved) {
     throw new SandboxPathError(`Path traversal attempt detected: ${inputPath}`);
   }
 
-  return normalizedPath;
+  return resolved;
 }
 
 export function validateSandboxPath(
@@ -114,12 +127,7 @@ export function validateSandboxPath(
     return false;
   }
 
-  // Resolve to absolute path before validation (security: catches relative traversals)
-  const absolutePath = path.resolve(trimmedPath);
-  const normalizedPath = path.normalize(absolutePath);
-  const normalizedRoot = path.normalize(sandboxRoot);
-
-  return isPathWithinRoot(normalizedPath, normalizedRoot);
+  return resolveWithinSandbox(trimmedPath, sandboxRoot) !== null;
 }
 
 export function maskToken(input: string, token: string): string {

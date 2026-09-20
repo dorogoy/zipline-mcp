@@ -169,6 +169,24 @@ describe('Security Utils', () => {
       expect(validateSandboxPath(validPath, userSandbox)).toBe(true);
     });
 
+    it('should return true for relative paths within sandbox', () => {
+      expect(validateSandboxPath('file.txt', userSandbox)).toBe(true);
+      expect(validateSandboxPath('folder/file.txt', userSandbox)).toBe(true);
+      expect(validateSandboxPath('folder\\file.txt', userSandbox)).toBe(true);
+    });
+
+    it('should return false for absolute Windows paths', () => {
+      expect(validateSandboxPath('C:\\Windows\\System32', userSandbox)).toBe(
+        false
+      );
+      expect(validateSandboxPath('D:/Data/file.txt', userSandbox)).toBe(false);
+    });
+
+    it('should return false for relative path traversal attempts', () => {
+      expect(validateSandboxPath('../escape.txt', userSandbox)).toBe(false);
+      expect(validateSandboxPath('../../etc/passwd', userSandbox)).toBe(false);
+    });
+
     it('should return false for paths outside sandbox', () => {
       const outsidePath = '/etc/passwd';
       expect(validateSandboxPath(outsidePath, userSandbox)).toBe(false);
