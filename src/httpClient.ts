@@ -519,6 +519,9 @@ export function isPrivateHost(hostname: string): boolean {
     .trim()
     .replace(/^\[|\]$/g, '');
 
+  // Security: Strip IPv6 zone index / scope identifier (e.g. %eth0, %1, %25eth0)
+  host = host.split('%')[0]!;
+
   // Security: normalize alternative IP formats (e.g., hex 0x7f000001, octal 017700000001,
   // integer 2130706433, shorthand 127.1) via URL parser normalization before inspection.
   try {

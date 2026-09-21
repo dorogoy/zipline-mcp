@@ -677,6 +677,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
 
+      // IPv6 with zone index / scope identifier (% / %25)
+      expect(isPrivateHost('::1%eth0')).toBe(true);
+      expect(isPrivateHost('::1%1')).toBe(true);
+      expect(isPrivateHost('::1%25eth0')).toBe(true);
+      expect(isPrivateHost('::%eth0')).toBe(true);
+      expect(isPrivateHost('::ffff:127.0.0.1%eth0')).toBe(true);
+      expect(isPrivateHost('::127.0.0.1%eth0')).toBe(true);
+
       // IPv6 Link-Local (fe80::/10), ULA (fc00::/7), and Multicast (ff00::/8)
       expect(isPrivateHost('fe90::1')).toBe(true);
       expect(isPrivateHost('fd12:3456::1')).toBe(true);
