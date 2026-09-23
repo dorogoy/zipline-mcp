@@ -6,6 +6,17 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.21](https://github.com/dorogoy/zipline-mcp/compare/v1.12.20...v1.12.21) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** bump jose from 6.1.3 to 6.2.12 ([af0565f](https://github.com/dorogoy/zipline-mcp/commit/af0565fccd7154e57ea2382744b00dc0d8e64761))
+* **deps:** bump zod-to-json-schema from 3.25.1 to 3.25.2 ([4d6b3a7](https://github.com/dorogoy/zipline-mcp/commit/4d6b3a7109f47046045993e4e6defcb73f001eb0))
+* enforce folder name validation on folder edit ([#200](https://github.com/dorogoy/zipline-mcp/issues/200)) ([98496db](https://github.com/dorogoy/zipline-mcp/commit/98496dbd17f80fc8f3d772427d2e98897deaf922))
+* prevent SSRF bypass via IPv6 zone identifiers ([#203](https://github.com/dorogoy/zipline-mcp/issues/203)) ([dd6defd](https://github.com/dorogoy/zipline-mcp/commit/dd6defd4e1746831f8bbf8af5d539af5db339c14))
+* reject control characters in password header validation ([#204](https://github.com/dorogoy/zipline-mcp/issues/204)) ([bc7830f](https://github.com/dorogoy/zipline-mcp/commit/bc7830f9f8ff6dc8abfc250f53d9a21f213b6d71))
+
 ## [1.12.20](https://github.com/dorogoy/zipline-mcp/compare/v1.12.19...v1.12.20) (2026-09-20)
 
 
