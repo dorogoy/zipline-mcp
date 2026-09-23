@@ -9,3 +9,9 @@
 **Vulnerability:** Simple `startsWith(sandboxRoot)` checks in path validation allow sandbox traversal into adjacent directories sharing a path prefix (e.g. `/tmp/users/abc-other` passes `startsWith('/tmp/users/abc')`).
 **Learning:** `path.normalize()` and `path.resolve()` do not append trailing path separators, so `targetPath.startsWith(rootPath)` matches any path whose prefix string starts with `rootPath`, missing directory boundaries.
 **Prevention:** Always append `path.sep` to `rootPath` if missing or check `targetPath === rootPath` when using string prefix matching for path containment checks.
+
+## 2026-09-14 - Pre-Trim Control Character Check for HTTP Header Injection
+
+**Vulnerability:** Input validation functions that call `.trim()` on user input before checking for control characters (`\r`, `\n`) can miss trailing or leading newlines/CRLF characters stripped by `.trim()`.
+**Learning:** `String.prototype.trim()` removes leading and trailing ASCII whitespace (including `\r`, `\n`, `\t`), so regex validation on `trimmed` input misses newline injection at string boundaries.
+**Prevention:** Validate input against control character regexes (`/[\u0000-\u001F\u007F]/`) on the raw input string before calling `.trim()`.
