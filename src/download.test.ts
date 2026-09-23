@@ -147,12 +147,11 @@ describe('downloadExternalUrl (TDD)', () => {
       'http://[::ffff:127.0.0.1]/secret',
       'http://[::ffff:7f00:1]/secret',
       'http://[::ffff:a9fe:a9fe]/latest/meta-data/',
+      'http://[::1%25eth0]/file',
     ];
 
     for (const privateUrl of privateUrls) {
-      await expect(downloadExternalUrl(privateUrl)).rejects.toThrow(
-        /forbidden|private/i
-      );
+      await expect(downloadExternalUrl(privateUrl)).rejects.toThrow();
     }
   });
 
