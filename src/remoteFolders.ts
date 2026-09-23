@@ -144,16 +144,22 @@ export async function listFolders(
 }
 
 /**
+ * Shared folder name schema with strict character validation
+ * Prevents path traversal, HTML/script injection, and reserved filesystem characters
+ */
+export const FolderNameSchema = z
+  .string()
+  .min(1, 'Folder name is required')
+  .refine(
+    (name) => !/[<>:"|?*/\\]/.test(name),
+    'Folder name cannot contain invalid characters: < > : " | ? * / \\'
+  );
+
+/**
  * Request schema for creating a folder
  */
 export const CreateFolderRequestSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Folder name is required')
-    .refine(
-      (name) => !/[<>:"|?*/\\]/.test(name),
-      'Folder name cannot contain invalid characters: < > : " | ? * / \\'
-    ),
+  name: FolderNameSchema,
   isPublic: z.boolean().default(false),
   files: z.array(z.string()).optional(),
 });
@@ -241,7 +247,7 @@ export async function createFolder(
  * Request schema for editing a folder (PATCH)
  */
 export const EditFolderPropertiesRequestSchema = z.object({
-  name: z.string().min(1, 'Folder name is required').optional(),
+  name: FolderNameSchema.optional(),
   isPublic: z.boolean().optional(),
   allowUploads: z.boolean().optional(),
 });
