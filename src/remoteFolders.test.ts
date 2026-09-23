@@ -1191,6 +1191,32 @@ describe('editFolder', () => {
         'Folder name is required'
       );
     });
+
+    it('should throw a validation error when folder name contains invalid characters during edit', async () => {
+      const invalidNames = [
+        'folder/name',
+        'folder\\name',
+        'folder<name>',
+        'folder:name',
+        'folder|name',
+        'folder?name',
+        'folder*name',
+        'folder"name',
+      ];
+
+      for (const invalidName of invalidNames) {
+        const options: EditFolderOptions = {
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: mockFolderId,
+          name: invalidName,
+        };
+
+        await expect(editFolder(options)).rejects.toThrow(
+          'Folder name cannot contain invalid characters'
+        );
+      }
+    });
   });
 
   describe('PUT - Add file to folder', () => {

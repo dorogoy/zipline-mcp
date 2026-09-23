@@ -308,6 +308,23 @@ describe('Header Validation', () => {
       expect(() => validatePassword('   ')).toThrow();
     });
 
+    it('rejects control characters (HTTP header injection prevention)', async () => {
+      const { validatePassword } = await import('./httpClient.js');
+
+      expect(() => validatePassword('pass\r\nHeader: injected')).toThrow(
+        'password header cannot contain control characters'
+      );
+      expect(() => validatePassword('pass\n')).toThrow(
+        'password header cannot contain control characters'
+      );
+      expect(() => validatePassword('pass\0')).toThrow(
+        'password header cannot contain control characters'
+      );
+      expect(() => validatePassword('pass\x1f')).toThrow(
+        'password header cannot contain control characters'
+      );
+    });
+
     it('rejects excessively long strings', async () => {
       const { validatePassword } = await import('./httpClient.js');
 

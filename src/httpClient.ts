@@ -456,6 +456,12 @@ export function validatePassword(password: string): void {
     throw new Error('password header must be a non-empty string');
   }
 
+  // Check for control characters (including newlines, carriage returns, null bytes) to prevent HTTP header injection
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(password)) {
+    throw new Error('password header cannot contain control characters');
+  }
+
   const trimmed = password.trim();
   if (!trimmed) {
     throw new Error('password header cannot be empty or whitespace only');
@@ -606,17 +612,17 @@ export function validateOriginalName(originalName: string): void {
     throw new Error('originalName must be a non-empty string');
   }
 
-  const trimmed = originalName.trim();
-  if (!trimmed) {
-    throw new Error('originalName cannot be empty or whitespace only');
-  }
-
-  // Check for path separators or control characters (including null bytes)
+  // Check for path separators or control characters (including null bytes) on raw input
   // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001F\u007F\\/]/.test(trimmed)) {
+  if (/[\u0000-\u001F\u007F\\/]/.test(originalName)) {
     throw new Error(
       'originalName cannot contain path separators or control characters'
     );
+  }
+
+  const trimmed = originalName.trim();
+  if (!trimmed) {
+    throw new Error('originalName cannot be empty or whitespace only');
   }
 
   if (trimmed.length > 255) {

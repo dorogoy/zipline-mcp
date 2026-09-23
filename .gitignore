@@ -83,6 +83,7 @@ public
 # Temporary folders
 tmp/
 temp/
+pnpm-lock.yaml
 
 # Editor directories and files
 .vscode/
