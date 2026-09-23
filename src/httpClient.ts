@@ -456,6 +456,12 @@ export function validatePassword(password: string): void {
     throw new Error('password header must be a non-empty string');
   }
 
+  // Check for control characters (including newlines, carriage returns, null bytes) to prevent HTTP header injection
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(password)) {
+    throw new Error('password header cannot contain control characters');
+  }
+
   const trimmed = password.trim();
   if (!trimmed) {
     throw new Error('password header cannot be empty or whitespace only');
