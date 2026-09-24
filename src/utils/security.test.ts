@@ -564,6 +564,20 @@ describe('Security Utils', () => {
         '[OBJECT_MASKING_ERROR]'
       );
     });
+
+    it('should mask Error instance message and stack trace', () => {
+      const err = new Error('Failed with token test-token-for-security');
+      secureLog('Error logged:', err);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const [msg, loggedErr] = consoleErrorSpy.mock.calls[0] as [string, Error];
+      expect(msg).toBe('Error logged:');
+      expect(loggedErr).toBeInstanceOf(Error);
+      expect(loggedErr.message).toBe('Failed with token [REDACTED]');
+      if (loggedErr.stack) {
+        expect(loggedErr.stack).not.toContain('test-token-for-security');
+        expect(loggedErr.stack).toContain('[REDACTED]');
+      }
+    });
   });
 
   describe('detectSecretPatterns', () => {
