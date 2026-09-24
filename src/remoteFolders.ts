@@ -150,6 +150,16 @@ export async function listFolders(
 export const FolderNameSchema = z
   .string()
   .min(1, 'Folder name is required')
+  .max(255, 'Folder name exceeds maximum length of 255 characters')
+  .refine(
+    (name) => name.trim().length > 0,
+    'Folder name cannot be empty or whitespace only'
+  )
+  .refine(
+    // eslint-disable-next-line no-control-regex
+    (name) => !/[\u0000-\u001F\u007F]/.test(name),
+    'Folder name cannot contain control characters'
+  )
   .refine(
     (name) => !/[<>:"|?*/\\]/.test(name),
     'Folder name cannot contain invalid characters: < > : " | ? * / \\'

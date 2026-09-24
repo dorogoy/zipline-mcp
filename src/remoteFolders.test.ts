@@ -9,6 +9,7 @@ import {
   EditFolderOptions,
   EditFolderPropertiesRequestSchema,
   AddFileToFolderRequestSchema,
+  FolderNameSchema,
   getFolder,
   deleteFolder,
 } from './remoteFolders.js';
@@ -1360,6 +1361,40 @@ describe('editFolder', () => {
 
       // Act & Assert
       await expect(editFolder(options)).rejects.toThrow('File ID is required');
+    });
+  });
+
+  describe('FolderNameSchema security validation', () => {
+    it('should allow valid folder names', () => {
+      expect(FolderNameSchema.parse('My Folder')).toBe('My Folder');
+      expect(FolderNameSchema.parse('folder-123_test')).toBe('folder-123_test');
+    });
+
+    it('should reject whitespace-only folder names', () => {
+      expect(() => FolderNameSchema.parse('   ')).toThrow(
+        'Folder name cannot be empty or whitespace only'
+      );
+      expect(() => FolderNameSchema.parse('\t\n')).toThrow();
+    });
+
+    it('should reject folder names containing control characters', () => {
+      expect(() => FolderNameSchema.parse('Folder\0Name')).toThrow(
+        'Folder name cannot contain control characters'
+      );
+      expect(() => FolderNameSchema.parse('Folder\nName')).toThrow(
+        'Folder name cannot contain control characters'
+      );
+      expect(() => FolderNameSchema.parse('Folder\rName')).toThrow(
+        'Folder name cannot contain control characters'
+      );
+    });
+
+    it('should reject folder names exceeding 255 characters', () => {
+      const longName = 'a'.repeat(256);
+      expect(() => FolderNameSchema.parse(longName)).toThrow(
+        'Folder name exceeds maximum length of 255 characters'
+      );
+      expect(() => FolderNameSchema.parse('a'.repeat(255))).not.toThrow();
     });
   });
 
