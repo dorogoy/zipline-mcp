@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
+import { validateId } from './utils/security.js';
 
 /**
  * Interface representing a folder in Zipline
@@ -306,7 +307,9 @@ export interface EditFolderOptions {
 export async function editFolder(options: EditFolderOptions): Promise<Folder> {
   const { endpoint, token, id, name, isPublic, allowUploads, fileId } = options;
 
+  validateId(id, 'id');
   if (fileId !== undefined) {
+    validateId(fileId, 'fileId');
     // Add file to folder using PUT
     const requestBody: AddFileToFolderRequest = {
       id: fileId,
@@ -460,6 +463,8 @@ export async function getFolder(id: string): Promise<FullFolder> {
     throw new Error('ZIPLINE_ENDPOINT and ZIPLINE_TOKEN must be set');
   }
 
+  validateId(id, 'id');
+
   const response = await fetch(
     `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,
     {
@@ -509,6 +514,8 @@ export async function deleteFolder(id: string): Promise<FullFolder> {
   if (!token) {
     throw new Error('ZIPLINE_TOKEN environment variable is not set');
   }
+
+  validateId(id, 'id');
 
   const response = await fetch(
     `${endpoint}/api/user/folders/${encodeURIComponent(id)}`,

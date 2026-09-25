@@ -7,6 +7,7 @@ import {
   normalizeUrl,
 } from './userFiles.js';
 import { ZiplineError, McpErrorCode } from './utils/errorMapper.js';
+import { InvalidIdError } from './utils/security.js';
 
 // Mock the global fetch
 const mockFetch = vi.fn();
@@ -940,6 +941,16 @@ describe('getUserFile', () => {
     expect(result.views).toBe(25);
   });
 
+  it('should reject path traversal in file ID', async () => {
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '../admin',
+      })
+    ).rejects.toThrow(InvalidIdError);
+  });
+
   it('should handle null expiration and unlimited views', async () => {
     const mockFile = {
       id: 'file123',
@@ -1318,6 +1329,17 @@ describe('updateUserFile', () => {
     ).rejects.toThrow('Network error');
   });
 
+  it('should reject path traversal in file ID during update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '../../etc/passwd',
+        favorite: true,
+      })
+    ).rejects.toThrow(InvalidIdError);
+  });
+
   it('should update multiple properties atomically', async () => {
     const mockFile = {
       id: 'file123',
@@ -1489,6 +1511,16 @@ describe('deleteUserFile', () => {
         id: '',
       })
     ).rejects.toThrow('id is required');
+  });
+
+  it('should reject path traversal in file ID during delete', async () => {
+    await expect(
+      deleteUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '../file',
+      })
+    ).rejects.toThrow(InvalidIdError);
   });
 
   it('should validate response format', async () => {

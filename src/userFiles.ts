@@ -1,5 +1,6 @@
 // URL normalization utility to safely join URLs like Python's os.path.join
 import { mapHttpStatusToMcpError } from './utils/errorMapper.js';
+import { validateId } from './utils/security.js';
 
 function normalizeUrl(base: string, path: string): string {
   try {
@@ -196,9 +197,7 @@ export async function getUserFile(
   if (!token) {
     throw new Error('token is required');
   }
-  if (!id) {
-    throw new Error('id is required');
-  }
+  validateId(id, 'id');
 
   const url = `${endpoint}/api/user/files/${encodeURIComponent(id)}`;
 
@@ -267,9 +266,7 @@ export async function updateUserFile(
   if (!token) {
     throw new Error('token is required');
   }
-  if (!id) {
-    throw new Error('id is required');
-  }
+  validateId(id, 'id');
 
   // Filter out undefined fields
   const body = Object.fromEntries(
@@ -343,9 +340,7 @@ export async function deleteUserFile(
   if (!token) {
     throw new Error('token is required');
   }
-  if (!id) {
-    throw new Error('id is required');
-  }
+  validateId(id, 'id');
 
   const url = `${endpoint}/api/user/files/${encodeURIComponent(id)}`;
 

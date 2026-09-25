@@ -14,6 +14,7 @@ import {
   deleteFolder,
 } from './remoteFolders.js';
 import { McpErrorCode } from './utils/errorMapper.js';
+import { InvalidIdError } from './utils/security.js';
 
 // Mock fetch function
 const mockFetch = vi.fn();
@@ -854,7 +855,7 @@ describe('editFolder', () => {
 
   describe('URL encoding of folder IDs', () => {
     it('should encode special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
-      const specialId = 'folder/with/slashes?query=1';
+      const specialId = 'folder with spaces & special chars!';
       const encodedId = encodeURIComponent(specialId);
       const mockResponse = {
         ok: true,
@@ -1360,7 +1361,27 @@ describe('editFolder', () => {
       };
 
       // Act & Assert
-      await expect(editFolder(options)).rejects.toThrow('File ID is required');
+      await expect(editFolder(options)).rejects.toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on path traversal in folder ID or file ID during edit', async () => {
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: '../admin',
+          name: 'Name',
+        })
+      ).rejects.toThrow(InvalidIdError);
+
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: 'folder123',
+          fileId: '../../file',
+        })
+      ).rejects.toThrow(InvalidIdError);
     });
   });
 
@@ -1543,6 +1564,10 @@ describe('getFolder', () => {
       mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
       httpStatus: 401,
     });
+  });
+
+  it('should reject path traversal in folder ID for getFolder', async () => {
+    await expect(getFolder('../admin')).rejects.toThrow(InvalidIdError);
   });
 
   it('should throw ZiplineError with MCP error code on HTTP 429 Rate Limit', async () => {
@@ -1767,6 +1792,10 @@ describe('deleteFolder', () => {
     await expect(deleteFolder('folder123')).rejects.toThrow(
       'ZIPLINE_ENDPOINT environment variable is not set'
     );
+  });
+
+  it('should reject path traversal in folder ID for deleteFolder', async () => {
+    await expect(deleteFolder('../admin')).rejects.toThrow(InvalidIdError);
   });
 
   it('should throw an error if ZIPLINE_TOKEN is not set', async () => {
