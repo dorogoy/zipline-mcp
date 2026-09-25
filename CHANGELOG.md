@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.22](https://github.com/dorogoy/zipline-mcp/compare/v1.12.21...v1.12.22) (2026-09-25)
+
+
+### Bug Fixes
+
+* add strict input validation to folder name schema ([7bfd9d2](https://github.com/dorogoy/zipline-mcp/commit/7bfd9d2cd3bcd2962c08ac5392228e26aeeba517))
+* sanitize Error objects in secureLog and mask tool error outputs ([#208](https://github.com/dorogoy/zipline-mcp/issues/208)) ([dc63838](https://github.com/dorogoy/zipline-mcp/commit/dc63838cc802681668d31f1bdebedd1cfbb9a503))
+
 ## [1.12.21](https://github.com/dorogoy/zipline-mcp/compare/v1.12.20...v1.12.21) (2026-09-23)
 
 
