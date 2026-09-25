@@ -573,10 +573,25 @@ describe('Security Utils', () => {
       expect(msg).toBe('Error logged:');
       expect(loggedErr).toBeInstanceOf(Error);
       expect(loggedErr.message).toBe('Failed with token [REDACTED]');
-      if (loggedErr.stack) {
-        expect(loggedErr.stack).not.toContain('test-token-for-security');
-        expect(loggedErr.stack).toContain('[REDACTED]');
-      }
+      expect(loggedErr.stack).toBeDefined();
+      expect(loggedErr.stack).not.toContain('test-token-for-security');
+      expect(loggedErr.stack).toContain('[REDACTED]');
+    });
+
+    it('does not log raw enumerable fields from Error subclasses', () => {
+      const err = new Error('safe message');
+      (err as Error & { responseBody?: string }).responseBody =
+        'upstream test-token-for-security';
+      err.cause = new Error('nested test-token-for-security');
+      secureLog('Error logged:', err);
+      const logged = consoleErrorSpy.mock.calls[0][1] as Error & {
+        responseBody?: string;
+        cause?: unknown;
+      };
+      const dumped = JSON.stringify(logged, Object.getOwnPropertyNames(logged));
+      expect(dumped).not.toContain('test-token-for-security');
+      expect(logged.responseBody).toBeUndefined();
+      expect(logged.cause).toBeUndefined();
     });
   });
 
