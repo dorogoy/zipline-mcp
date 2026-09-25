@@ -15,3 +15,9 @@
 **Vulnerability:** Hostnames containing IPv6 zone indices / scope IDs (e.g. `::1%eth0` or `::ffff:127.0.0.1%25eth0`) bypass SSRF host checks when `new URL()` parser throws an error on unencoded `%` in IPv6 hosts, causing string comparison checks like `host === '::1'` to fail on the suffix.
 **Learning:** Node's WHATWG `URL` parser throws an error on raw `%` characters inside IPv6 literal hosts unless percent-encoded, causing host parsing fallbacks to evaluate the unstripped scope ID string.
 **Prevention:** Always strip IPv6 zone identifiers (`%` / `%25` and trailing index name) from hostname strings before URL parsing or IP classification checks.
+
+## 2026-09-15 - Unredacted Sensitive Data Leakage in Logged Error Objects
+
+**Vulnerability:** Object masking functions relying on `JSON.stringify` to sanitize log arguments evaluate `Error` instances to `{}` because `message` and `stack` are non-enumerable properties. This causes logger tools to lose error context and bypass string redaction when logging raw `Error` objects.
+**Learning:** `JSON.stringify(new Error(...))` returns `{}` in JavaScript/Node.js, failing to expose or sanitize `message` and `stack` strings.
+**Prevention:** Redaction utilities must explicitly check `if (arg instanceof Error)` and sanitize `arg.message` and `arg.stack` explicitly before logging.

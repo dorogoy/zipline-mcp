@@ -564,6 +564,35 @@ describe('Security Utils', () => {
         '[OBJECT_MASKING_ERROR]'
       );
     });
+
+    it('should mask Error instance message and stack trace', () => {
+      const err = new Error('Failed with token test-token-for-security');
+      secureLog('Error logged:', err);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const [msg, loggedErr] = consoleErrorSpy.mock.calls[0] as [string, Error];
+      expect(msg).toBe('Error logged:');
+      expect(loggedErr).toBeInstanceOf(Error);
+      expect(loggedErr.message).toBe('Failed with token [REDACTED]');
+      expect(loggedErr.stack).toBeDefined();
+      expect(loggedErr.stack).not.toContain('test-token-for-security');
+      expect(loggedErr.stack).toContain('[REDACTED]');
+    });
+
+    it('does not log raw enumerable fields from Error subclasses', () => {
+      const err = new Error('safe message');
+      (err as Error & { responseBody?: string }).responseBody =
+        'upstream test-token-for-security';
+      err.cause = new Error('nested test-token-for-security');
+      secureLog('Error logged:', err);
+      const logged = consoleErrorSpy.mock.calls[0][1] as Error & {
+        responseBody?: string;
+        cause?: unknown;
+      };
+      const dumped = JSON.stringify(logged, Object.getOwnPropertyNames(logged));
+      expect(dumped).not.toContain('test-token-for-security');
+      expect(logged.responseBody).toBeUndefined();
+      expect(logged.cause).toBeUndefined();
+    });
   });
 
   describe('detectSecretPatterns', () => {

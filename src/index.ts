@@ -752,7 +752,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ FILE VALIDATION FAILED!\n\nError: ${errorMessage}\n\nPlease check:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file`,
+            text: maskSensitiveData(
+              `❌ FILE VALIDATION FAILED!\n\nError: ${errorMessage}\n\nPlease check:\n• Verify the file path is correct\n• Check if the file exists and is accessible\n• Ensure you have permission to read the file`
+            ),
           },
         ],
         isError: true,
@@ -800,7 +802,12 @@ server.registerTool(
       } catch (e) {
         return {
           content: [
-            { type: 'text', text: `❌ LIST failed: ${(e as Error).message}` },
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ LIST failed: ${(e as Error).message}`
+              ),
+            },
           ],
           isError: true,
         };
@@ -845,7 +852,12 @@ server.registerTool(
       } catch (e) {
         return {
           content: [
-            { type: 'text', text: `❌ CREATE failed: ${(e as Error).message}` },
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ CREATE failed: ${(e as Error).message}`
+              ),
+            },
           ],
           isError: true,
         };
@@ -870,7 +882,9 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `❌ ${upperCmd} failed: ${(e as Error).message}`,
+              text: maskSensitiveData(
+                `❌ ${upperCmd} failed: ${(e as Error).message}`
+              ),
             },
           ],
           isError: true,
@@ -903,7 +917,9 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `❌ DELETE failed: ${filename}\nError: ${(e as Error).message}`,
+              text: maskSensitiveData(
+                `❌ DELETE failed: ${filename}\nError: ${(e as Error).message}`
+              ),
             },
           ],
           isError: true,

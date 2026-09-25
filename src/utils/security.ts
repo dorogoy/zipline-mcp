@@ -203,6 +203,14 @@ export function secureLog(message: string, ...args: unknown[]): void {
     if (typeof arg === 'string') {
       return maskSensitiveData(arg);
     }
+    if (arg instanceof Error) {
+      const maskedError = new Error(maskSensitiveData(arg.message));
+      maskedError.name = arg.name;
+      if (arg.stack) {
+        maskedError.stack = maskSensitiveData(arg.stack);
+      }
+      return maskedError;
+    }
     // For objects, convert to JSON, mask, then parse back
     // This prevents token exposure in object properties
     if (typeof arg === 'object' && arg !== null) {
