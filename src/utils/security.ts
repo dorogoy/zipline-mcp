@@ -26,6 +26,36 @@ export class SandboxPathError extends Error {
   }
 }
 
+export class InvalidIdError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidIdError';
+  }
+}
+
+/**
+ * Validates a resource ID (e.g., file ID or folder ID) to prevent path traversal,
+ * control character injection, or invalid format before appending to API endpoints.
+ */
+export function validateId(id: string, idName = 'id'): void {
+  if (!id || typeof id !== 'string') {
+    throw new InvalidIdError(
+      `${idName} is required and must be a non-empty string`
+    );
+  }
+
+  const trimmed = id.trim();
+  if (!trimmed) {
+    throw new InvalidIdError(`${idName} cannot be empty or whitespace only`);
+  }
+
+  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) {
+    throw new InvalidIdError(
+      `${idName} must contain only alphanumeric characters, hyphens, or underscores`
+    );
+  }
+}
+
 function validatePathInput(inputPath: string | null | undefined): void {
   if (inputPath === null || inputPath === undefined) {
     throw new SandboxPathError('Path cannot be null or undefined');

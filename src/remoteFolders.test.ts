@@ -14,6 +14,7 @@ import {
   deleteFolder,
 } from './remoteFolders.js';
 import { McpErrorCode } from './utils/errorMapper.js';
+import { InvalidIdError } from './utils/security.js';
 
 // Mock fetch function
 const mockFetch = vi.fn();
@@ -852,17 +853,35 @@ describe('editFolder', () => {
     vi.resetAllMocks();
   });
 
-  describe('URL encoding of folder IDs', () => {
-    it('should encode special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
-      const specialId = 'folder/with/slashes?query=1';
-      const encodedId = encodeURIComponent(specialId);
+  describe('URL encoding and validation of folder IDs', () => {
+    it('should reject invalid special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
+      const specialId = 'folder with spaces & special chars!';
+
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: specialId,
+          name: 'Updated Folder',
+        })
+      ).rejects.toThrow(InvalidIdError);
+
+      vi.stubEnv('ZIPLINE_ENDPOINT', mockEndpoint);
+      vi.stubEnv('ZIPLINE_TOKEN', mockToken);
+      await expect(getFolder(specialId)).rejects.toThrow(InvalidIdError);
+      await expect(deleteFolder(specialId)).rejects.toThrow(InvalidIdError);
+    });
+
+    it('should encode valid folder IDs with hyphen and underscore for editFolder, getFolder, and deleteFolder', async () => {
+      const validId = 'folder-123_abc';
+      const encodedId = encodeURIComponent(validId);
       const mockResponse = {
         ok: true,
         status: 200,
         statusText: 'OK',
         json: vi.fn().mockResolvedValue({
-          id: specialId,
-          name: 'Special Folder',
+          id: validId,
+          name: 'Folder',
           public: false,
           createdAt: '2023-01-01T00:00:00Z',
           updatedAt: '2023-01-01T00:00:00Z',
@@ -875,7 +894,7 @@ describe('editFolder', () => {
       await editFolder({
         endpoint: mockEndpoint,
         token: mockToken,
-        id: specialId,
+        id: validId,
         name: 'Updated Folder',
       });
       expect(fetch).toHaveBeenCalledWith(
@@ -883,22 +902,10 @@ describe('editFolder', () => {
         expect.objectContaining({ method: 'PATCH' })
       );
 
-      // Test editFolder PUT
-      await editFolder({
-        endpoint: mockEndpoint,
-        token: mockToken,
-        id: specialId,
-        fileId: 'file123',
-      });
-      expect(fetch).toHaveBeenCalledWith(
-        `${mockEndpoint}/api/user/folders/${encodedId}`,
-        expect.objectContaining({ method: 'PUT' })
-      );
-
       // Test getFolder
       vi.stubEnv('ZIPLINE_ENDPOINT', mockEndpoint);
       vi.stubEnv('ZIPLINE_TOKEN', mockToken);
-      await getFolder(specialId);
+      await getFolder(validId);
       expect(fetch).toHaveBeenCalledWith(
         `${mockEndpoint}/api/user/folders/${encodedId}`,
         expect.objectContaining({
@@ -910,7 +917,7 @@ describe('editFolder', () => {
       );
 
       // Test deleteFolder
-      await deleteFolder(specialId);
+      await deleteFolder(validId);
       expect(fetch).toHaveBeenCalledWith(
         `${mockEndpoint}/api/user/folders/${encodedId}`,
         expect.objectContaining({ method: 'DELETE' })
@@ -1360,7 +1367,27 @@ describe('editFolder', () => {
       };
 
       // Act & Assert
-      await expect(editFolder(options)).rejects.toThrow('File ID is required');
+      await expect(editFolder(options)).rejects.toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on path traversal in folder ID or file ID during edit', async () => {
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: '../admin',
+          name: 'Name',
+        })
+      ).rejects.toThrow(InvalidIdError);
+
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: 'folder123',
+          fileId: '../../file',
+        })
+      ).rejects.toThrow(InvalidIdError);
     });
   });
 
@@ -1543,6 +1570,10 @@ describe('getFolder', () => {
       mcpCode: McpErrorCode.UNAUTHORIZED_ACCESS,
       httpStatus: 401,
     });
+  });
+
+  it('should reject path traversal in folder ID for getFolder', async () => {
+    await expect(getFolder('../admin')).rejects.toThrow(InvalidIdError);
   });
 
   it('should throw ZiplineError with MCP error code on HTTP 429 Rate Limit', async () => {
@@ -1767,6 +1798,10 @@ describe('deleteFolder', () => {
     await expect(deleteFolder('folder123')).rejects.toThrow(
       'ZIPLINE_ENDPOINT environment variable is not set'
     );
+  });
+
+  it('should reject path traversal in folder ID for deleteFolder', async () => {
+    await expect(deleteFolder('../admin')).rejects.toThrow(InvalidIdError);
   });
 
   it('should throw an error if ZIPLINE_TOKEN is not set', async () => {

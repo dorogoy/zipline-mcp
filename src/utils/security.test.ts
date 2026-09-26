@@ -9,6 +9,8 @@ import {
   secureLog,
   detectSecretPatterns,
   SecretDetectionError,
+  validateId,
+  InvalidIdError,
 } from './security.js';
 import path from 'path';
 import os from 'os';
@@ -992,6 +994,41 @@ describe('Security Utils', () => {
         const result = detectSecretPatterns(binaryBuffer, 'file.bin');
         expect(result.detected).toBe(false);
       });
+    });
+  });
+
+  describe('validateId', () => {
+    it('should allow valid IDs', () => {
+      expect(() => validateId('file123')).not.toThrow();
+      expect(() => validateId('folder-abc_456')).not.toThrow();
+      expect(() =>
+        validateId('550e8400-e29b-41d4-a716-446655440000')
+      ).not.toThrow();
+    });
+
+    it('should throw InvalidIdError on empty or whitespace strings', () => {
+      expect(() => validateId('')).toThrow(InvalidIdError);
+      expect(() => validateId('   ')).toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on single dot and dot segments', () => {
+      expect(() => validateId('.')).toThrow(InvalidIdError);
+      expect(() => validateId('..')).toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on path traversal attempts and invalid characters', () => {
+      expect(() => validateId('../admin')).toThrow(InvalidIdError);
+      expect(() => validateId('../../etc/passwd')).toThrow(InvalidIdError);
+      expect(() => validateId('folder/file')).toThrow(InvalidIdError);
+      expect(() => validateId('folder\\file')).toThrow(InvalidIdError);
+      expect(() => validateId('folder with spaces')).toThrow(InvalidIdError);
+      expect(() => validateId('folder?query=1')).toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on control characters', () => {
+      expect(() => validateId('id\x00test')).toThrow(InvalidIdError);
+      expect(() => validateId('id\ntest')).toThrow(InvalidIdError);
+      expect(() => validateId('id\rtest')).toThrow(InvalidIdError);
     });
   });
 
