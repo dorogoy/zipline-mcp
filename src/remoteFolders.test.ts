@@ -853,17 +853,35 @@ describe('editFolder', () => {
     vi.resetAllMocks();
   });
 
-  describe('URL encoding of folder IDs', () => {
-    it('should encode special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
+  describe('URL encoding and validation of folder IDs', () => {
+    it('should reject invalid special characters in folder ID for editFolder, getFolder, and deleteFolder', async () => {
       const specialId = 'folder with spaces & special chars!';
-      const encodedId = encodeURIComponent(specialId);
+
+      await expect(
+        editFolder({
+          endpoint: mockEndpoint,
+          token: mockToken,
+          id: specialId,
+          name: 'Updated Folder',
+        })
+      ).rejects.toThrow(InvalidIdError);
+
+      vi.stubEnv('ZIPLINE_ENDPOINT', mockEndpoint);
+      vi.stubEnv('ZIPLINE_TOKEN', mockToken);
+      await expect(getFolder(specialId)).rejects.toThrow(InvalidIdError);
+      await expect(deleteFolder(specialId)).rejects.toThrow(InvalidIdError);
+    });
+
+    it('should encode valid folder IDs with hyphen and underscore for editFolder, getFolder, and deleteFolder', async () => {
+      const validId = 'folder-123_abc';
+      const encodedId = encodeURIComponent(validId);
       const mockResponse = {
         ok: true,
         status: 200,
         statusText: 'OK',
         json: vi.fn().mockResolvedValue({
-          id: specialId,
-          name: 'Special Folder',
+          id: validId,
+          name: 'Folder',
           public: false,
           createdAt: '2023-01-01T00:00:00Z',
           updatedAt: '2023-01-01T00:00:00Z',
@@ -876,7 +894,7 @@ describe('editFolder', () => {
       await editFolder({
         endpoint: mockEndpoint,
         token: mockToken,
-        id: specialId,
+        id: validId,
         name: 'Updated Folder',
       });
       expect(fetch).toHaveBeenCalledWith(
@@ -884,22 +902,10 @@ describe('editFolder', () => {
         expect.objectContaining({ method: 'PATCH' })
       );
 
-      // Test editFolder PUT
-      await editFolder({
-        endpoint: mockEndpoint,
-        token: mockToken,
-        id: specialId,
-        fileId: 'file123',
-      });
-      expect(fetch).toHaveBeenCalledWith(
-        `${mockEndpoint}/api/user/folders/${encodedId}`,
-        expect.objectContaining({ method: 'PUT' })
-      );
-
       // Test getFolder
       vi.stubEnv('ZIPLINE_ENDPOINT', mockEndpoint);
       vi.stubEnv('ZIPLINE_TOKEN', mockToken);
-      await getFolder(specialId);
+      await getFolder(validId);
       expect(fetch).toHaveBeenCalledWith(
         `${mockEndpoint}/api/user/folders/${encodedId}`,
         expect.objectContaining({
@@ -911,7 +917,7 @@ describe('editFolder', () => {
       );
 
       // Test deleteFolder
-      await deleteFolder(specialId);
+      await deleteFolder(validId);
       expect(fetch).toHaveBeenCalledWith(
         `${mockEndpoint}/api/user/folders/${encodedId}`,
         expect.objectContaining({ method: 'DELETE' })

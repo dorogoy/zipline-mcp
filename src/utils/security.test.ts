@@ -1011,12 +1011,18 @@ describe('Security Utils', () => {
       expect(() => validateId('   ')).toThrow(InvalidIdError);
     });
 
-    it('should throw InvalidIdError on path traversal attempts', () => {
+    it('should throw InvalidIdError on single dot and dot segments', () => {
+      expect(() => validateId('.')).toThrow(InvalidIdError);
       expect(() => validateId('..')).toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError on path traversal attempts and invalid characters', () => {
       expect(() => validateId('../admin')).toThrow(InvalidIdError);
       expect(() => validateId('../../etc/passwd')).toThrow(InvalidIdError);
       expect(() => validateId('folder/file')).toThrow(InvalidIdError);
       expect(() => validateId('folder\\file')).toThrow(InvalidIdError);
+      expect(() => validateId('folder with spaces')).toThrow(InvalidIdError);
+      expect(() => validateId('folder?query=1')).toThrow(InvalidIdError);
     });
 
     it('should throw InvalidIdError on control characters', () => {

@@ -717,41 +717,14 @@ describe('getUserFile', () => {
     expect(result.url).toBe('https://zipline.example.com/u/test.png');
   });
 
-  it('should URL encode file IDs with special characters', async () => {
-    const mockFile = {
-      id: 'file-with-special-chars',
-      name: 'test.png',
-      originalName: null,
-      size: 1024,
-      type: 'image/png',
-      views: 0,
-      maxViews: null,
-      favorite: false,
-      createdAt: '2025-01-01T00:00:00Z',
-      updatedAt: '2025-01-01T00:00:00Z',
-      deletesAt: null,
-      folderId: null,
-      thumbnail: null,
-      tags: [],
-      password: null,
-      url: '/u/test.png',
-    };
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockFile),
-    });
-
-    await getUserFile({
-      endpoint: 'https://zipline.example.com',
-      token: 'test-token',
-      id: 'file with spaces & special chars!',
-    });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://zipline.example.com/api/user/files/file%20with%20spaces%20%26%20special%20chars!',
-      expect.any(Object)
-    );
+  it('should reject file IDs with invalid special characters', async () => {
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file with spaces & special chars!',
+      })
+    ).rejects.toThrow(InvalidIdError);
   });
 
   it('should handle API errors', async () => {
@@ -941,7 +914,15 @@ describe('getUserFile', () => {
     expect(result.views).toBe(25);
   });
 
-  it('should reject path traversal in file ID', async () => {
+  it('should reject path traversal and single dot in file ID', async () => {
+    await expect(
+      getUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: '.',
+      })
+    ).rejects.toThrow(InvalidIdError);
+
     await expect(
       getUserFile({
         endpoint: 'https://zipline.example.com',

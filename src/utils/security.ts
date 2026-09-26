@@ -49,14 +49,9 @@ export function validateId(id: string, idName = 'id'): void {
     throw new InvalidIdError(`${idName} cannot be empty or whitespace only`);
   }
 
-  // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001F\u007F]/.test(id)) {
-    throw new InvalidIdError(`${idName} cannot contain control characters`);
-  }
-
-  if (/[\\/]|\.\./.test(id)) {
+  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) {
     throw new InvalidIdError(
-      `${idName} contains invalid path traversal characters`
+      `${idName} must contain only alphanumeric characters, hyphens, or underscores`
     );
   }
 }
