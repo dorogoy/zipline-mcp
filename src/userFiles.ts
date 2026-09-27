@@ -278,6 +278,9 @@ export async function updateUserFile(
   if (typeof updateFields.originalName === 'string') {
     validateOriginalName(updateFields.originalName);
   }
+  if (typeof updateFields.name === 'string') {
+    validateOriginalName(updateFields.name);
+  }
 
   // Filter out undefined fields
   const body = Object.fromEntries(

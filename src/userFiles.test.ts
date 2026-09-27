@@ -1356,6 +1356,19 @@ describe('updateUserFile', () => {
     );
   });
 
+  it('should reject file name containing path separators during update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        name: '../path/traversal.txt',
+      })
+    ).rejects.toThrow(
+      'originalName cannot contain path separators or control characters'
+    );
+  });
+
   it('should update multiple properties atomically', async () => {
     const mockFile = {
       id: 'file123',
