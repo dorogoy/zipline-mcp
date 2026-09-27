@@ -1321,6 +1321,41 @@ describe('updateUserFile', () => {
     ).rejects.toThrow(InvalidIdError);
   });
 
+  it('should reject invalid folderId during update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        folderId: '../../admin',
+      })
+    ).rejects.toThrow(InvalidIdError);
+  });
+
+  it('should reject password with control characters during update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        password: 'pass\nword',
+      })
+    ).rejects.toThrow('password header cannot contain control characters');
+  });
+
+  it('should reject originalName containing path separators during update', async () => {
+    await expect(
+      updateUserFile({
+        endpoint: 'https://zipline.example.com',
+        token: 'test-token',
+        id: 'file123',
+        originalName: '../path/traversal.txt',
+      })
+    ).rejects.toThrow(
+      'originalName cannot contain path separators or control characters'
+    );
+  });
+
   it('should update multiple properties atomically', async () => {
     const mockFile = {
       id: 'file123',
