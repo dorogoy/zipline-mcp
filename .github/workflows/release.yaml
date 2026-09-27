@@ -22,12 +22,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
       - name: Run Release Please
         uses: googleapis/release-please-action@v5
         id: release
         with:
           release-type: node
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.bot-token.outputs.token }}
 
       - name: Setup Node.js
         if: ${{ steps.release.outputs.release_created }}
