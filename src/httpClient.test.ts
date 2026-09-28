@@ -283,6 +283,9 @@ describe('Header Validation', () => {
       expect(() => validateDeleteAt('1d\n')).toThrow(
         'delete-at header cannot contain control characters'
       );
+      expect(() =>
+        validateDeleteAt('date=2027-12-31T00:00:00Z\0\r\nX-Injected: evil')
+      ).toThrow('delete-at header cannot contain control characters');
     });
 
     it('rejects invalid absolute date format', async () => {
