@@ -21,3 +21,9 @@
 **Vulnerability:** Object masking functions relying on `JSON.stringify` to sanitize log arguments evaluate `Error` instances to `{}` because `message` and `stack` are non-enumerable properties. This causes logger tools to lose error context and bypass string redaction when logging raw `Error` objects.
 **Learning:** `JSON.stringify(new Error(...))` returns `{}` in JavaScript/Node.js, failing to expose or sanitize `message` and `stack` strings.
 **Prevention:** Redaction utilities must explicitly check `if (arg instanceof Error)` and sanitize `arg.message` and `arg.stack` explicitly before logging.
+
+## 2026-09-16 - 6to4 and NAT64 IPv6 Transition Mechanism SSRF Validation Bypass
+
+**Vulnerability:** 6to4 (`2002::/16`) and NAT64 (`64:ff9b::/96`) IPv6 transition mechanisms embed IPv4 addresses in their prefix structure (bits 16..47 for 6to4, lower 32 bits for NAT64 WKP). SSRF filters checking only IPv4 dotted-decimal or `::ffff:` IPv4-mapped IPv6 formats fail to detect 6to4 and NAT64 URLs targeting loopback (`127.0.0.1`), private networks, or AWS metadata (`169.254.169.254`).
+**Learning:** IPv6 transition protocols enable client stacks or IPv6-to-IPv4 gateways to translate embedded IPv4 addresses transparently, bypassing SSRF filters that do not inspect 6to4 (`2002::/16`) and NAT64 (`64:ff9b::/96`) prefixes.
+**Prevention:** SSRF host validation must explicitly parse and extract embedded IPv4 addresses from 6to4 (`2002:WWXX:YYZZ::`) and NAT64 (`64:ff9b::...`) IPv6 addresses and classify them against private/loopback/metadata IPv4 address ranges.
