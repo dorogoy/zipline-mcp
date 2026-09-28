@@ -271,6 +271,23 @@ describe('Header Validation', () => {
       expect(() => validateDeleteAt('-1d')).toThrow();
     });
 
+    it('rejects delete-at strings with control characters', async () => {
+      const { validateDeleteAt } = await import('./httpClient.js');
+
+      expect(() => validateDeleteAt('1d\r\nX-Injected-Header: evil')).toThrow(
+        'delete-at header cannot contain control characters'
+      );
+      expect(() => validateDeleteAt('1d\0')).toThrow(
+        'delete-at header cannot contain control characters'
+      );
+      expect(() => validateDeleteAt('1d\n')).toThrow(
+        'delete-at header cannot contain control characters'
+      );
+      expect(() =>
+        validateDeleteAt('date=2027-12-31T00:00:00Z\0\r\nX-Injected: evil')
+      ).toThrow('delete-at header cannot contain control characters');
+    });
+
     it('rejects invalid absolute date format', async () => {
       const { validateDeleteAt } = await import('./httpClient.js');
 

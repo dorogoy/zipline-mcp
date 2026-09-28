@@ -413,6 +413,12 @@ export function validateDeleteAt(deleteAt: string): void {
     throw new Error('delete-at header must be a non-empty string');
   }
 
+  // Check for control characters (including newlines, carriage returns, null bytes) to prevent HTTP header injection
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(deleteAt)) {
+    throw new Error('delete-at header cannot contain control characters');
+  }
+
   // Check if it's an absolute date format
   if (deleteAt.startsWith('date=')) {
     const dateStr = deleteAt.substring(5);
