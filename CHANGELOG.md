@@ -6,6 +6,16 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.24](https://github.com/dorogoy/zipline-mcp/compare/v1.12.23...v1.12.24) (2026-09-29)
+
+
+### Bug Fixes
+
+* **deps:** bump ip-address in the npm_and_yarn group across 1 directory ([f9067f6](https://github.com/dorogoy/zipline-mcp/commit/f9067f67669a3ae220ea54ba48d5b2c105bc3a8a))
+* **deps:** bump transitive hono to 4.13.11 ([ddf9f8b](https://github.com/dorogoy/zipline-mcp/commit/ddf9f8b318c8f07ddcfffb0a3e65b834395330ef))
+* prevent HTTP header injection in validateDeleteAt ([#213](https://github.com/dorogoy/zipline-mcp/issues/213)) ([78a03fa](https://github.com/dorogoy/zipline-mcp/commit/78a03fa810df9dcb2926252ec749f6f152402235))
+* prevent SSRF via 6to4 and NAT64 IPv6 transition addresses ([#217](https://github.com/dorogoy/zipline-mcp/issues/217)) ([e053fd5](https://github.com/dorogoy/zipline-mcp/commit/e053fd51a55c41fb47f159becaf9f3bce0d7154a))
+
 ## [1.12.23](https://github.com/dorogoy/zipline-mcp/compare/v1.12.22...v1.12.23) (2026-09-27)
 
 
