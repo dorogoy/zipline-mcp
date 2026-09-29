@@ -694,13 +694,15 @@ describe('Header Validation', () => {
       expect(isPrivateHost('172.16.0.1')).toBe(true);
       expect(isPrivateHost('169.254.169.254')).toBe(true);
 
-      // IPv4-mapped IPv6
+      // IPv4-mapped & IPv4-translated IPv6
       expect(isPrivateHost('::ffff:127.0.0.1')).toBe(true);
       expect(isPrivateHost('::ffff:7f00:1')).toBe(true);
       expect(isPrivateHost('::ffff:10.0.0.1')).toBe(true);
       expect(isPrivateHost('::ffff:a00:1')).toBe(true);
       expect(isPrivateHost('::ffff:169.254.169.254')).toBe(true);
       expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
+      expect(isPrivateHost('::ffff:0:127.0.0.1')).toBe(true);
+      expect(isPrivateHost('::ffff:0:7f00:1')).toBe(true);
 
       // IPv4-compatible IPv6
       expect(isPrivateHost('::127.0.0.1')).toBe(true);
@@ -727,7 +729,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:a9fe:a9fe::')).toBe(true);
       expect(isPrivateHost('2002:c0a8:0101::')).toBe(true);
       expect(isPrivateHost('2002:ac10:0001::')).toBe(true);
+      expect(isPrivateHost('2002:7f00::1')).toBe(true);
+      expect(isPrivateHost('2002:a01::1')).toBe(true);
+      expect(isPrivateHost('2002:c0a8::1')).toBe(true);
+      expect(isPrivateHost('2002:ac10::1')).toBe(true);
+      expect(isPrivateHost('2002::')).toBe(true);
       expect(isPrivateHost('2002:0808:0808::')).toBe(false);
+      expect(isPrivateHost('2002:0102:0304::')).toBe(false);
+      expect(isPrivateHost('2001:db8::1')).toBe(false);
 
       // IPv6 with zone index / scope identifier (% / %25)
       expect(isPrivateHost('::1%eth0')).toBe(true);
