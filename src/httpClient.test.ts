@@ -694,13 +694,15 @@ describe('Header Validation', () => {
       expect(isPrivateHost('172.16.0.1')).toBe(true);
       expect(isPrivateHost('169.254.169.254')).toBe(true);
 
-      // IPv4-mapped IPv6
+      // IPv4-mapped & IPv4-translated IPv6
       expect(isPrivateHost('::ffff:127.0.0.1')).toBe(true);
       expect(isPrivateHost('::ffff:7f00:1')).toBe(true);
       expect(isPrivateHost('::ffff:10.0.0.1')).toBe(true);
       expect(isPrivateHost('::ffff:a00:1')).toBe(true);
       expect(isPrivateHost('::ffff:169.254.169.254')).toBe(true);
       expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
+      expect(isPrivateHost('::ffff:0:127.0.0.1')).toBe(true);
+      expect(isPrivateHost('::ffff:0:7f00:1')).toBe(true);
 
       // IPv4-compatible IPv6
       expect(isPrivateHost('::127.0.0.1')).toBe(true);
@@ -710,6 +712,31 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::a00:1')).toBe(true);
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
+
+      // NAT64 IPv6 (64:ff9b::/96)
+      expect(isPrivateHost('64:ff9b::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::7f00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::10.0.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::a00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::169.254.169.254')).toBe(true);
+      expect(isPrivateHost('64:ff9b::a9fe:a9fe')).toBe(true);
+      expect(isPrivateHost('64:ff9b::8.8.8.8')).toBe(false);
+
+      // 6to4 IPv6 (2002::/16)
+      expect(isPrivateHost('2002:7f00:1::')).toBe(true);
+      expect(isPrivateHost('2002:7f00:0001::')).toBe(true);
+      expect(isPrivateHost('2002:0a00:0001::')).toBe(true);
+      expect(isPrivateHost('2002:a9fe:a9fe::')).toBe(true);
+      expect(isPrivateHost('2002:c0a8:0101::')).toBe(true);
+      expect(isPrivateHost('2002:ac10:0001::')).toBe(true);
+      expect(isPrivateHost('2002:7f00::1')).toBe(true);
+      expect(isPrivateHost('2002:a01::1')).toBe(true);
+      expect(isPrivateHost('2002:c0a8::1')).toBe(true);
+      expect(isPrivateHost('2002:ac10::1')).toBe(true);
+      expect(isPrivateHost('2002::')).toBe(true);
+      expect(isPrivateHost('2002:0808:0808::')).toBe(false);
+      expect(isPrivateHost('2002:0102:0304::')).toBe(false);
+      expect(isPrivateHost('2001:db8::1')).toBe(false);
 
       // IPv6 with zone index / scope identifier (% / %25)
       expect(isPrivateHost('::1%eth0')).toBe(true);

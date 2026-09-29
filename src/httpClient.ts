@@ -572,9 +572,9 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // IPv4-mapped or IPv4-compatible IPv6 check (e.g., ::ffff:127.0.0.1, ::ffff:7f00:1, ::127.0.0.1, ::7f00:1)
+  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), and NAT64 (64:ff9b::/96) IPv6 check
   const ipv4MappedDotted =
-    /^(?:0*:)*?(?:ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
+    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
       host
     );
   if (ipv4MappedDotted) {
@@ -588,7 +588,9 @@ export function isPrivateHost(hostname: string): boolean {
   }
 
   const ipv4MappedHex =
-    /^(?:0*:)*?(?:ffff:)?([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(host);
+    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?)([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(
+      host
+    );
   if (ipv4MappedHex) {
     const high = parseInt(ipv4MappedHex[1]!, 16);
     const low = parseInt(ipv4MappedHex[2]!, 16);
@@ -597,6 +599,15 @@ export function isPrivateHost(hostname: string): boolean {
       const p2 = high & 0xff;
       return isPrivateIPv4(p1, p2);
     }
+  }
+
+  // 6to4 IPv6 check (2002::/16 embeds IPv4 address in bits 16..47)
+  const sixToFourMatch = /^2002:(?::|([0-9a-fA-F]{1,4})(?::|$))/i.exec(host);
+  if (sixToFourMatch) {
+    const high = parseInt(sixToFourMatch[1] ?? '0', 16);
+    const p1 = (high >> 8) & 0xff;
+    const p2 = high & 0xff;
+    if (isPrivateIPv4(p1, p2)) return true;
   }
 
   // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) / Multicast (ff00::/8) check
