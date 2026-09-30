@@ -572,9 +572,9 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), and NAT64 (64:ff9b::/96) IPv6 check
+  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96), and ISATAP (RFC 5214, :5efe:) IPv6 check
   const ipv4MappedDotted =
-    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
+    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
       host
     );
   if (ipv4MappedDotted) {
@@ -588,7 +588,7 @@ export function isPrivateHost(hostname: string): boolean {
   }
 
   const ipv4MappedHex =
-    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?)([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(
+    /^(?:64:ff9b::|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(
       host
     );
   if (ipv4MappedHex) {
