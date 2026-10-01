@@ -27,3 +27,9 @@
 **Vulnerability:** 6to4 (`2002::/16`) and NAT64 (`64:ff9b::/96`) IPv6 transition mechanisms embed IPv4 addresses in their prefix structure (bits 16..47 for 6to4, lower 32 bits for NAT64 WKP). SSRF filters checking only IPv4 dotted-decimal or `::ffff:` IPv4-mapped IPv6 formats fail to detect 6to4 and NAT64 URLs targeting loopback (`127.0.0.1`), private networks, or AWS metadata (`169.254.169.254`).
 **Learning:** IPv6 transition protocols enable client stacks or IPv6-to-IPv4 gateways to translate embedded IPv4 addresses transparently, bypassing SSRF filters that do not inspect 6to4 (`2002::/16`) and NAT64 (`64:ff9b::/96`) prefixes.
 **Prevention:** SSRF host validation must explicitly parse and extract embedded IPv4 addresses from 6to4 (`2002:WWXX:YYZZ::`) and NAT64 (`64:ff9b::...`) IPv6 addresses and classify them against private/loopback/metadata IPv4 address ranges.
+
+## 2026-09-17 - ISATAP IPv6 Transition Mechanism SSRF Validation Bypass
+
+**Vulnerability:** ISATAP (`RFC 5214`, `:5efe:`) IPv6 transition mechanisms embed IPv4 addresses in the 64-bit interface identifier (`0000:5efe:WWXX:YYZZ` or `0000:5efe:W.X.Y.Z`). SSRF filters checking only `::ffff:` IPv4-mapped, 6to4, or NAT64 IPv6 formats fail to detect ISATAP URLs targeting loopback (`127.0.0.1`), private networks, or AWS metadata (`169.254.169.254`).
+**Learning:** ISATAP interface identifiers (`:5efe:`) can be appended to any 64-bit IPv6 prefix, embedding dotted-quad or hex-encoded IPv4 targets that client networking stacks or gateways translate directly to IPv4.
+**Prevention:** SSRF host validation regexes for IPv6 embedded IPv4 addresses must include `:5efe:` alongside `:ffff:` and `64:ff9b::`, extracting both dotted decimal and hex forms of embedded IPv4 addresses for classification against private address ranges.
