@@ -1004,11 +1004,20 @@ describe('Security Utils', () => {
       expect(() =>
         validateId('550e8400-e29b-41d4-a716-446655440000')
       ).not.toThrow();
+      expect(() => validateId('a'.repeat(255))).not.toThrow();
     });
 
     it('should throw InvalidIdError on empty or whitespace strings', () => {
       expect(() => validateId('')).toThrow(InvalidIdError);
       expect(() => validateId('   ')).toThrow(InvalidIdError);
+    });
+
+    it('should throw InvalidIdError when ID exceeds maximum length', () => {
+      const longId = 'a'.repeat(256);
+      expect(() => validateId(longId)).toThrow(InvalidIdError);
+      expect(() => validateId(longId)).toThrow(
+        'id exceeds maximum length of 255 characters'
+      );
     });
 
     it('should throw InvalidIdError on single dot and dot segments', () => {
