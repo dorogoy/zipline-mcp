@@ -49,6 +49,12 @@ export function validateId(id: string, idName = 'id'): void {
     throw new InvalidIdError(`${idName} cannot be empty or whitespace only`);
   }
 
+  if (trimmed.length > 255) {
+    throw new InvalidIdError(
+      `${idName} exceeds maximum length of 255 characters`
+    );
+  }
+
   if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) {
     throw new InvalidIdError(
       `${idName} must contain only alphanumeric characters, hyphens, or underscores`
