@@ -233,6 +233,46 @@ describe('httpClient.uploadFile (TDD - tests first)', () => {
 
 // Unit tests for header validation
 describe('Header Validation', () => {
+  describe('validateFormat', () => {
+    it('accepts valid format strings', async () => {
+      const { validateFormat } = await import('./httpClient.js');
+
+      expect(() => validateFormat('random')).not.toThrow();
+      expect(() => validateFormat('uuid')).not.toThrow();
+      expect(() => validateFormat('date')).not.toThrow();
+      expect(() => validateFormat('random-words')).not.toThrow();
+    });
+
+    it('rejects empty or whitespace-only strings', async () => {
+      const { validateFormat } = await import('./httpClient.js');
+
+      expect(() => validateFormat('')).toThrow();
+      expect(() => validateFormat('   ')).toThrow();
+    });
+
+    it('rejects control characters (HTTP header injection prevention)', async () => {
+      const { validateFormat } = await import('./httpClient.js');
+
+      expect(() => validateFormat('random\r\nX-Injected: evil')).toThrow(
+        'format header cannot contain control characters'
+      );
+      expect(() => validateFormat('random\n')).toThrow(
+        'format header cannot contain control characters'
+      );
+      expect(() => validateFormat('random\0')).toThrow(
+        'format header cannot contain control characters'
+      );
+    });
+
+    it('rejects excessively long strings', async () => {
+      const { validateFormat } = await import('./httpClient.js');
+
+      expect(() => validateFormat('a'.repeat(256))).toThrow(
+        'format header exceeds maximum length'
+      );
+    });
+  });
+
   describe('validateDeleteAt', () => {
     it('accepts valid relative duration strings', async () => {
       const { validateDeleteAt } = await import('./httpClient.js');
@@ -577,6 +617,24 @@ describe('Header Validation', () => {
       expect(headers['x-zipline-folder']).toBe('myfolder');
       expect(headers['authorization']).toBe(token);
       expect(headers['x-zipline-format']).toBe(format);
+    });
+
+    it('rejects upload with invalid format header before making request', async () => {
+      fsMock.readFile.mockResolvedValue(sampleContent);
+
+      const { uploadFile } = await import('./httpClient.js');
+
+      await expect(
+        uploadFile({
+          endpoint,
+          token,
+          filePath: samplePath,
+          format: 'random\r\nX-Injected: evil',
+        })
+      ).rejects.toThrow('format header cannot contain control characters');
+
+      // Ensure fetch was not called due to validation failure
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     it('rejects upload with invalid delete-at header before making request', async () => {

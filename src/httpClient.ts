@@ -88,7 +88,8 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
   if (!filePath) throw new Error('filePath is required');
   if (!format) throw new Error('format is required');
 
-  // Validate optional headers if provided
+  // Validate format header and optional headers if provided
+  validateFormat(format);
   if (deletesAt !== undefined) validateDeleteAt(deletesAt);
   if (password !== undefined) validatePassword(password);
   if (maxViews !== undefined) validateMaxViews(maxViews);
@@ -408,6 +409,27 @@ export async function downloadExternalUrl(
 }
 
 // Header validation functions
+export function validateFormat(format: string): void {
+  if (!format || typeof format !== 'string') {
+    throw new Error('format header must be a non-empty string');
+  }
+
+  // Check for control characters (including newlines, carriage returns, null bytes) to prevent HTTP header injection
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(format)) {
+    throw new Error('format header cannot contain control characters');
+  }
+
+  const trimmed = format.trim();
+  if (!trimmed) {
+    throw new Error('format header cannot be empty or whitespace only');
+  }
+
+  if (trimmed.length > 255) {
+    throw new Error('format header exceeds maximum length of 255 characters');
+  }
+}
+
 export function validateDeleteAt(deleteAt: string): void {
   if (!deleteAt || typeof deleteAt !== 'string') {
     throw new Error('delete-at header must be a non-empty string');
