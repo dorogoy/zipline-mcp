@@ -1,4 +1,9 @@
 import { readFile, rm, open } from 'fs/promises';
+import http from 'http';
+import https from 'https';
+import { lookup } from 'dns/promises';
+import type { IncomingMessage, IncomingHttpHeaders } from 'http';
+import type { LookupFunction } from 'net';
 import {
   ensureUserSandbox,
   resolveSandboxPath,
@@ -252,10 +257,99 @@ export interface DownloadOptions {
   followRedirects?: boolean;
 }
 
+interface PinnedAddress {
+  address: string;
+  family: 4 | 6;
+}
+
 /**
- * Note: URL string checking provides early SSRF validation against obvious private targets.
- * Note that DNS-level resolution/rebinding is not prevented by URL string checks alone.
+ * Resolve every address for this hop. Refuse if any answer is loopback,
+ * private, link-local, or a cloud metadata address. The returned address is
+ * the one the socket must use.
  */
+async function resolvePinnedAddress(hostname: string): Promise<PinnedAddress> {
+  let records: { address: string; family: number }[];
+  try {
+    records = await lookup(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new InvalidUrlError(`Host could not be resolved: ${hostname}`);
+  }
+  if (records.length === 0) {
+    throw new InvalidUrlError(`Host could not be resolved: ${hostname}`);
+  }
+  for (const record of records) {
+    if (isPrivateHost(record.address)) {
+      throw new InvalidUrlError(
+        `Access to private or local network host is forbidden: ${hostname}`
+      );
+    }
+  }
+  const first = records[0];
+  if (!first) {
+    throw new InvalidUrlError(`Host could not be resolved: ${hostname}`);
+  }
+  return { address: first.address, family: first.family === 6 ? 6 : 4 };
+}
+
+function pinnedLookup(pinned: PinnedAddress): LookupFunction {
+  const answer = { address: pinned.address, family: pinned.family };
+  return (_hostname, options, callback) => {
+    if (options.all) {
+      callback(null, [answer]);
+      return;
+    }
+    callback(null, pinned.address, pinned.family);
+  };
+}
+
+function headerValue(
+  headers: IncomingHttpHeaders,
+  name: string
+): string | undefined {
+  const value = headers[name];
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function requestPinned(
+  target: URL,
+  pinned: PinnedAddress,
+  signal: AbortSignal
+): Promise<IncomingMessage> {
+  const lib = target.protocol === 'https:' ? https : http;
+  const options: https.RequestOptions = {
+    protocol: target.protocol,
+    hostname: pinned.address,
+    family: pinned.family,
+    method: 'GET',
+    path: `${target.pathname}${target.search}`,
+    headers: { host: target.host },
+    servername: target.hostname,
+    lookup: pinnedLookup(pinned),
+    signal,
+  };
+  if (target.port) options.port = target.port;
+
+  return new Promise((resolve, reject) => {
+    const req = lib.request(options, (res) => resolve(res));
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function toBuffer(chunk: unknown): Buffer {
+  if (typeof chunk === 'string') return Buffer.from(chunk);
+  return Buffer.from(chunk as Uint8Array);
+}
+
+async function readResponseBody(res: IncomingMessage): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of res) {
+    chunks.push(toBuffer(chunk));
+  }
+  return Buffer.concat(chunks).toString();
+}
+
 export async function downloadExternalUrl(
   urlStr: string,
   options: DownloadOptions = {}
@@ -285,34 +379,32 @@ export async function downloadExternalUrl(
   const finalPath = resolveSandboxPath(filename);
 
   try {
-    let res: Response | null = null;
+    let res: IncomingMessage | null = null;
     let redirectCount = 0;
 
-    // Manual redirect loop to re-validate URL scheme and SSRF checks on every redirect hop
+    // Every hop is resolved and pinned before the socket opens, including redirects.
     while (true) {
       if (!['http:', 'https:'].includes(currentUrl.protocol)) {
         throw new InvalidUrlError(`Unsupported scheme: ${currentUrl.protocol}`);
       }
 
-      // Security: SSRF prevention check for loopback, private IP ranges, and cloud metadata IPs
       if (isPrivateHost(currentUrl.hostname)) {
         throw new InvalidUrlError(
           `Access to private or local network host is forbidden: ${currentUrl.hostname}`
         );
       }
 
-      res = await fetch(currentUrl.toString(), {
-        method: 'GET',
-        redirect: 'manual',
-        signal: ac.signal,
-      });
+      const pinned = await resolvePinnedAddress(currentUrl.hostname);
+      res = await requestPinned(currentUrl, pinned, ac.signal);
 
-      if ([301, 302, 303, 307, 308].includes(res.status)) {
-        const location = res.headers.get('location');
+      const status = res.statusCode ?? 0;
+      if ([301, 302, 303, 307, 308].includes(status)) {
+        const location = headerValue(res.headers, 'location');
+        res.resume();
         if (!location) {
           throw new HttpError(
-            res.status,
-            `Redirect status ${res.status} missing Location header`
+            status,
+            `Redirect status ${status} missing Location header`
           );
         }
         redirectCount++;
@@ -330,41 +422,33 @@ export async function downloadExternalUrl(
       break;
     }
 
-    if (!res.ok) {
+    if (!res || (res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+      const status = res?.statusCode ?? 0;
       let bodyText = '';
       try {
-        bodyText = await res.text();
+        if (res) bodyText = await readResponseBody(res);
       } catch {
         // ignore
       }
-      throw mapHttpStatusToMcpError(res.status, bodyText);
+      throw mapHttpStatusToMcpError(status, bodyText);
     }
 
-    // Check content-length header if present
-    const cl = res.headers?.get?.('content-length');
+    const cl = headerValue(res.headers, 'content-length');
     if (cl) {
       const declared = Number(cl);
       if (!Number.isNaN(declared) && declared > maxFileSize) {
+        res.resume();
         throw new FileTooLargeError(
           `Remote file size ${declared} bytes exceeds limit of ${maxFileSize} bytes (${(maxFileSize / (1024 * 1024)).toFixed(0)}MB)`
         );
       }
     }
 
-    // Streaming download to disk to prevent memory exhaustion (OOM)
-    if (!res.body) {
-      throw new Error('Response body is null');
-    }
-
     let downloadedBytes = 0;
     const handle = await open(finalPath, 'w');
     try {
-      // res.body is a ReadableStream (Web Stream) in Node 18+ fetch
-      const reader = res.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
+      for await (const chunk of res) {
+        const value = toBuffer(chunk);
         downloadedBytes += value.length;
         if (downloadedBytes > maxFileSize) {
           throw new FileTooLargeError(
@@ -373,6 +457,9 @@ export async function downloadExternalUrl(
         }
         await handle.write(value);
       }
+    } catch (err) {
+      res.destroy();
+      throw err;
     } finally {
       await handle.close();
     }

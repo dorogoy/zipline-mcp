@@ -1,4 +1,6 @@
 import path from 'path';
+import os from 'os';
+import { realpath } from 'fs/promises';
 
 export interface SecretDetectionResult {
   detected: boolean;
@@ -292,23 +294,48 @@ function isEnvFile(filename: string): boolean {
   );
 }
 
-function isBinaryContent(content: string | Buffer): boolean {
-  if (Buffer.isBuffer(content)) {
-    for (let i = 0; i < Math.min(content.length, 1024); i++) {
-      const byte = content[i];
-      if (byte === 0) {
-        return true;
-      }
+/**
+ * Directories a caller-supplied file must stay inside.
+ * `ZIPLINE_ALLOWED_ROOTS` is a comma-separated list. When unset, only the
+ * home directory is allowed.
+ */
+export function allowedReadRoots(): string[] {
+  const raw = process.env.ZIPLINE_ALLOWED_ROOTS;
+  if (raw && raw.trim()) {
+    return raw
+      .split(',')
+      .map((root) => root.trim())
+      .filter((root) => root.length > 0);
+  }
+  return [os.homedir()];
+}
+
+/**
+ * Resolve `inputPath` (following symlinks) and refuse it unless the real
+ * target stays inside an allowed root. Callers must read the returned path.
+ */
+export async function resolveAllowedReadPath(
+  inputPath: string
+): Promise<string> {
+  validatePathInput(inputPath);
+  checkNullBytes(inputPath);
+
+  const realFile = path.normalize(await realpath(inputPath));
+  const realRoots: string[] = [];
+  for (const root of allowedReadRoots()) {
+    try {
+      realRoots.push(path.normalize(await realpath(root)));
+    } catch {
+      // A missing root does not allow anything.
     }
-    return false;
   }
-  if (typeof content !== 'string') {
-    return true;
+
+  if (!realRoots.some((root) => isPathWithinRoot(realFile, root))) {
+    throw new SandboxPathError(
+      `Path is outside the allowed directories: ${inputPath}`
+    );
   }
-  if (content.includes('\0')) {
-    return true;
-  }
-  return false;
+  return realFile;
 }
 
 function scanForSecretPatterns(content: string): SecretDetectionResult {
@@ -383,10 +410,8 @@ export function detectSecretPatterns(
     };
   }
 
-  if (isBinaryContent(content)) {
-    return { detected: false };
-  }
-
+  // Scan even when the file contains NUL bytes. A leading NUL used to skip
+  // the rest of the content.
   const textContent =
     typeof content === 'string' ? content : content.toString();
 

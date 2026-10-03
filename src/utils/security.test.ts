@@ -11,9 +11,11 @@ import {
   SecretDetectionError,
   validateId,
   InvalidIdError,
+  resolveAllowedReadPath,
 } from './security.js';
 import path from 'path';
 import os from 'os';
+import fs from 'fs/promises';
 
 describe('Security Utils', () => {
   let userSandbox: string;
@@ -994,6 +996,83 @@ describe('Security Utils', () => {
         const result = detectSecretPatterns(binaryBuffer, 'file.bin');
         expect(result.detected).toBe(false);
       });
+
+      it('should still scan a secret that follows a leading NUL', () => {
+        const content = Buffer.concat([
+          Buffer.from([0x00]),
+          Buffer.from('API_KEY=supersecret'),
+        ]);
+        const result = detectSecretPatterns(content, 'notes.txt');
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+    });
+  });
+
+  describe('resolveAllowedReadPath', () => {
+    let root: string;
+    let outside: string;
+    const previousRoots = process.env.ZIPLINE_ALLOWED_ROOTS;
+
+    beforeEach(async () => {
+      root = await fs.mkdtemp(path.join(os.tmpdir(), 'allow-'));
+      outside = await fs.mkdtemp(path.join(os.tmpdir(), 'deny-'));
+      process.env.ZIPLINE_ALLOWED_ROOTS = root;
+    });
+
+    afterEach(async () => {
+      if (previousRoots === undefined) {
+        delete process.env.ZIPLINE_ALLOWED_ROOTS;
+      } else {
+        process.env.ZIPLINE_ALLOWED_ROOTS = previousRoots;
+      }
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.rm(outside, { recursive: true, force: true });
+    });
+
+    it('allows a file inside an allowed root', async () => {
+      const file = path.join(root, 'note.txt');
+      await fs.writeFile(file, 'hello');
+      await expect(resolveAllowedReadPath(file)).resolves.toBe(
+        await fs.realpath(file)
+      );
+    });
+
+    it('rejects a file outside the allowed roots', async () => {
+      const file = path.join(outside, 'note.txt');
+      await fs.writeFile(file, 'hello');
+      await expect(resolveAllowedReadPath(file)).rejects.toThrow(
+        SandboxPathError
+      );
+    });
+
+    it('rejects a symlink whose target is outside the root', async () => {
+      const target = path.join(outside, 'secret.txt');
+      await fs.writeFile(target, 'secret');
+      const link = path.join(root, 'note.txt');
+      await fs.symlink(target, link);
+      await expect(resolveAllowedReadPath(link)).rejects.toThrow(
+        /outside the allowed/
+      );
+    });
+
+    it('allows a symlink whose target stays inside the root', async () => {
+      const target = path.join(root, 'real.txt');
+      await fs.writeFile(target, 'ok');
+      const link = path.join(root, 'link.txt');
+      await fs.symlink(target, link);
+      await expect(resolveAllowedReadPath(link)).resolves.toBe(
+        await fs.realpath(target)
+      );
+    });
+
+    it('rejects files outside the home directory when no roots are configured', async () => {
+      delete process.env.ZIPLINE_ALLOWED_ROOTS;
+      const file = path.join(outside, 'note.txt');
+      await fs.writeFile(file, 'hello');
+      await expect(resolveAllowedReadPath(file)).rejects.toThrow(
+        SandboxPathError
+      );
     });
   });
 

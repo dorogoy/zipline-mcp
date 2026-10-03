@@ -11,7 +11,11 @@ import {
   UploadOptions,
   DownloadOptions,
 } from './httpClient.js';
-import { secureLog, maskSensitiveData } from './utils/security.js';
+import {
+  secureLog,
+  maskSensitiveData,
+  resolveAllowedReadPath,
+} from './utils/security.js';
 import {
   listUserFiles,
   getUserFile,
@@ -180,6 +184,28 @@ export const DEFAULT_ALLOWED_EXTENSIONS = [
   '.webp',
   '.svg',
 ];
+
+// Formats with no magic number. Accepted only when the bytes contain no NUL.
+// Any other extension is rejected when file-type cannot name the content.
+const TEXT_EXTENSIONS = new Set([
+  '.txt',
+  '.md',
+  '.gpx',
+  '.html',
+  '.htm',
+  '.json',
+  '.xml',
+  '.csv',
+  '.js',
+  '.ts',
+  '.css',
+  '.py',
+  '.sh',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.svg',
+]);
 
 export const ALLOWED_EXTENSIONS = process.env.ALLOWED_EXTENSIONS
   ? process.env.ALLOWED_EXTENSIONS.split(',').map((ext) =>
@@ -500,10 +526,11 @@ server.registerTool(
       originalName,
     } = args;
     try {
+      const realPath = await resolveAllowedReadPath(filePath);
       const normalizedFormat = normalizeFormat(format);
       if (!normalizedFormat) throw new Error(`Invalid format: ${format}`);
 
-      const fileExt = path.extname(filePath).toLowerCase();
+      const fileExt = path.extname(realPath).toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
         throw new Error(`File type ${fileExt} not supported.`);
       }
@@ -511,7 +538,7 @@ server.registerTool(
       // 1. Critical Security Check: Validate MIME type matches extension
       // We read only the header to prevent OOM on large files
       const { mimeMatch, detectedMimeType, extensionMimeType } =
-        await validateFileContent(filePath, fileExt);
+        await validateFileContent(realPath, fileExt);
       if (!mimeMatch) {
         throw new Error(
           `Security Violation: File content (MIME: [${detectedMimeType}] len:${detectedMimeType.length}) does not match extension (${fileExt}) which expects ([${extensionMimeType}] len:${extensionMimeType.length}). Upload rejected.`
@@ -519,7 +546,7 @@ server.registerTool(
       }
 
       // 2. Early Size Validation: Check file size before staging
-      const stats = await fs.stat(filePath);
+      const stats = await fs.stat(realPath);
       if (stats.size > MAX_FILE_SIZE_BYTES) {
         const formattedActualSize = formatFileSize(stats.size);
         const formattedMaxSize = formatFileSize(MAX_FILE_SIZE_BYTES);
@@ -530,7 +557,7 @@ server.registerTool(
 
       // Memory-First Staging via sandboxUtils
       // This validates secrets and loads content into memory if < 5MB
-      const stagedFile = await stageFile(filePath);
+      const stagedFile = await stageFile(realPath);
 
       try {
         const fileSize =
@@ -539,7 +566,7 @@ server.registerTool(
         const opts: UploadOptions = {
           endpoint: ZIPLINE_ENDPOINT,
           token: ZIPLINE_TOKEN,
-          filePath,
+          filePath: realPath,
           format: normalizedFormat,
         };
 
@@ -624,28 +651,23 @@ async function validateFileContent(
     // If file is smaller than buffer, slice it
     const params = bytesRead < 4100 ? buffer.subarray(0, bytesRead) : buffer;
 
-    // Detect MIME
-    let detectedMimeType = 'unknown';
+    let detected: { mime: string } | undefined;
     try {
-      const fileType = await fileTypeFromBuffer(params);
-      detectedMimeType = fileType?.mime || mime.lookup(filePath) || 'unknown';
+      detected = await fileTypeFromBuffer(params);
     } catch {
-      detectedMimeType = mime.lookup(filePath) || 'unknown';
+      detected = undefined;
     }
 
     const extensionMimeType = mime.lookup(fileExt) || 'unknown';
+    let detectedMimeType: string;
+    let mimeMatch: boolean;
 
-    // Loose matching logic:
-    // 1. If detection failed (unknown), assume match (fallback to extension trust for obscure types)
-    // 2. If detected matches extension mime
-    // 3. Special handling for text files which might be detected as generic 'application/octet-stream' or specific text subtypes
-    let mimeMatch =
-      detectedMimeType === 'unknown' || detectedMimeType === extensionMimeType;
-
-    // Additional robust checks for common mismatches
-    if (!mimeMatch) {
-      // Allow text/plain for code files
+    if (detected?.mime) {
+      detectedMimeType = detected.mime;
+      mimeMatch = detectedMimeType === extensionMimeType;
+      // text/plain is what magic detection returns for several code formats
       if (
+        !mimeMatch &&
         detectedMimeType === 'text/plain' &&
         [
           '.ts',
@@ -661,10 +683,21 @@ async function validateFileContent(
       ) {
         mimeMatch = true;
       }
-      // Allow application/xml for svg
-      if (detectedMimeType === 'application/xml' && fileExt === '.svg') {
+      if (
+        !mimeMatch &&
+        detectedMimeType === 'application/xml' &&
+        fileExt === '.svg'
+      ) {
         mimeMatch = true;
       }
+    } else if (TEXT_EXTENSIONS.has(fileExt) && !params.includes(0)) {
+      // No magic number. Treat as text only when the sample has no NUL.
+      detectedMimeType =
+        extensionMimeType === 'unknown' ? 'text/plain' : extensionMimeType;
+      mimeMatch = true;
+    } else {
+      detectedMimeType = 'unknown';
+      mimeMatch = false;
     }
 
     const isSupported = ALLOWED_EXTENSIONS.includes(fileExt);
@@ -686,12 +719,13 @@ server.registerTool(
   },
   async ({ filePath }) => {
     try {
-      const fileExt = path.extname(filePath).toLowerCase();
+      const realPath = await resolveAllowedReadPath(filePath);
+      const fileExt = path.extname(realPath).toLowerCase();
 
       // 1. Secret Validation (Full scan still required for security)
       let secretDetails = '';
       try {
-        await validateFileForSecrets(filePath);
+        await validateFileForSecrets(realPath);
       } catch (error) {
         if (error instanceof SecretDetectionError) {
           secretDetails = `\n⚠️ Secret Type: ${error.secretType}\n⚠️ Pattern: ${error.pattern}`;
@@ -700,9 +734,9 @@ server.registerTool(
 
       // 2. Efficient MIME Detection
       const { detectedMimeType, mimeMatch, isSupported } =
-        await validateFileContent(filePath, fileExt);
+        await validateFileContent(realPath, fileExt);
 
-      const stats = await fs.stat(filePath);
+      const stats = await fs.stat(realPath);
       const formattedSize = formatFileSize(stats.size);
 
       // 3. Staging Strategy and Size Analysis
@@ -732,7 +766,7 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(filePath)}\n📍 Path: ${filePath}\n📊 Size: ${formattedSize}\n🏷️ Extension: ${fileExt || 'none'}\n🎯 MIME: ${detectedMimeType}\n✅ MIME/Extension Match: ${mimeMatch ? 'Yes' : 'No'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}\n🚀 Staging Strategy: ${stagingStrategy}${sizeWarning}${sizeLimitWarning}${secretDetails}\n\nStatus: ${sizeLimitWarning ? '🔴 Too large for upload' : secretDetails ? '🔴 Contains secrets (not allowed for upload)' : !isSupported ? '🔴 File type not supported' : !mimeMatch ? '🔴 MIME type matches extension violation' : '🟢 Ready for upload'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
+            text: `📋 FILE VALIDATION REPORT\n\n📁 File: ${path.basename(realPath)}\n📍 Path: ${realPath}\n📊 Size: ${formattedSize}\n🏷️ Extension: ${fileExt || 'none'}\n🎯 MIME: ${detectedMimeType}\n✅ MIME/Extension Match: ${mimeMatch ? 'Yes' : 'No'}\n✅ Supported: ${isSupported ? 'Yes' : 'No'}\n🚀 Staging Strategy: ${stagingStrategy}${sizeWarning}${sizeLimitWarning}${secretDetails}\n\nStatus: ${sizeLimitWarning ? '🔴 Too large for upload' : secretDetails ? '🔴 Contains secrets (not allowed for upload)' : !isSupported ? '🔴 File type not supported' : !mimeMatch ? '🔴 MIME type matches extension violation' : '🟢 Ready for upload'}\n\nSupported formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
           },
         ],
       };

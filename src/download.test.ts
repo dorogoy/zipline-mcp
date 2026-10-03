@@ -1,5 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-misused-promises */
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/require-await */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { EventEmitter } from 'events';
+import { Readable } from 'stream';
+import { lookup } from 'dns/promises';
 
 const fsHandleMock = {
   write: vi.fn(),
@@ -46,53 +49,104 @@ vi.mock('mime-types', () => ({
   },
 }));
 
+vi.mock('dns/promises', () => ({
+  lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
+}));
+
+const transport = {
+  request: (..._args: unknown[]): unknown => {
+    throw new Error('request handler not installed');
+  },
+};
+
+vi.mock('https', () => ({
+  default: {
+    request: (...args: unknown[]) => transport.request(...args),
+  },
+  request: (...args: unknown[]) => transport.request(...args),
+}));
+
+vi.mock('http', () => ({
+  default: {
+    request: (...args: unknown[]) => transport.request(...args),
+  },
+  request: (...args: unknown[]) => transport.request(...args),
+}));
+
+type FakeResponse = Readable & {
+  statusCode: number;
+  headers: Record<string, string>;
+};
+
+type RequestOptions = {
+  hostname?: string;
+  servername?: string;
+  headers?: { host?: string };
+  signal?: AbortSignal;
+  lookup?: (
+    hostname: string,
+    options: { all?: boolean },
+    callback: (
+      err: NodeJS.ErrnoException | null,
+      address: string | { address: string; family: number }[],
+      family?: number
+    ) => void
+  ) => void;
+};
+
+function fakeResponse(
+  statusCode: number,
+  headers: Record<string, string>,
+  chunks: Buffer[]
+): FakeResponse {
+  const stream = Readable.from(chunks) as FakeResponse;
+  stream.statusCode = statusCode;
+  stream.headers = headers;
+  return stream;
+}
+
+function installRequest(
+  onEnd: (
+    options: RequestOptions,
+    callback: (res: FakeResponse) => void
+  ) => void
+) {
+  transport.request = (options: unknown, callback: unknown) => {
+    const req = new EventEmitter();
+    const end = () => {
+      onEnd(options as RequestOptions, callback as (res: FakeResponse) => void);
+    };
+    return Object.assign(req, { end });
+  };
+}
+
 describe('downloadExternalUrl (TDD)', () => {
   const url = 'https://example.com/files/test.txt';
   const filename = 'test.txt';
   const fakeContent = new TextEncoder().encode('hello world');
 
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
   let OriginalAbortController: typeof AbortController;
+  const content = Buffer.from(fakeContent);
 
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+    ] as never);
 
     OriginalAbortController = globalThis.AbortController;
 
-    const g = globalThis as any;
-    fetchSpy = vi
-      .spyOn(g, 'fetch')
-      .mockImplementation(async (_input: any, _init?: any) => {
-        let sent = false;
-        const res = {
-          ok: true,
-          status: 200,
-          body: {
-            getReader: () => ({
-              read: async () => {
-                if (!sent) {
-                  sent = true;
-                  return { done: false, value: fakeContent };
-                }
-                return { done: true, value: undefined };
-              },
-            }),
-          },
-          headers: {
-            get: (k: string) =>
-              k.toLowerCase() === 'content-length'
-                ? String(fakeContent.length)
-                : null,
-          },
-          url: url,
-        };
-        return res;
-      });
+    installRequest((_options, callback) => {
+      callback(
+        fakeResponse(200, { 'content-length': String(content.length) }, [
+          content,
+        ])
+      );
+    });
   });
 
   afterEach(() => {
-    fetchSpy.mockRestore();
     globalThis.AbortController = OriginalAbortController;
   });
 
@@ -156,15 +210,14 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('blocks redirects to private URLs (SSRF redirect protection)', async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 302,
-      headers: {
-        get: (h: string) =>
-          h.toLowerCase() === 'location'
-            ? 'http://169.254.169.254/latest/meta-data/'
-            : null,
-      },
+    installRequest((_options, callback) => {
+      callback(
+        fakeResponse(
+          302,
+          { location: 'http://169.254.169.254/latest/meta-data/' },
+          []
+        )
+      );
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -174,14 +227,9 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects redirect loop exceeding max redirects', async () => {
-    fetchSpy.mockImplementation(async () => ({
-      ok: false,
-      status: 302,
-      headers: {
-        get: (h: string) =>
-          h.toLowerCase() === 'location' ? 'https://example.com/loop' : null,
-      },
-    }));
+    installRequest((_options, callback) => {
+      callback(fakeResponse(302, { location: 'https://example.com/loop' }, []));
+    });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(
@@ -190,11 +238,8 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('throws on HTTP errors', async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      text: async () => 'Not Found',
+    installRequest((_options, callback) => {
+      callback(fakeResponse(404, {}, [Buffer.from('Not Found')]));
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -220,13 +265,15 @@ describe('downloadExternalUrl (TDD)', () => {
 
     globalThis.AbortController = MockAbortController;
 
-    fetchSpy.mockImplementation(async (_input: any, init?: any) => {
-      return new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
-          reject(new Error('The operation was aborted.'));
+    transport.request = (options: unknown) => {
+      const req = new EventEmitter();
+      const end = () => {
+        (options as RequestOptions).signal?.addEventListener('abort', () => {
+          req.emit('error', new Error('The operation was aborted.'));
         });
-      });
-    });
+      };
+      return Object.assign(req, { end });
+    };
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url, { timeout: 5 })).rejects.toThrow(
@@ -236,19 +283,8 @@ describe('downloadExternalUrl (TDD)', () => {
 
   it('rejects files larger than 100MB via Content-Length', async () => {
     const bigSize = 101 * 1024 * 1024;
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      body: {
-        getReader: () => ({
-          read: async () => ({ done: true, value: undefined }),
-        }),
-      },
-      headers: {
-        get: (k: string) =>
-          k.toLowerCase() === 'content-length' ? String(bigSize) : null,
-      },
-      url,
+    installRequest((_options, callback) => {
+      callback(fakeResponse(200, { 'content-length': String(bigSize) }, []));
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -258,27 +294,15 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects files larger than 100MB via streaming (no Content-Length)', async () => {
-    const chunk = new Uint8Array(10 * 1024 * 1024);
-    let chunksSent = 0;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => null,
-      },
-      body: {
-        getReader: () => ({
-          read: async () => {
-            if (chunksSent < 11) {
-              chunksSent++;
-              return { done: false, value: chunk };
-            }
-            return { done: true, value: undefined };
-          },
-        }),
-      },
-      url,
+    const chunk = Buffer.alloc(10 * 1024 * 1024);
+    installRequest((_options, callback) => {
+      callback(
+        fakeResponse(
+          200,
+          {},
+          Array.from({ length: 11 }, () => chunk)
+        )
+      );
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -290,9 +314,13 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('removes partial file on failure', async () => {
-    fetchSpy.mockImplementationOnce(async () => {
-      throw new Error('Network failure');
-    });
+    transport.request = () => {
+      const req = new EventEmitter();
+      const end = () => {
+        req.emit('error', new Error('Network failure'));
+      };
+      return Object.assign(req, { end });
+    };
 
     const { downloadExternalUrl } = await import('./httpClient.js');
     await expect(downloadExternalUrl(url)).rejects.toThrow(/Network failure/i);
@@ -305,28 +333,12 @@ describe('downloadExternalUrl (TDD)', () => {
 
   it('accepts file exactly at 100MB boundary via Content-Length', async () => {
     const exactSize = 100 * 1024 * 1024;
-    const content = new Uint8Array([1, 2, 3, 4, 5]);
-    let sent = false;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      body: {
-        getReader: () => ({
-          read: async () => {
-            if (!sent) {
-              sent = true;
-              return { done: false, value: content };
-            }
-            return { done: true, value: undefined };
-          },
-        }),
-      },
-      headers: {
-        get: (k: string) =>
-          k.toLowerCase() === 'content-length' ? String(exactSize) : null,
-      },
-      url,
+    installRequest((_options, callback) => {
+      callback(
+        fakeResponse(200, { 'content-length': String(exactSize) }, [
+          Buffer.from([1, 2, 3, 4, 5]),
+        ])
+      );
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -337,29 +349,15 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('accepts file exactly at 100MB boundary via streaming', async () => {
-    const chunkSize = 1024 * 1024; // 1MB per chunk
-    const totalChunks = 100; // 100 chunks = exactly 100MB
-    const chunk = new Uint8Array(chunkSize);
-    let chunksSent = 0;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => null,
-      },
-      body: {
-        getReader: () => ({
-          read: async () => {
-            if (chunksSent < totalChunks) {
-              chunksSent++;
-              return { done: false, value: chunk };
-            }
-            return { done: true, value: undefined };
-          },
-        }),
-      },
-      url,
+    const chunk = Buffer.alloc(1024 * 1024);
+    installRequest((_options, callback) => {
+      callback(
+        fakeResponse(
+          200,
+          {},
+          Array.from({ length: 100 }, () => chunk)
+        )
+      );
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -369,34 +367,11 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('rejects file just over 100MB boundary via streaming', async () => {
-    const chunkSize = 1024 * 1024; // 1MB per chunk
-    const totalChunks = 100; // 100 chunks = exactly 100MB
-    const chunk = new Uint8Array(chunkSize);
-    const extraByte = new Uint8Array(1); // 1 extra byte to exceed limit
-    let chunksSent = 0;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => null,
-      },
-      body: {
-        getReader: () => ({
-          read: async () => {
-            if (chunksSent < totalChunks) {
-              chunksSent++;
-              return { done: false, value: chunk };
-            }
-            if (chunksSent === totalChunks) {
-              chunksSent++;
-              return { done: false, value: extraByte };
-            }
-            return { done: true, value: undefined };
-          },
-        }),
-      },
-      url,
+    const chunk = Buffer.alloc(1024 * 1024);
+    const chunks = Array.from({ length: 100 }, () => chunk);
+    chunks.push(Buffer.from([1]));
+    installRequest((_options, callback) => {
+      callback(fakeResponse(200, {}, chunks));
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -408,27 +383,16 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('cleans up file on streaming abort mid-download', async () => {
-    const chunk = new Uint8Array(50 * 1024 * 1024);
-    let chunksSent = 0;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => null,
-      },
-      body: {
-        getReader: () => ({
-          read: async () => {
-            chunksSent++;
-            if (chunksSent === 1) {
-              return { done: false, value: chunk };
-            }
-            throw new Error('Connection lost mid-download');
-          },
-        }),
-      },
-      url,
+    const chunk = Buffer.alloc(50 * 1024 * 1024);
+    installRequest((_options, callback) => {
+      async function* failAfterOne() {
+        yield chunk;
+        throw new Error('Connection lost mid-download');
+      }
+      const stream = Readable.from(failAfterOne()) as FakeResponse;
+      stream.statusCode = 200;
+      stream.headers = {};
+      callback(stream);
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -441,28 +405,9 @@ describe('downloadExternalUrl (TDD)', () => {
   });
 
   it('respects custom maxFileSizeBytes parameter', async () => {
-    const customLimit = 1024; // 1KB custom limit
-    const chunk = new Uint8Array(2048); // 2KB exceeds 1KB limit
-    let chunksSent = 0;
-
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => null,
-      },
-      body: {
-        getReader: () => ({
-          read: async () => {
-            if (chunksSent < 1) {
-              chunksSent++;
-              return { done: false, value: chunk };
-            }
-            return { done: true, value: undefined };
-          },
-        }),
-      },
-      url,
+    const customLimit = 1024;
+    installRequest((_options, callback) => {
+      callback(fakeResponse(200, {}, [Buffer.alloc(2048)]));
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
@@ -471,5 +416,99 @@ describe('downloadExternalUrl (TDD)', () => {
     ).rejects.toThrow(/exceed/i);
 
     expect(fsMock.rm).toHaveBeenCalled();
+  });
+
+  it('refuses a public name that resolves to a private or metadata address', async () => {
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '169.254.169.254', family: 4 },
+    ] as never);
+    let requested = false;
+    transport.request = () => {
+      requested = true;
+      throw new Error('should not connect');
+    };
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(
+      downloadExternalUrl('https://files.example/secret.txt')
+    ).rejects.toThrow(/forbidden|private/i);
+    expect(requested).toBe(false);
+  });
+
+  it('refuses when any DNS answer is private', async () => {
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '10.1.2.3', family: 4 },
+    ] as never);
+    let requested = false;
+    transport.request = () => {
+      requested = true;
+      throw new Error('should not connect');
+    };
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(
+      downloadExternalUrl('https://files.example/secret.txt')
+    ).rejects.toThrow(/forbidden|private/i);
+    expect(requested).toBe(false);
+  });
+
+  it('connects to the resolved address and keeps that pin if DNS changes', async () => {
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '203.0.113.10', family: 4 },
+    ] as never);
+    let seen: RequestOptions | undefined;
+    installRequest((options, callback) => {
+      seen = options;
+      callback(
+        fakeResponse(200, { 'content-length': String(content.length) }, [
+          content,
+        ])
+      );
+    });
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await downloadExternalUrl(url);
+
+    expect(seen?.hostname).toBe('203.0.113.10');
+    expect(seen?.servername).toBe('example.com');
+    expect(seen?.headers?.host).toBe('example.com');
+
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '127.0.0.1', family: 4 },
+    ] as never);
+    await new Promise<void>((resolve, reject) => {
+      seen?.lookup?.('example.com', { all: true }, (err, address) => {
+        try {
+          expect(err).toBeNull();
+          expect(address).toEqual([{ address: '203.0.113.10', family: 4 }]);
+          resolve();
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    });
+  });
+
+  it('re-resolves a redirect and refuses a private answer', async () => {
+    vi.mocked(lookup).mockImplementation((async (hostname: string) => {
+      if (hostname === 'rebind.example') {
+        return [{ address: '127.0.0.1', family: 4 }];
+      }
+      return [{ address: '203.0.113.10', family: 4 }];
+    }) as never);
+    let requests = 0;
+    installRequest((_options, callback) => {
+      requests++;
+      callback(
+        fakeResponse(302, { location: 'http://rebind.example/secret.txt' }, [])
+      );
+    });
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(
+      downloadExternalUrl('https://example.com/out.txt')
+    ).rejects.toThrow(/forbidden|private/i);
+    expect(requests).toBe(1);
   });
 });

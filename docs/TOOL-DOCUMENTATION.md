@@ -58,7 +58,7 @@ Upload a file to the Zipline server with advanced options and retrieve the downl
 
 **Parameters:**
 
-- `filePath` (required): Path to the file to upload (see supported types above)
+- `filePath` (required): Path to the file to upload (see supported types above). The file is resolved with `realpath` and must stay inside `ZIPLINE_ALLOWED_ROOTS`. When that variable is unset, the home directory of the process user is the only allowed root. A symlink whose target is outside those directories is rejected and is not read.
 - `format` (optional): Filename format (default: random) - Options: random, uuid, date, name, random-words
 - `deletesAt` (optional): Optional file expiration time (default: no expiration, e.g., "1d", "2h", "date=2025-12-31T23:59:59Z")
 - `password` (optional): Optional password protection for the uploaded file (default: no password)
@@ -89,8 +89,10 @@ export ZIPLINE_MAX_FILE_SIZE=52428800
 The tool provides clear error messages for common issues:
 
 - **File not found:** If the file doesn't exist, you'll see "File not found: {path}" with actionable guidance
+- **Path outside the allowlist:** If the real path is not under `ZIPLINE_ALLOWED_ROOTS` (or the home directory when that variable is unset), the upload is refused before the file is read
 - **Permission denied:** If you lack read permissions, error will indicate permission issues
 - **Unsupported file type:** If the file extension isn't supported, you'll see the specific type that's not allowed
+- **Unidentified content:** If the bytes do not identify a type, the upload is refused. A matching extension is not enough. Text extensions are accepted only when the sample contains no NUL byte. Secret scanning still runs on files that contain NUL bytes.
 - **File too large:** If file exceeds maximum size, you'll see "File too large: {actualSize} exceeds maximum {maxSize}" with actionable guidance
 - **PAYLOAD_TOO_LARGE:** Error code indicating file size exceeds configured limit
 
@@ -415,15 +417,16 @@ Validate if a file exists, detect its MIME type, and verify it's suitable for up
 
 **Parameters:**
 
-- `filePath` (required): Absolute path to file to validate.
+- `filePath` (required): Absolute path to file to validate. The same allowlist as upload applies (`ZIPLINE_ALLOWED_ROOTS`, or the home directory when unset). The path is resolved with `realpath` before it is read.
 
 **Validation Features:**
 
+- **Allowed-path check:** Refuses the file when its real path, including through a symlink, leaves the allowed directories
 - **File existence check:** Confirms that file exists and is accessible
-- **MIME type detection:** Uses content-based detection (magic numbers) for binary files, extension-based for text files
+- **MIME type detection:** Uses content-based detection (magic numbers). If the content type cannot be identified, the file is not accepted just because the extension matches. Text extensions are accepted only when the sample has no NUL byte.
 - **Extension validation:** Verifies file extension matches allowed types
 - **MIME/extension match:** Checks if detected MIME type matches expected type for file extension
-- **Secret detection:** Scans for sensitive patterns (API keys, tokens, passwords)
+- **Secret detection:** Scans for sensitive patterns (API keys, tokens, passwords), including when a NUL byte appears before the secret
 - **Staging strategy:** Reports whether file will use memory staging (< 5MB) or disk fallback (≥ 5MB)
 - **Size warnings:** Warns if file is close to 5MB threshold (90%+) or exceeds maximum size limit
 
@@ -438,6 +441,7 @@ Validate if a file exists, detect its MIME type, and verify it's suitable for up
 **Error Handling:**
 
 - **File not found:** If file doesn't exist, you'll see "File not found: {path}" with actionable guidance
+- **Path outside the allowlist:** If the real path is outside `ZIPLINE_ALLOWED_ROOTS`, validation fails and the file is not read
 - **Permission denied:** If you lack read permissions, error will indicate permission issues
 - **Secrets detected:** If file contains sensitive patterns (API keys, tokens), tool will flag it
 - **MIME mismatch:** If file content doesn't match extension (e.g., PNG data in .jpg file), tool will report mismatch
@@ -566,7 +570,7 @@ Please check:
 ✅ MIME/Extension Match: No
 ✅ Supported: Yes
 
-Status: 🟢 Ready for upload
+Status: 🔴 MIME type matches extension violation
 
 Supported formats: .txt, .md, .gpx, .html, .htm, .json, .xml, .csv, .js, .ts, .css, .py, .sh, .yaml, .yml, .toml, .pdf, .zip, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .odg, .mp4, .mkv, .webm, .avi, .flv, .mov, .png, .jpg, .jpeg, .gif, .webp, .svg
 ```
@@ -592,6 +596,8 @@ Perform basic file management operations in a secure, per-user sandbox environme
 ### 4. download_external_url
 
 Download a file from an external HTTP(S) URL into the user's sandbox.
+
+On every hop, including redirects, the server resolves the hostname and refuses the request if any address is loopback, private, link-local, or a cloud metadata address. The TCP connection uses that resolved address. The original hostname is preserved as the HTTP `Host` header and, for HTTPS, the TLS server name, so a later DNS lookup cannot change the target.
 
 **Parameters:**
 
