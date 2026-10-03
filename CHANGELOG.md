@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.26](https://github.com/dorogoy/zipline-mcp/compare/v1.12.25...v1.12.26) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** bump brace-expansion ([931b027](https://github.com/dorogoy/zipline-mcp/commit/931b0275b7e6fbc3bcd1e29a950559b62e15ae3f))
+* pin download DNS and confine local file reads to an allowlist ([#227](https://github.com/dorogoy/zipline-mcp/issues/227)) ([8551932](https://github.com/dorogoy/zipline-mcp/commit/8551932b2836cac7e71aaec0819a08547eec1ceb))
+
 ## [1.12.25](https://github.com/dorogoy/zipline-mcp/compare/v1.12.24...v1.12.25) (2026-10-03)
 
 
