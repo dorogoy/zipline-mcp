@@ -6,6 +6,16 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.25](https://github.com/dorogoy/zipline-mcp/compare/v1.12.24...v1.12.25) (2026-10-03)
+
+
+### Bug Fixes
+
+* add maximum length limit to validateId function ([2bc7460](https://github.com/dorogoy/zipline-mcp/commit/2bc746090f247bff62f74508957c706101206d0d))
+* prevent SSRF bypass via ISATAP IPv6 transition addresses ([#220](https://github.com/dorogoy/zipline-mcp/issues/220)) ([507a65a](https://github.com/dorogoy/zipline-mcp/commit/507a65ace9b550b0ec541c1ded52486ce6a5a42a))
+* prevent SSRF via RFC 8215 NAT64 local prefix ([a7ceaab](https://github.com/dorogoy/zipline-mcp/commit/a7ceaab8f19733eddc4a44af470cc2e7e8ff6d40))
+* validate format header to prevent header injection ([bcdcae5](https://github.com/dorogoy/zipline-mcp/commit/bcdcae51a2d76fec89eea23ceede9b1442bf094c))
+
 ## [1.12.24](https://github.com/dorogoy/zipline-mcp/compare/v1.12.23...v1.12.24) (2026-09-29)
 
 
