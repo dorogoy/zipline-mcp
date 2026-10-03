@@ -60,7 +60,7 @@ import {
   folderInfoCache,
 } from './utils/cache.js';
 import * as mime from 'mime-types';
-import { fileTypeFromBuffer } from 'file-type';
+import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type';
 
 // Re-export sandbox functions for backward compatibility
 export {
@@ -206,6 +206,21 @@ const TEXT_EXTENSIONS = new Set([
   '.toml',
   '.svg',
 ]);
+
+const EBML_MAGIC = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+
+// file-type v21 names these containers differently from mime-types.
+// The extension MIME must be one of the listed aliases. This does not
+// accept a file whose type was not detected.
+const CONTAINER_MIME_ALIASES: Record<string, readonly string[]> = {
+  'application/x-cfb': [
+    'application/msword',
+    'application/vnd.ms-excel',
+    'application/vnd.ms-powerpoint',
+  ],
+  'video/vnd.avi': ['video/x-msvideo'],
+  'video/matroska': ['video/x-matroska'],
+};
 
 export const ALLOWED_EXTENSIONS = process.env.ALLOWED_EXTENSIONS
   ? process.env.ALLOWED_EXTENSIONS.split(',').map((ext) =>
@@ -633,7 +648,7 @@ server.registerTool(
  * Validates file content by checking MIME type against extension.
  * Reads only the first 4100 bytes for efficiency.
  */
-async function validateFileContent(
+export async function validateFileContent(
   filePath: string,
   fileExt: string
 ): Promise<{
@@ -658,13 +673,34 @@ async function validateFileContent(
       detected = undefined;
     }
 
+    // Matroska/WebM keep the EBML magic at byte 0, but the DocType string can
+    // sit past this probe. Re-read from the file only for those extensions,
+    // and only when the magic is present. A miss still fails closed.
+    if (
+      !detected &&
+      (fileExt === '.mkv' || fileExt === '.webm') &&
+      params.length >= EBML_MAGIC.length &&
+      params.subarray(0, EBML_MAGIC.length).equals(EBML_MAGIC)
+    ) {
+      try {
+        detected = await fileTypeFromFile(filePath);
+      } catch {
+        detected = undefined;
+      }
+    }
+
     const extensionMimeType = mime.lookup(fileExt) || 'unknown';
     let detectedMimeType: string;
     let mimeMatch: boolean;
 
     if (detected?.mime) {
       detectedMimeType = detected.mime;
-      mimeMatch = detectedMimeType === extensionMimeType;
+      mimeMatch =
+        detectedMimeType === extensionMimeType ||
+        (CONTAINER_MIME_ALIASES[detectedMimeType]?.includes(
+          extensionMimeType
+        ) ??
+          false);
       // text/plain is what magic detection returns for several code formats
       if (
         !mimeMatch &&

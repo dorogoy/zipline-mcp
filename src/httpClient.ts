@@ -325,6 +325,8 @@ function requestPinned(
     path: `${target.pathname}${target.search}`,
     headers: { host: target.host },
     servername: target.hostname,
+    // Host is the original name. The socket stays on the pinned address.
+    setHost: false,
     lookup: pinnedLookup(pinned),
     signal,
   };
@@ -342,10 +344,25 @@ function toBuffer(chunk: unknown): Buffer {
   return Buffer.from(chunk as Uint8Array);
 }
 
+const MAX_ERROR_BODY_BYTES = 1024 * 1024;
+
 async function readResponseBody(res: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of res) {
-    chunks.push(toBuffer(chunk));
+    const buf = toBuffer(chunk);
+    const remaining = MAX_ERROR_BODY_BYTES - size;
+    if (buf.length > remaining) {
+      if (remaining > 0) chunks.push(buf.subarray(0, remaining));
+      res.destroy();
+      break;
+    }
+    chunks.push(buf);
+    size += buf.length;
+    if (size >= MAX_ERROR_BODY_BYTES) {
+      res.destroy();
+      break;
+    }
   }
   return Buffer.concat(chunks).toString();
 }

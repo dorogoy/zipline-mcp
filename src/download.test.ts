@@ -81,6 +81,7 @@ type FakeResponse = Readable & {
 type RequestOptions = {
   hostname?: string;
   servername?: string;
+  setHost?: boolean;
   headers?: { host?: string };
   signal?: AbortSignal;
   lookup?: (
@@ -418,6 +419,31 @@ describe('downloadExternalUrl (TDD)', () => {
     expect(fsMock.rm).toHaveBeenCalled();
   });
 
+  it('stops reading a non-success body after 1 MiB', async () => {
+    let pushed = 0;
+    installRequest((_options, callback) => {
+      const stream = new Readable({
+        read() {
+          if (pushed >= 2 * 1024 * 1024) {
+            this.push(null);
+            return;
+          }
+          const chunk = Buffer.alloc(256 * 1024);
+          pushed += chunk.length;
+          this.push(chunk);
+        },
+      }) as FakeResponse;
+      stream.statusCode = 404;
+      stream.headers = {};
+      callback(stream);
+    });
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await expect(downloadExternalUrl(url)).rejects.toThrow(/Not Found/i);
+    expect(pushed).toBeLessThanOrEqual(1024 * 1024 + 256 * 1024);
+    expect(pushed).toBeGreaterThan(0);
+  });
+
   it('refuses a public name that resolves to a private or metadata address', async () => {
     vi.mocked(lookup).mockResolvedValue([
       { address: '169.254.169.254', family: 4 },
@@ -473,6 +499,7 @@ describe('downloadExternalUrl (TDD)', () => {
     expect(seen?.hostname).toBe('203.0.113.10');
     expect(seen?.servername).toBe('example.com');
     expect(seen?.headers?.host).toBe('example.com');
+    expect(seen?.setHost).toBe(false);
 
     vi.mocked(lookup).mockResolvedValue([
       { address: '127.0.0.1', family: 4 },

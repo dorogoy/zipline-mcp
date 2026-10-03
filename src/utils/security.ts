@@ -326,7 +326,11 @@ export async function resolveAllowedReadPath(
     try {
       realRoots.push(path.normalize(await realpath(root)));
     } catch {
-      // A missing root does not allow anything.
+      // A missing root does not allow anything. Log the path the operator
+      // configured so a typo is visible. secureLog redacts the API token.
+      secureLog(
+        `ZIPLINE_ALLOWED_ROOTS entry does not exist or is not resolvable: ${root}`
+      );
     }
   }
 

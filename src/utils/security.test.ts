@@ -1066,6 +1066,37 @@ describe('Security Utils', () => {
       );
     });
 
+    it('logs an unresolvable allowlist entry and still allows a resolvable root', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const missing = path.join(outside, 'missing-root');
+      process.env.ZIPLINE_ALLOWED_ROOTS = `${root},${missing}`;
+      const file = path.join(root, 'note.txt');
+      await fs.writeFile(file, 'hello');
+
+      await expect(resolveAllowedReadPath(file)).resolves.toBe(
+        await fs.realpath(file)
+      );
+
+      const logged = spy.mock.calls.flat().join(' ');
+      expect(logged).toContain(missing);
+      expect(logged).not.toContain('test-token-for-security');
+      spy.mockRestore();
+    });
+
+    it('still fails closed when every allowlist entry is missing', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const missing = path.join(outside, 'missing-root');
+      process.env.ZIPLINE_ALLOWED_ROOTS = missing;
+      const file = path.join(root, 'note.txt');
+      await fs.writeFile(file, 'hello');
+
+      await expect(resolveAllowedReadPath(file)).rejects.toThrow(
+        SandboxPathError
+      );
+      expect(spy.mock.calls.flat().join(' ')).toContain(missing);
+      spy.mockRestore();
+    });
+
     it('rejects files outside the home directory when no roots are configured', async () => {
       delete process.env.ZIPLINE_ALLOWED_ROOTS;
       const file = path.join(outside, 'note.txt');
