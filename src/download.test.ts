@@ -481,7 +481,7 @@ describe('downloadExternalUrl (TDD)', () => {
 
   it('connects to the resolved address and keeps that pin if DNS changes', async () => {
     vi.mocked(lookup).mockResolvedValue([
-      { address: '203.0.113.10', family: 4 },
+      { address: '93.184.216.34', family: 4 },
     ] as never);
     let seen: RequestOptions | undefined;
     installRequest((options, callback) => {
@@ -496,7 +496,7 @@ describe('downloadExternalUrl (TDD)', () => {
     const { downloadExternalUrl } = await import('./httpClient.js');
     await downloadExternalUrl(url);
 
-    expect(seen?.hostname).toBe('203.0.113.10');
+    expect(seen?.hostname).toBe('93.184.216.34');
     expect(seen?.servername).toBe('example.com');
     expect(seen?.headers?.host).toBe('example.com');
     expect(seen?.setHost).toBe(false);
@@ -508,7 +508,7 @@ describe('downloadExternalUrl (TDD)', () => {
       seen?.lookup?.('example.com', { all: true }, (err, address) => {
         try {
           expect(err).toBeNull();
-          expect(address).toEqual([{ address: '203.0.113.10', family: 4 }]);
+          expect(address).toEqual([{ address: '93.184.216.34', family: 4 }]);
           resolve();
         } catch (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
@@ -522,7 +522,7 @@ describe('downloadExternalUrl (TDD)', () => {
       if (hostname === 'rebind.example') {
         return [{ address: '127.0.0.1', family: 4 }];
       }
-      return [{ address: '203.0.113.10', family: 4 }];
+      return [{ address: '93.184.216.34', family: 4 }];
     }) as never);
     let requests = 0;
     installRequest((_options, callback) => {
