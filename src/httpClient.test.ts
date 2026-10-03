@@ -713,7 +713,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::169.254.169.254')).toBe(true);
       expect(isPrivateHost('::a9fe:a9fe')).toBe(true);
 
-      // NAT64 IPv6 (64:ff9b::/96)
+      // NAT64 IPv6 (64:ff9b::/96 and RFC 8215 64:ff9b:1::/48)
       expect(isPrivateHost('64:ff9b::127.0.0.1')).toBe(true);
       expect(isPrivateHost('64:ff9b::7f00:1')).toBe(true);
       expect(isPrivateHost('64:ff9b::10.0.0.1')).toBe(true);
@@ -721,6 +721,13 @@ describe('Header Validation', () => {
       expect(isPrivateHost('64:ff9b::169.254.169.254')).toBe(true);
       expect(isPrivateHost('64:ff9b::a9fe:a9fe')).toBe(true);
       expect(isPrivateHost('64:ff9b::8.8.8.8')).toBe(false);
+      expect(isPrivateHost('64:ff9b:1::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::7f00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::10.0.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::a00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::169.254.169.254')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::a9fe:a9fe')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1::8.8.8.8')).toBe(false);
 
       // ISATAP IPv6 (RFC 5214, :5efe:)
       expect(isPrivateHost('::5efe:127.0.0.1')).toBe(true);

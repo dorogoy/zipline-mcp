@@ -33,3 +33,9 @@
 **Vulnerability:** ISATAP (`RFC 5214`, `:5efe:`) IPv6 transition mechanisms embed IPv4 addresses in the 64-bit interface identifier (`0000:5efe:WWXX:YYZZ` or `0000:5efe:W.X.Y.Z`). SSRF filters checking only `::ffff:` IPv4-mapped, 6to4, or NAT64 IPv6 formats fail to detect ISATAP URLs targeting loopback (`127.0.0.1`), private networks, or AWS metadata (`169.254.169.254`).
 **Learning:** ISATAP interface identifiers (`:5efe:`) can be appended to any 64-bit IPv6 prefix, embedding dotted-quad or hex-encoded IPv4 targets that client networking stacks or gateways translate directly to IPv4.
 **Prevention:** SSRF host validation regexes for IPv6 embedded IPv4 addresses must include `:5efe:` alongside `:ffff:` and `64:ff9b::`, extracting both dotted decimal and hex forms of embedded IPv4 addresses for classification against private address ranges.
+
+## 2026-09-18 - RFC 8215 NAT64 Local Prefix IPv6 SSRF Validation Bypass
+
+**Vulnerability:** RFC 8215 defines `64:ff9b:1::/48` as the Local-Use IPv4/IPv6 Translation Prefix for NAT64 gateways. SSRF filters checking only the RFC 6052 Well-Known Prefix (`64:ff9b::/96`) fail to detect `64:ff9b:1::/48` IPv6 addresses embedding loopback (`127.0.0.1`), private networks, or cloud metadata IPs.
+**Learning:** NAT64 gateways or dual-stack transition software handle local translation via `64:ff9b:1::/48` in addition to `64:ff9b::/96`, allowing attackers to construct valid NAT64 URLs like `http://[64:ff9b:1::127.0.0.1]` or `http://[64:ff9b:1::7f00:1]` that bypass SSRF filters targeting only `64:ff9b::`.
+**Prevention:** NAT64 IPv6 SSRF validation regexes must match `64:ff9b:(?:1:)?` to cover both RFC 6052 (`64:ff9b::/96`) and RFC 8215 (`64:ff9b:1::/48`) prefixes, extracting dotted quad and hex representations of embedded IPv4 targets.
