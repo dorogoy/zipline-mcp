@@ -94,11 +94,14 @@ mcpServers:
 - `environment.ZIPLINE_ENDPOINT`: Custom Zipline server URL
 - `environment.ZIPLINE_DISABLE_SANDBOXING`: Disable per-user sandboxing for the tmp_file_manager tool. Set to "true" to disable sandboxing and use the shared `~/.zipline_tmp` directory for all users. Defaults to "false" (sandboxing enabled).
 - `environment.ALLOWED_EXTENSIONS`: **Override the list of allowed file extensions for upload and validation.** Provide a comma-separated list (e.g., `.txt,.md,.pdf,.docx`). If set, this will replace the default list of allowed extensions. Useful for restricting or expanding supported file types in your deployment.
+- `environment.ZIPLINE_ALLOWED_ROOTS`: **Directories `upload_file_to_zipline` and `validate_file` may read.** Comma-separated absolute paths (for example `/home/me/uploads,/var/zipline/inbox`). Each path is resolved with `realpath`, and so is the file. A symlink is accepted only when its target stays inside one of these directories. An entry that does not exist is ignored and written to the server log; it does not add any readable path. When unset, the only allowed directory is the home directory of the user running the server.
 
 #### Security Best Practices
 
 1. Store API tokens in environment variables, not in config files
 2. Use HTTPS for all connections to Zipline servers
+3. Set `ZIPLINE_ALLOWED_ROOTS` to the directories the agent is supposed to upload from. The server refuses every other path, including a symlink that points outside those directories.
+4. `download_external_url` resolves DNS on every request and every redirect. If any address is loopback, private, link-local, or a cloud metadata address, the download is refused. The connection uses the address from that lookup, so a later lookup cannot retarget it.
 
 #### Troubleshooting Common Issues
 
@@ -340,7 +343,7 @@ This server provides the following tools:
 
 Uploads a file to the Zipline server and returns a detailed success message.
 
-- `filePath`: Path to the file to upload. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
+- `filePath`: Path to the file to upload. The path must resolve inside `ZIPLINE_ALLOWED_ROOTS` (the home directory when that variable is unset). The server reads the real path after resolving symlinks. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif. Binary types are accepted only when the file contents identify that type. Legacy Word, Excel, and PowerPoint files are accepted when the bytes are a Compound File Binary container. AVI is accepted when the bytes are an AVI container (`video/vnd.avi`). Matroska is accepted when the bytes are Matroska (`video/matroska`), and WebM when they are WebM. If a Matroska or WebM file starts with an EBML header but the document type is past the first 4100 bytes, the server keeps reading that file until the type is identified. The extension alone is not enough. Text types are accepted only when the bytes contain no NUL. A NUL byte does not skip the secret scan.
 - `originalName`: (optional) Original filename to preserve during download. This parameter is sent as the `x-zipline-original-name` header to the Zipline server. The original filename will be used when downloading the file, not when storing it. Must be a non-empty string without path separators.
 
 **Example Prompts for Users:**
@@ -355,7 +358,7 @@ Uploads a file to the Zipline server and returns a detailed success message.
 
 Checks if a file exists and is suitable for upload.
 
-- `filePath`: Path to the file to validate. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif
+- `filePath`: Path to the file to validate. The same `ZIPLINE_ALLOWED_ROOTS` rule as upload applies: the real path, after symlinks, must stay inside an allowed directory. Supported extensions: txt, md, gpx, html, json, xml, csv, js, css, py, sh, yaml, yml, png, jpg, jpeg, gif, webp, svg, bmp, tiff, ico, heic, avif. The same content rules as upload apply, including the Compound File, AVI, Matroska, and WebM cases. Unidentified non-text content is rejected rather than trusted because the extension matches.
 
 **Example Prompts for Users:**
 
@@ -483,8 +486,11 @@ Usage example (MCP tool call)
 Security & safety considerations
 
 - Only `http` and `https` are accepted. Other schemes (ftp, file, etc.) are rejected.
+- Before each connection, including after a redirect, the server resolves the hostname and refuses the download if any address is loopback, private, link-local, or a cloud metadata address (for example `127.0.0.1`, `10.0.0.0/8`, `169.254.169.254`).
+- The socket connects to the address returned by that lookup. The original hostname is sent as the `Host` header and as the TLS server name. A DNS change after the check cannot move the connection.
 - Default file size limit: 100 MB. You can override via `maxFileSizeBytes` but be cautious.
-- The downloader follows redirects but enforces the maximum redirect behavior in code (to avoid redirect loops).
+- The downloader follows redirects but enforces the maximum redirect behavior in code (to avoid redirect loops). Each redirect is resolved and checked again.
+- When the remote server returns an error status, only the first 1 MiB of the response body is kept. A successful download still uses `maxFileSizeBytes` (default 100 MB).
 - All downloads are saved inside the per-user sandbox; filenames are validated and sanitized using the same rules as `tmp_file_manager` (no path separators, no dot segments, no absolute paths).
 - The server logs download activity with sanitized paths (user portion masked) for observability; secrets (such as tokens) are never logged.
 - If you require domain allow-listing to restrict where the server can download from, consider adding a hostname whitelist at the MCP server configuration level before enabling this tool for production usage.

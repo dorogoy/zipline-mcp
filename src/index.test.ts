@@ -1,6 +1,7 @@
 // Set required environment variables for tests
 process.env.ZIPLINE_TOKEN = 'test-token';
 process.env.ZIPLINE_ENDPOINT = 'http://localhost:3000';
+process.env.ZIPLINE_ALLOWED_ROOTS = '/path,/root,/home/user';
 import {
   vi,
   describe,
@@ -132,7 +133,20 @@ const fsMock = {
   rm: vi.fn(),
   unlink: vi.fn(),
   open: vi.fn(),
+  realpath: vi.fn((p: string) => Promise.resolve(p)),
 };
+
+function resetFsMocks(): void {
+  Object.values(fsMock).forEach((fn) => fn.mockReset());
+  fsMock.realpath.mockImplementation((p: string) => Promise.resolve(p));
+}
+
+// IHDR chunk so file-type can identify the bytes. An 8-byte signature is not enough.
+const DETECTABLE_PNG = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
+  0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+]);
 vi.mock('fs/promises', () => ({
   ...fsMock,
   default: fsMock,
@@ -234,7 +248,7 @@ describe('Zipline MCP Server', () => {
 
     beforeEach(async () => {
       vi.resetModules();
-      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      resetFsMocks();
       const imported = (await import('./index.js')) as unknown as {
         server: MockServer;
       };
@@ -301,6 +315,36 @@ describe('Zipline MCP Server', () => {
       expect(uploadSpy).not.toHaveBeenCalled();
     });
 
+    it('rejects a file outside the allowed roots', async () => {
+      fsMock.realpath.mockImplementation((p: string) =>
+        Promise.resolve(p.endsWith('file.txt') ? '/etc/passwd' : p)
+      );
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/file.txt' }, {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('outside the allowed');
+      expect(fsMock.open).not.toHaveBeenCalled();
+      expect(fsMock.readFile).not.toHaveBeenCalled();
+    });
+
+    it('reads a symlink only when its target stays inside the allowed roots', async () => {
+      fsMock.realpath.mockImplementation((p: string) =>
+        Promise.resolve(p.endsWith('link.txt') ? '/path/to/real.txt' : p)
+      );
+      mockFileContent('hello');
+
+      const handler = getToolHandler('validate_file');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ filePath: '/path/to/link.txt' }, {});
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]?.text).toContain('Path: /path/to/real.txt');
+      expect(fsMock.open).toHaveBeenCalledWith('/path/to/real.txt', 'r');
+    });
+
     it('should handle symlink resolution correctly', async () => {
       const symlinkError = new Error(
         'ELOOP: too many levels of symbolic links'
@@ -320,9 +364,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should validate supported file types correctly', async () => {
-      const pngData = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
+      const pngData = DETECTABLE_PNG;
       mockFileContent(pngData);
 
       const handler = getToolHandler('validate_file');
@@ -347,9 +389,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should detect MIME type for PNG files', async () => {
-      const pngData = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
+      const pngData = DETECTABLE_PNG;
       mockFileContent(pngData);
 
       const handler = getToolHandler('validate_file');
@@ -398,9 +438,7 @@ describe('Zipline MCP Server', () => {
     });
 
     it('should show MIME extension match status', async () => {
-      const pngData = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
+      const pngData = DETECTABLE_PNG;
       mockFileContent(pngData);
 
       const handler = getToolHandler('validate_file');
@@ -450,10 +488,7 @@ describe('Zipline MCP Server', () => {
       const { uploadFile } = await import('./httpClient.js');
       const uploadSpy = uploadFile as Mock;
 
-      const pngData = Buffer.concat([
-        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-        Buffer.alloc(64),
-      ]);
+      const pngData = DETECTABLE_PNG;
       mockFileContent(pngData);
 
       const validateHandler = getToolHandler('validate_file');
@@ -576,7 +611,7 @@ describe('upload_file_to_zipline tool', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -797,9 +832,7 @@ describe('upload_file_to_zipline tool', () => {
   });
 
   it('should handle PNG binary files correctly', async () => {
-    const pngData = Buffer.from([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-    ]);
+    const pngData = DETECTABLE_PNG;
     mockFileContent(pngData);
 
     const handler = getToolHandler('upload_file_to_zipline');
@@ -865,6 +898,32 @@ describe('upload_file_to_zipline tool', () => {
     expect(result.content[0]?.text).toContain('Security Violation');
     expect(result.content[0]?.text).toContain('image/png'); // Detected
     expect(result.content[0]?.text).toContain('.jpg'); // Extension
+  });
+
+  it('rejects an unidentified file instead of trusting the extension', async () => {
+    mockFileContent(Buffer.from('<html><script>alert(1)</script></html>'));
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/page.png' }, {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('Security Violation');
+    expect(result.content[0]?.text).toContain('unknown');
+  });
+
+  it('rejects a symlink whose target leaves the allowed roots', async () => {
+    fsMock.realpath.mockImplementation((p: string) =>
+      Promise.resolve(p.endsWith('file.txt') ? '/etc/passwd' : p)
+    );
+
+    const handler = getToolHandler('upload_file_to_zipline');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({ filePath: '/path/to/file.txt' }, {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('outside the allowed');
+    expect(fsMock.open).not.toHaveBeenCalled();
   });
 
   it('should reject file exceeding max size (early validation)', async () => {
@@ -988,7 +1047,7 @@ describe('tmp_file_manager tool', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -1933,7 +1992,7 @@ describe('tmp_file_manager tool', () => {
 
     beforeEach(async () => {
       vi.resetModules();
-      Object.values(fsMock).forEach((fn) => fn.mockReset());
+      resetFsMocks();
       const imported = (await import('./index.js')) as unknown as {
         server: MockServer;
       };
@@ -2018,7 +2077,7 @@ describe('batch_file_operation tool', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -2205,7 +2264,7 @@ describe('remote_folder_manager tool - LIST command', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -2311,7 +2370,7 @@ describe('remote_folder_manager tool - ADD command', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -2529,7 +2588,7 @@ describe('remote_folder_manager tool - INFO command', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -2629,7 +2688,7 @@ describe('remote_folder_manager tool - EDIT command', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -2915,7 +2974,7 @@ describe('remote_folder_manager tool - DELETE command', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -3084,7 +3143,7 @@ describe('check_health tool', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
@@ -3504,7 +3563,7 @@ describe('list_user_files caching', () => {
     vi.resetModules();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
 
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
@@ -3673,9 +3732,7 @@ describe('list_user_files caching', () => {
     await listHandler({ page: 1 }, {});
     expect(mockListUserFiles).toHaveBeenCalledTimes(1);
 
-    const pngData = Buffer.from([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-    ]);
+    const pngData = DETECTABLE_PNG;
     mockFileContent(pngData);
 
     const uploadHandler = getToolHandler('upload_file_to_zipline');
@@ -3880,7 +3937,7 @@ describe('remote_folder_manager caching', () => {
     vi.resetModules();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
 
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
@@ -4169,7 +4226,7 @@ describe('get_usage_stats tool', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    Object.values(fsMock).forEach((fn) => fn.mockReset());
+    resetFsMocks();
     const imported = (await import('./index.js')) as unknown as {
       server: MockServer;
     };
