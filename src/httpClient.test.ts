@@ -845,6 +845,24 @@ describe('Header Validation', () => {
       expect(isPrivateHost('239.255.255.250')).toBe(true);
       expect(isPrivateHost('255.255.255.255')).toBe(true);
 
+      // Benchmarking IPv4 (198.18.0.0/15 RFC 2544) and Documentation IPv4 (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 RFC 5737, 192.0.0.0/24 RFC 6890)
+      expect(isPrivateHost('198.18.0.1')).toBe(true);
+      expect(isPrivateHost('198.19.255.255')).toBe(true);
+      expect(isPrivateHost('192.0.2.1')).toBe(true);
+      expect(isPrivateHost('198.51.100.1')).toBe(true);
+      expect(isPrivateHost('203.0.113.1')).toBe(true);
+      expect(isPrivateHost('192.0.0.1')).toBe(true);
+
+      // Benchmarking & Documentation IPv4 via IPv6 transition mechanisms
+      expect(isPrivateHost('::ffff:192.0.2.1')).toBe(true);
+      expect(isPrivateHost('::ffff:c000:201')).toBe(true);
+      expect(isPrivateHost('64:ff9b::198.18.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::c612:1')).toBe(true);
+      expect(isPrivateHost('::5efe:192.0.2.1')).toBe(true);
+      expect(isPrivateHost('::5efe:c000:201')).toBe(true);
+      expect(isPrivateHost('2002:c000:0201::')).toBe(true);
+      expect(isPrivateHost('2002:c612:0001::')).toBe(true);
+
       // Just outside the ranges — must stay public
       expect(isPrivateHost('100.63.255.255')).toBe(false);
       expect(isPrivateHost('100.128.0.0')).toBe(false);
