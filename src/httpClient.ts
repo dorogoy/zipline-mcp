@@ -702,9 +702,9 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96 & RFC 8215 64:ff9b:1::/48), and ISATAP (RFC 5214, :5efe:) IPv6 check
+  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96 & RFC 8215 64:ff9b:1::/48), Teredo (RFC 4380 2001:0::/32), and ISATAP (RFC 5214, :5efe:) IPv6 check
   const ipv4MappedDotted =
-    /^(?:64:ff9b:(?:1:)?::?|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
+    /^(?:64:ff9b:(?:1:)?::?|2001:(?:0*:)*::?|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
       host
     );
   if (ipv4MappedDotted) {
@@ -729,6 +729,40 @@ export function isPrivateHost(hostname: string): boolean {
       const p2 = high & 0xff;
       const p3 = (low >> 8) & 0xff;
       return isPrivateIPv4(p1, p2, p3);
+    }
+  }
+
+  // Teredo RFC 4380 IPv6 check (2001:0::/32 embeds client IPv4 address in bits 96..127)
+  const teredoMatch =
+    /^2001:(?:0*:)*(?:[0-9a-fA-F]{1,4}:)*([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(
+      host
+    );
+  if (teredoMatch) {
+    const rawHigh = parseInt(teredoMatch[1]!, 16);
+    const rawLow = parseInt(teredoMatch[2]!, 16);
+    if (!Number.isNaN(rawHigh) && !Number.isNaN(rawLow)) {
+      // Check XOR-inverted hex (standard RFC 4380 Teredo)
+      const xorHigh = rawHigh ^ 0xffff;
+      const xorLow = rawLow ^ 0xffff;
+      if (
+        isPrivateIPv4(
+          (xorHigh >> 8) & 0xff,
+          xorHigh & 0xff,
+          (xorLow >> 8) & 0xff
+        )
+      ) {
+        return true;
+      }
+      // Check direct un-inverted hex
+      if (
+        isPrivateIPv4(
+          (rawHigh >> 8) & 0xff,
+          rawHigh & 0xff,
+          (rawLow >> 8) & 0xff
+        )
+      ) {
+        return true;
+      }
     }
   }
 

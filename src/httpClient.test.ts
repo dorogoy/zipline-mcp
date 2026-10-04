@@ -805,6 +805,16 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:db8::7f00:1')).toBe(false);
       expect(isPrivateHost('2001:db8::1000:1')).toBe(false);
 
+      // Teredo IPv6 (2001:0::/32 RFC 4380)
+      expect(isPrivateHost('2001:0::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('2001:0::7f00:1')).toBe(true);
+      expect(isPrivateHost('2001:0::80ff:fffe')).toBe(true); // 127.0.0.1 XOR-inverted
+      expect(isPrivateHost('2001:0000::80ff:fffe')).toBe(true);
+      expect(isPrivateHost('2001:0:1234:5678:1234:5678:80ff:fffe')).toBe(true);
+      expect(isPrivateHost('2001:0::f5ff:fffe')).toBe(true); // 10.0.0.1 XOR-inverted
+      expect(isPrivateHost('2001:0::5601:5601')).toBe(true); // 169.254.169.254 XOR-inverted
+      expect(isPrivateHost('2001:0::a247:27dd')).toBe(false); // 93.184.216.34 public
+
       // 6to4 IPv6 (2002::/16)
       expect(isPrivateHost('2002:7f00:1::')).toBe(true);
       expect(isPrivateHost('2002:7f00:0001::')).toBe(true);
