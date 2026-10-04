@@ -853,6 +853,16 @@ describe('Header Validation', () => {
       expect(isPrivateHost('203.0.113.1')).toBe(true);
       expect(isPrivateHost('192.0.0.1')).toBe(true);
 
+      // Benchmarking & Documentation IPv4 via IPv6 transition mechanisms
+      expect(isPrivateHost('::ffff:192.0.2.1')).toBe(true);
+      expect(isPrivateHost('::ffff:c000:201')).toBe(true);
+      expect(isPrivateHost('64:ff9b::198.18.0.1')).toBe(true);
+      expect(isPrivateHost('64:ff9b::c612:1')).toBe(true);
+      expect(isPrivateHost('::5efe:192.0.2.1')).toBe(true);
+      expect(isPrivateHost('::5efe:c000:201')).toBe(true);
+      expect(isPrivateHost('2002:c000:0201::')).toBe(true);
+      expect(isPrivateHost('2002:c612:0001::')).toBe(true);
+
       // Just outside the ranges — must stay public
       expect(isPrivateHost('100.63.255.255')).toBe(false);
       expect(isPrivateHost('100.128.0.0')).toBe(false);

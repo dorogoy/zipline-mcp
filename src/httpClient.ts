@@ -636,7 +636,7 @@ export function validateFolder(folder: string): void {
   }
 }
 
-function isPrivateIPv4(p1: number, p2: number, p3?: number): boolean {
+function isPrivateIPv4(p1: number, p2: number, p3: number): boolean {
   if (p1 === 0 || p1 === 127 || p1 === 10) return true; // 0.0.0.0/8, 127.0.0.0/8, 10.0.0.0/8
   if (p1 === 100 && p2 >= 64 && p2 <= 127) return true; // 100.64.0.0/10 (CGNAT / Shared Address Space)
   if (p1 === 169 && p2 === 254) return true; // 169.254.0.0/16 (link-local / cloud metadata)
