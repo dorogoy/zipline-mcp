@@ -636,6 +636,37 @@ export function validateFolder(folder: string): void {
   }
 }
 
+/** Expand a textual IPv6 address into eight hextets. Dotted IPv4 tails return null. */
+function expandIpv6Hextets(host: string): number[] | null {
+  if (host.includes('.') || !host.includes(':')) return null;
+  const sides = host.split('::');
+  if (sides.length > 2) return null;
+
+  const parseSide = (side: string): number[] | null => {
+    if (!side) return [];
+    const groups: number[] = [];
+    for (const part of side.split(':')) {
+      if (!/^[0-9a-f]{1,4}$/.test(part)) return null;
+      groups.push(parseInt(part, 16));
+    }
+    return groups;
+  };
+
+  const head = parseSide(sides[0] ?? '');
+  if (!head) return null;
+
+  let groups = head;
+  if (sides.length === 2) {
+    const tail = parseSide(sides[1] ?? '');
+    if (!tail) return null;
+    const zeros = 8 - head.length - tail.length;
+    if (zeros < 1) return null;
+    groups = [...head, ...new Array<number>(zeros).fill(0), ...tail];
+  }
+
+  return groups.length === 8 ? groups : null;
+}
+
 function isPrivateIPv4(p1: number, p2: number, p3: number): boolean {
   if (p1 === 0 || p1 === 127 || p1 === 10) return true; // 0.0.0.0/8, 127.0.0.0/8, 10.0.0.0/8
   if (p1 === 100 && p2 >= 64 && p2 <= 127) return true; // 100.64.0.0/10 (CGNAT / Shared Address Space)
@@ -732,37 +763,23 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // Teredo RFC 4380 IPv6 check (2001:0::/32 embeds client IPv4 address in bits 96..127)
-  const teredoMatch =
-    /^2001:(?:0*:)*(?:[0-9a-fA-F]{1,4}:)*([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/i.exec(
-      host
-    );
-  if (teredoMatch) {
-    const rawHigh = parseInt(teredoMatch[1]!, 16);
-    const rawLow = parseInt(teredoMatch[2]!, 16);
-    if (!Number.isNaN(rawHigh) && !Number.isNaN(rawLow)) {
-      // Check XOR-inverted hex (standard RFC 4380 Teredo)
-      const xorHigh = rawHigh ^ 0xffff;
-      const xorLow = rawLow ^ 0xffff;
-      if (
-        isPrivateIPv4(
-          (xorHigh >> 8) & 0xff,
-          xorHigh & 0xff,
-          (xorLow >> 8) & 0xff
-        )
-      ) {
-        return true;
-      }
-      // Check direct un-inverted hex
-      if (
-        isPrivateIPv4(
-          (rawHigh >> 8) & 0xff,
-          rawHigh & 0xff,
-          (rawLow >> 8) & 0xff
-        )
-      ) {
-        return true;
-      }
+  // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
+  // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
+  const teredo = expandIpv6Hextets(host);
+  if (teredo?.[0] === 0x2001 && teredo[1] === 0) {
+    const rawHigh = teredo[6] ?? 0;
+    const rawLow = teredo[7] ?? 0;
+    const xorHigh = rawHigh ^ 0xffff;
+    const xorLow = rawLow ^ 0xffff;
+    if (
+      isPrivateIPv4(
+        (xorHigh >> 8) & 0xff,
+        xorHigh & 0xff,
+        (xorLow >> 8) & 0xff
+      ) ||
+      isPrivateIPv4((rawHigh >> 8) & 0xff, rawHigh & 0xff, (rawLow >> 8) & 0xff)
+    ) {
+      return true;
     }
   }
 
