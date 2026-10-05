@@ -802,8 +802,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('200:5efe:a9fe:a9fe')).toBe(true);
       expect(isPrivateHost('::5efe:8.8.8.8')).toBe(false);
       expect(isPrivateHost('::5efe:808:808')).toBe(false);
-      expect(isPrivateHost('2001:db8::7f00:1')).toBe(false);
-      expect(isPrivateHost('2001:db8::1000:1')).toBe(false);
+      expect(isPrivateHost('2001:4860:4860::8888')).toBe(false);
 
       // Teredo IPv6 (2001:0::/32 RFC 4380)
       expect(isPrivateHost('2001:0::127.0.0.1')).toBe(true);
@@ -817,8 +816,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:0:53aa:1::80ff:fffe')).toBe(true); // middle-compressed 127.0.0.1 XOR
       expect(isPrivateHost('2001:0:1::5601:5601')).toBe(true); // middle-compressed 169.254.169.254 XOR
       expect(isPrivateHost('2001:0:4136:e378:8000:63bf:3fff:fdd2')).toBe(true); // RFC 4380 example, client 192.0.2.45
-      expect(isPrivateHost('2001:db8:abcd:12:a1b2:c3d4:e5f6:789a')).toBe(false); // full 2001::/16, not Teredo
-      expect(isPrivateHost('2001:db8::7f00:1')).toBe(false);
+      expect(isPrivateHost('2001:4860:4860::8888')).toBe(false);
 
       // 6to4 IPv6 (2002::/16)
       expect(isPrivateHost('2002:7f00:1::')).toBe(true);
@@ -834,7 +832,6 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002::')).toBe(true);
       expect(isPrivateHost('2002:0808:0808::')).toBe(false);
       expect(isPrivateHost('2002:0102:0304::')).toBe(false);
-      expect(isPrivateHost('2001:db8::1')).toBe(false);
 
       // IPv6 with zone index / scope identifier (% / %25)
       expect(isPrivateHost('::1%eth0')).toBe(true);
@@ -867,6 +864,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('198.51.100.1')).toBe(true);
       expect(isPrivateHost('203.0.113.1')).toBe(true);
       expect(isPrivateHost('192.0.0.1')).toBe(true);
+
+      // Special-Purpose IPv6 ranges (RFC 6666 Discard-Only 100::/64, RFC 3849 Documentation 2001:db8::/32, RFC 5180 Benchmarking 2001:2::/48)
+      expect(isPrivateHost('100::1')).toBe(true);
+      expect(isPrivateHost('100::')).toBe(true);
+      expect(isPrivateHost('2001:db8::1')).toBe(true);
+      expect(isPrivateHost('2001:db8:85a3::8a2e:370:7334')).toBe(true);
+      expect(isPrivateHost('2001:2::1')).toBe(true);
+      expect(isPrivateHost('2001:2::')).toBe(true);
 
       // Benchmarking & Documentation IPv4 via IPv6 transition mechanisms
       expect(isPrivateHost('::ffff:192.0.2.1')).toBe(true);

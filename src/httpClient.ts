@@ -763,23 +763,47 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
-  // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
-  const teredo = expandIpv6Hextets(host);
-  if (teredo?.[0] === 0x2001 && teredo[1] === 0) {
-    const rawHigh = teredo[6] ?? 0;
-    const rawLow = teredo[7] ?? 0;
-    const xorHigh = rawHigh ^ 0xffff;
-    const xorLow = rawLow ^ 0xffff;
+  // Inspect expanded hextets for Special-Purpose IPv6 ranges and Teredo
+  const hextets = expandIpv6Hextets(host);
+  if (hextets) {
+    // RFC 6666 Discard-Only (100::/64)
     if (
-      isPrivateIPv4(
-        (xorHigh >> 8) & 0xff,
-        xorHigh & 0xff,
-        (xorLow >> 8) & 0xff
-      ) ||
-      isPrivateIPv4((rawHigh >> 8) & 0xff, rawHigh & 0xff, (rawLow >> 8) & 0xff)
+      hextets[0] === 0x0100 &&
+      hextets[1] === 0 &&
+      hextets[2] === 0 &&
+      hextets[3] === 0
     ) {
       return true;
+    }
+    // RFC 3849 Documentation (2001:db8::/32)
+    if (hextets[0] === 0x2001 && hextets[1] === 0x0db8) {
+      return true;
+    }
+    // RFC 5180 Benchmarking (2001:2::/48)
+    if (hextets[0] === 0x2001 && hextets[1] === 0x0002 && hextets[2] === 0) {
+      return true;
+    }
+    // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
+    // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
+    if (hextets[0] === 0x2001 && hextets[1] === 0) {
+      const rawHigh = hextets[6] ?? 0;
+      const rawLow = hextets[7] ?? 0;
+      const xorHigh = rawHigh ^ 0xffff;
+      const xorLow = rawLow ^ 0xffff;
+      if (
+        isPrivateIPv4(
+          (xorHigh >> 8) & 0xff,
+          xorHigh & 0xff,
+          (xorLow >> 8) & 0xff
+        ) ||
+        isPrivateIPv4(
+          (rawHigh >> 8) & 0xff,
+          rawHigh & 0xff,
+          (rawLow >> 8) & 0xff
+        )
+      ) {
+        return true;
+      }
     }
   }
 
