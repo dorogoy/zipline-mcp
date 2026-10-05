@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.27](https://github.com/dorogoy/zipline-mcp/compare/v1.12.26...v1.12.27) (2026-10-05)
+
+
+### Bug Fixes
+
+* block RFC 2544 benchmarking and RFC 5737 documentation IPv4 ranges against SSRF ([#228](https://github.com/dorogoy/zipline-mcp/issues/228)) ([47b4dcb](https://github.com/dorogoy/zipline-mcp/commit/47b4dcb4603eae1dac3db3e31ecf15d8b66e1e59))
+* detect compressed Teredo IPv6 for SSRF checks ([#231](https://github.com/dorogoy/zipline-mcp/issues/231)) ([d61337e](https://github.com/dorogoy/zipline-mcp/commit/d61337e59811425cb3174413cc95a013a53e225c))
+* prevent SSRF validation bypass via RFC 4380 Teredo IPv6 addresses ([ad26119](https://github.com/dorogoy/zipline-mcp/commit/ad26119316233002107f2133fb29c267d43d1102))
+
 ## [1.12.26](https://github.com/dorogoy/zipline-mcp/compare/v1.12.25...v1.12.26) (2026-10-03)
 
 
