@@ -865,7 +865,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('203.0.113.1')).toBe(true);
       expect(isPrivateHost('192.0.0.1')).toBe(true);
 
-      // Special-Purpose IPv6 ranges (RFC 6666 Discard-Only 100::/64, RFC 3849 Documentation 2001:db8::/32, RFC 9637 Documentation 3fff::/20, RFC 3879 Site-Local fec0::/10, RFC 7343 ORCHIDv2 2001:20::/28, RFC 7450 AMT 2001:3::/32, RFC 5180 Benchmarking 2001:2::/48)
+      // Special-Purpose IPv6 ranges (RFC 6666 Discard-Only 100::/64, RFC 3849 Documentation 2001:db8::/32, RFC 9637 Documentation 3fff::/20, RFC 3879 Site-Local fec0::/10, RFC 7343 ORCHIDv2 2001:20::/28, RFC 7450 AMT 2001:3::/32, RFC 5180 Benchmarking 2001:2::/48, RFC 7723 PCP Anycast 2001:1::/32, RFC 7535 AS112-v6 2001:4:112::/48, RFC 4843 ORCHID v1 2001:10::/28)
       expect(isPrivateHost('100::1')).toBe(true);
       expect(isPrivateHost('100::')).toBe(true);
       expect(isPrivateHost('2001:db8::1')).toBe(true);
@@ -876,6 +876,12 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
+      expect(isPrivateHost('2001:1::1')).toBe(true);
+      expect(isPrivateHost('2001:1::')).toBe(true);
+      expect(isPrivateHost('2001:4:112::1')).toBe(true);
+      expect(isPrivateHost('2001:4:112::')).toBe(true);
+      expect(isPrivateHost('2001:10::1')).toBe(true);
+      expect(isPrivateHost('2001:1f::1')).toBe(true);
 
       // Dotted-IPv4-tail forms rely on URL normalization canonicalizing to hex
       expect(isPrivateHost('100::127.0.0.1')).toBe(true);
