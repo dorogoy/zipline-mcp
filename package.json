@@ -45,7 +45,7 @@
     "file-type": "^21.3.0",
     "mime-types": "^3.0.1",
     "typescript-eslint": "^8.67.0",
-    "zod": "^3.22.4"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
