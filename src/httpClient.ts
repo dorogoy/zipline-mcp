@@ -799,6 +799,20 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0002 && h2 === 0) {
       return true;
     }
+    // 2001:1::/32 — IETF Protocol Assignments (RFC 2928). Includes PCP Anycast
+    // (2001:1::1/128, RFC 7723), TURN Anycast (2001:1::2/128, RFC 8155), and
+    // DNS-SD SRP Anycast (2001:1::3/128, RFC 9665).
+    if (h0 === 0x2001 && h1 === 0x0001) {
+      return true;
+    }
+    // RFC 7535 AS112-v6 (2001:4:112::/48)
+    if (h0 === 0x2001 && h1 === 0x0004 && h2 === 0x0112) {
+      return true;
+    }
+    // RFC 4843 ORCHID v1 (2001:10::/28)
+    if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0010) {
+      return true;
+    }
     // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
     // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
     if (h0 === 0x2001 && h1 === 0) {
