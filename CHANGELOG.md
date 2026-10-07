@@ -6,6 +6,18 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.28](https://github.com/dorogoy/zipline-mcp/compare/v1.12.27...v1.12.28) (2026-10-07)
+
+
+### Bug Fixes
+
+* add special-purpose IPv6 address block SSRF validation ([#235](https://github.com/dorogoy/zipline-mcp/issues/235)) ([ab8118a](https://github.com/dorogoy/zipline-mcp/commit/ab8118a574cbc8b096e26b6bc24dbc024e78d63b))
+* add special-purpose IPv6 address ranges to SSRF validation ([#242](https://github.com/dorogoy/zipline-mcp/issues/242)) ([25be1b1](https://github.com/dorogoy/zipline-mcp/commit/25be1b1f21545812931010f5c48c58ab514264f3))
+* **deps:** bump @modelcontextprotocol/sdk ([769c2d6](https://github.com/dorogoy/zipline-mcp/commit/769c2d674efc83196026089bf57ece542ce30d53))
+* **deps:** bump fast-uri ([54ac5a7](https://github.com/dorogoy/zipline-mcp/commit/54ac5a7ab5b043bed73edbb1e0f345009bac9683))
+* **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([ac835b4](https://github.com/dorogoy/zipline-mcp/commit/ac835b4ef4c94e3bc0c7830ea5daa2e073658c41))
+* **deps:** bump zod from 3.25.76 to 4.6.5 ([a2908ca](https://github.com/dorogoy/zipline-mcp/commit/a2908ca9d08cf6a5de14425f53ac65f23169ef05))
+
 ## [1.12.27](https://github.com/dorogoy/zipline-mcp/compare/v1.12.26...v1.12.27) (2026-10-05)
 
 
