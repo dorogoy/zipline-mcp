@@ -799,7 +799,9 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0002 && h2 === 0) {
       return true;
     }
-    // RFC 7723 PCP Anycast (2001:1::/32)
+    // 2001:1::/32 — IETF Protocol Assignments (RFC 2928). Includes PCP Anycast
+    // (2001:1::1/128, RFC 7723), TURN Anycast (2001:1::2/128, RFC 8155), and
+    // DNS-SD SRP Anycast (2001:1::3/128, RFC 9665).
     if (h0 === 0x2001 && h1 === 0x0001) {
       return true;
     }
