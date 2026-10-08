@@ -907,6 +907,8 @@ describe('Header Validation', () => {
       // Just outside the ranges — must stay public
       expect(isPrivateHost('100.63.255.255')).toBe(false);
       expect(isPrivateHost('100.128.0.0')).toBe(false);
+      expect(isPrivateHost('192.88.98.255')).toBe(false);
+      expect(isPrivateHost('192.89.0.0')).toBe(false);
       expect(isPrivateHost('223.255.255.255')).toBe(false);
       expect(isPrivateHost('fbff::1')).toBe(false);
 
