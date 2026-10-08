@@ -57,3 +57,9 @@
 **Vulnerability:** RFC 6666 Discard-Only (`100::/64`), RFC 3849 Documentation (`2001:db8::/32`), and RFC 5180 Benchmarking (`2001:2::/48`) are non-routable Special-Purpose IPv6 ranges. SSRF filters inspecting only loopback (`::1`), link-local (`fe80::/10`), ULA (`fc00::/7`), and multicast (`ff00::/8`) fail to detect requests targeting these special-purpose IPv6 address blocks.
 **Learning:** Special-Purpose IPv6 blocks like `100::/64`, `2001:db8::/32`, and `2001:2::/48` are classified as non-global or non-routable under RFC 6890, but standard prefix checks or textual regexes miss middle-compressed or hextet-expanded variations.
 **Prevention:** SSRF host validation must inspect expanded hextet arrays (`expandIpv6Hextets`) to check `100::/64` (`0x0100:0:0:0`), `2001:db8::/32` (`0x2001:0x0db8`), and `2001:2::/48` (`0x2001:0x0002:0`) against RFC 6890 Special-Purpose IPv6 assignments.
+
+## 2026-09-22 - RFC 3068 / RFC 7526 6to4 Anycast Relay IPv4 SSRF Validation Bypass
+
+**Vulnerability:** RFC 3068 / RFC 7526 defines `192.88.99.0/24` as the 6to4 Anycast Relay address block. SSRF filters checking only RFC 1918, CGNAT, loopback, link-local, and TEST-NET addresses fail to detect `192.88.99.0/24` addresses or their embedded IPv6 transition forms (e.g. `::ffff:192.88.99.1`, `64:ff9b::192.88.99.1`, `2002:c058:6301::`), allowing SSRF requests to target 6to4 relay infrastructure or internal routing nodes.
+**Learning:** Under RFC 7526, 6to4 anycast relays were deprecated and reclassified as non-globally-routable Special-Purpose IPv4 addresses with `Global: False` under RFC 6890.
+**Prevention:** IPv4 SSRF validation functions (`isPrivateIPv4`) must inspect `p1 === 192 && p2 === 88 && p3 === 99` alongside other RFC 6890 special-purpose address ranges to block direct and IPv6-embedded 6to4 anycast relay requests.

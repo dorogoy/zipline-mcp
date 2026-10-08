@@ -675,6 +675,7 @@ function isPrivateIPv4(p1: number, p2: number, p3: number): boolean {
   if (p1 === 192 && p2 === 168) return true; // 192.168.0.0/16
   if (p1 === 198 && (p2 === 18 || p2 === 19)) return true; // 198.18.0.0/15 (Benchmarking RFC 2544)
   if (p1 === 192 && p2 === 0 && (p3 === 0 || p3 === 2)) return true; // 192.0.0.0/24 (IETF Protocol), 192.0.2.0/24 (TEST-NET-1)
+  if (p1 === 192 && p2 === 88 && p3 === 99) return true; // 192.88.99.0/24 (6to4 Relay Anycast RFC 3068 / RFC 7526)
   if (p1 === 198 && p2 === 51 && p3 === 100) return true; // 198.51.100.0/24 (TEST-NET-2)
   if (p1 === 203 && p2 === 0 && p3 === 113) return true; // 203.0.113.0/24 (TEST-NET-3)
   if (p1 >= 224) return true; // 224.0.0.0/4 (multicast) and 240.0.0.0/4 (reserved/broadcast)
