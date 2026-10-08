@@ -15,6 +15,7 @@ import {
   secureLog,
   maskSensitiveData,
   resolveAllowedReadPath,
+  validateId,
 } from './utils/security.js';
 import {
   listUserFiles,
@@ -506,6 +507,8 @@ export const batchFileOperationInputSchema = {
   command: z.enum(['DELETE', 'MOVE']).describe('The operation to perform.'),
   ids: z
     .array(z.string())
+    .min(1, 'At least one file ID is required')
+    .max(100, 'Maximum of 100 file IDs allowed per batch operation')
     .describe('The unique IDs of the files to operate on.'),
   folder: z
     .string()
@@ -1541,9 +1544,41 @@ server.registerTool(
       };
     }
 
+    if (command === 'MOVE') {
+      if (!folder) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                '❌ BATCH OPERATION FAILED\n\nFolder ID required for MOVE'
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+      try {
+        validateId(folder, 'folder');
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: maskSensitiveData(
+                `❌ BATCH OPERATION FAILED\n\n${error instanceof Error ? error.message : String(error)}`
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     const results = { success: [] as string[], failed: [] as string[] };
     for (const id of ids) {
       try {
+        validateId(id, 'id');
         if (command === 'DELETE') {
           await deleteUserFile({
             endpoint: ZIPLINE_ENDPOINT,
@@ -1551,11 +1586,10 @@ server.registerTool(
             id,
           });
         } else {
-          if (!folder) throw new Error('Folder ID required for MOVE');
           await editFolder({
             endpoint: ZIPLINE_ENDPOINT,
             token: ZIPLINE_TOKEN,
-            id: folder,
+            id: folder!,
             fileId: id,
           });
         }
