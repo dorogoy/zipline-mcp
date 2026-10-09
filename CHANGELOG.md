@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.29](https://github.com/dorogoy/zipline-mcp/compare/v1.12.28...v1.12.29) (2026-10-09)
+
+
+### Bug Fixes
+
+* block RFC 3068 6to4 anycast relay range in SSRF filter ([#243](https://github.com/dorogoy/zipline-mcp/issues/243)) ([1f63eeb](https://github.com/dorogoy/zipline-mcp/commit/1f63eeb5829e354346ac8505b7cb83c5e06a4a46))
+* validate input and add array limits for batch operations ([#245](https://github.com/dorogoy/zipline-mcp/issues/245)) ([52d9645](https://github.com/dorogoy/zipline-mcp/commit/52d96455f01eb1a19e0eaf2764b8d078e752a920))
+
 ## [1.12.28](https://github.com/dorogoy/zipline-mcp/compare/v1.12.27...v1.12.28) (2026-10-07)
 
 
