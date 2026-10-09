@@ -2236,6 +2236,21 @@ describe('batch_file_operation tool', () => {
   });
 
   describe('security validation & limits', () => {
+    it('should reject arrays over 100 IDs and empty arrays at the schema level', async () => {
+      const { batchFileOperationInputSchema } = await import('./index.js');
+      const { z } = await import('zod');
+      const schema = z.object(batchFileOperationInputSchema);
+
+      const tooMany = schema.safeParse({
+        command: 'DELETE',
+        ids: Array.from({ length: 101 }, (_, i) => `id-${i}`),
+      });
+      expect(tooMany.success).toBe(false);
+      expect(schema.safeParse({ command: 'DELETE', ids: [] }).success).toBe(
+        false
+      );
+    });
+
     it('should fail fast on MOVE command if folder ID is invalid', async () => {
       const { editFolder } = await import('./remoteFolders.js');
       const editFolderSpy = vi.mocked(editFolder);
@@ -2254,7 +2269,9 @@ describe('batch_file_operation tool', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('BATCH OPERATION FAILED');
-      expect(result.content[0]?.text).toContain('must contain only alphanumeric');
+      expect(result.content[0]?.text).toContain(
+        'must contain only alphanumeric'
+      );
       expect(editFolderSpy).not.toHaveBeenCalled();
     });
 
