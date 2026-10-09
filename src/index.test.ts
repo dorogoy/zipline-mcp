@@ -2184,10 +2184,9 @@ describe('batch_file_operation tool', () => {
 
       const result = await handler({ command: 'MOVE', ids: ['file1'] }, {});
 
-      // All operations failed (missing folder), so isError should be true
       expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('Successful: 0');
-      expect(result.content[0]?.text).toContain('Failed: 1');
+      expect(result.content[0]?.text).toContain('BATCH OPERATION FAILED');
+      expect(result.content[0]?.text).toContain('Folder ID required for MOVE');
     });
 
     it('should handle partial failures in MOVE', async () => {
@@ -2233,6 +2232,71 @@ describe('batch_file_operation tool', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0]?.text).toContain('No file IDs provided');
+    });
+  });
+
+  describe('security validation & limits', () => {
+    it('should reject arrays over 100 IDs and empty arrays at the schema level', async () => {
+      const { batchFileOperationInputSchema } = await import('./index.js');
+      const { z } = await import('zod');
+      const schema = z.object(batchFileOperationInputSchema);
+
+      const tooMany = schema.safeParse({
+        command: 'DELETE',
+        ids: Array.from({ length: 101 }, (_, i) => `id-${i}`),
+      });
+      expect(tooMany.success).toBe(false);
+      expect(schema.safeParse({ command: 'DELETE', ids: [] }).success).toBe(
+        false
+      );
+    });
+
+    it('should fail fast on MOVE command if folder ID is invalid', async () => {
+      const { editFolder } = await import('./remoteFolders.js');
+      const editFolderSpy = vi.mocked(editFolder);
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        {
+          command: 'MOVE',
+          ids: ['file1'],
+          folder: '../invalid-folder',
+        },
+        {}
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('BATCH OPERATION FAILED');
+      expect(result.content[0]?.text).toContain(
+        'must contain only alphanumeric'
+      );
+      expect(editFolderSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle invalid file ID gracefully within batch loop', async () => {
+      const { deleteUserFile } = await import('./userFiles.js');
+      const deleteSpy = vi.mocked(deleteUserFile);
+      deleteSpy.mockReset();
+      deleteSpy.mockResolvedValue({
+        id: 'valid-id',
+        name: 'valid.png',
+      } as never);
+
+      const handler = getToolHandler('batch_file_operation');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler(
+        { command: 'DELETE', ids: ['valid-id', '../invalid-id'] },
+        {}
+      );
+
+      expect(result.content[0]?.text).toContain('Successful: 1');
+      expect(result.content[0]?.text).toContain('Failed: 1');
+      expect(deleteSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'valid-id' })
+      );
     });
   });
 
