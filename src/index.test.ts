@@ -4701,6 +4701,27 @@ describe('get_usage_stats tool', () => {
     vi.unstubAllGlobals();
   });
 
+  it('should mask sensitive token in HTTP status error responses', async () => {
+    process.env.ZIPLINE_TOKEN = 'super-secret-token-for-testing';
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = getToolHandler('get_usage_stats');
+    if (!handler) throw new Error('Handler not found');
+
+    const result = await handler({}, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).not.toContain(
+      'super-secret-token-for-testing'
+    );
+    vi.unstubAllGlobals();
+  });
+
   it('should call correct API endpoint URLs', async () => {
     const mockFetch = vi
       .fn()

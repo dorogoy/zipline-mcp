@@ -1696,7 +1696,9 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `❌ USAGE STATISTICS FAILED\n\nError: ${ziplineError.mcpCode}\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${statsRes.status}\nResolution: ${maskedResolution}`,
+              text: maskSensitiveData(
+                `❌ USAGE STATISTICS FAILED\n\nError: ${ziplineError.mcpCode}\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${statsRes.status}\nResolution: ${maskedResolution}`
+              ),
             },
           ],
           isError: true,
@@ -1759,7 +1761,9 @@ ${fileTypesSection}`,
         content: [
           {
             type: 'text',
-            text: `❌ USAGE STATISTICS FAILED\n\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`,
+            text: maskSensitiveData(
+              `❌ USAGE STATISTICS FAILED\n\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`
+            ),
           },
         ],
         isError: true,
@@ -1828,7 +1832,9 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: AUTHENTICATION_ERROR\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`,
+              text: maskSensitiveData(
+                `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: AUTHENTICATION_ERROR\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`
+              ),
             },
           ],
           isError: true,
@@ -1844,7 +1850,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`,
+            text: maskSensitiveData(
+              `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nHTTP Status: ${res.status}\nLatency: ${latency}ms\nResolution: ${maskedResolution}`
+            ),
           },
         ],
         isError: true,
@@ -1858,7 +1866,9 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`,
+            text: maskSensitiveData(
+              `❌ HEALTH CHECK FAILED\n\nStatus: unhealthy\nError: HOST_UNAVAILABLE\nEndpoint: ${ZIPLINE_ENDPOINT}\nLatency: ${latency}ms\nDetails: ${maskedError}\nResolution: Check network connectivity and verify ZIPLINE_ENDPOINT is correct.`
+            ),
           },
         ],
         isError: true,
