@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.31](https://github.com/dorogoy/zipline-mcp/compare/v1.12.30...v1.12.31) (2026-10-11)
+
+
+### Bug Fixes
+
+* mask sensitive data in get_usage_stats and check_health error responses ([#254](https://github.com/dorogoy/zipline-mcp/issues/254)) ([cbaf1be](https://github.com/dorogoy/zipline-mcp/commit/cbaf1bea0dc88d6491e401033db5223e2fa63120))
+* simplify patternName assignment in scanForSecretPatterns ([#253](https://github.com/dorogoy/zipline-mcp/issues/253)) ([4f648e1](https://github.com/dorogoy/zipline-mcp/commit/4f648e1221e3b53695977a588d2c768155c3b08e))
+
 ## [1.12.30](https://github.com/dorogoy/zipline-mcp/compare/v1.12.29...v1.12.30) (2026-10-11)
 
 
