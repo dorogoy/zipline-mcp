@@ -191,7 +191,8 @@ export function maskToken(input: string, token: string): string {
  * redactor (maskSensitiveData) so the two cannot drift apart. Not global, so
  * `.test()` stays stateless.
  */
-const JWT_TOKEN_PATTERN = /ey[0-9A-Za-z_-]+\.[0-9A-Za-z_-]+\.[0-9A-Za-z_-]*/;
+const JWT_TOKEN_PATTERN =
+  /ey[0-9A-Za-z_-]{1,10000}\.[0-9A-Za-z_-]{1,10000}\.[0-9A-Za-z_-]{0,10000}/;
 
 export function maskSensitiveData(input: string): string {
   if (!input || typeof input !== 'string') {
@@ -342,6 +343,12 @@ export async function resolveAllowedReadPath(
   return realFile;
 }
 
+/**
+ * Maps a secret type and matched text to a non-sensitive pattern label for reporting.
+ *
+ * Uses stateless regex tests (such as `JWT_TOKEN_PATTERN.test()`) to avoid stateful
+ * regex matching issues across multiple calls.
+ */
 function getPatternName(secretType: string, matchedText: string): string {
   switch (secretType) {
     case 'api_key':
