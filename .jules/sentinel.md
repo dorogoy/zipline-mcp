@@ -63,3 +63,9 @@
 **Vulnerability:** RFC 3068 / RFC 7526 defines `192.88.99.0/24` as the 6to4 Anycast Relay address block. SSRF filters checking only RFC 1918, CGNAT, loopback, link-local, and TEST-NET addresses fail to detect `192.88.99.0/24` addresses or their embedded IPv6 transition forms (e.g. `::ffff:192.88.99.1`, `64:ff9b::192.88.99.1`, `2002:c058:6301::`), allowing SSRF requests to target 6to4 relay infrastructure or internal routing nodes.
 **Learning:** Under RFC 7526, 6to4 anycast relays were deprecated and reclassified as non-globally-routable Special-Purpose IPv4 addresses with `Global: False` under RFC 6890.
 **Prevention:** IPv4 SSRF validation functions (`isPrivateIPv4`) must inspect `p1 === 192 && p2 === 88 && p3 === 99` alongside other RFC 6890 special-purpose address ranges to block direct and IPv6-embedded 6to4 anycast relay requests.
+
+## 2026-09-23 - RFC 7534 / RFC 7450 / RFC 7535 Special-Purpose IPv4 SSRF Validation Bypass
+
+**Vulnerability:** RFC 7534 defines `192.31.196.0/24` (AS112-v4), RFC 7450 defines `192.52.193.0/24` (AMT), and RFC 7535 defines `192.175.48.0/24` (Direct Delegation AS112) as Special-Purpose IPv4 address blocks. SSRF filters checking only RFC 1918 private, CGNAT, loopback, link-local, and TEST-NET ranges fail to detect these special-purpose addresses direct or embedded in IPv6 transition mechanisms (e.g. `::ffff:192.31.196.1`, `64:ff9b::192.52.193.1`, `2002:c01f:c401::`).
+**Learning:** Special-Purpose IPv4 address ranges defined in RFC 7534, RFC 7450, and RFC 7535 have `Global: False` or special local service handling in DNS/multicast infrastructure under RFC 6890.
+**Prevention:** IPv4 SSRF validation functions (`isPrivateIPv4`) must explicitly check `192.31.196.0/24`, `192.52.193.0/24`, and `192.175.48.0/24` alongside other RFC 6890 special-purpose address ranges to block direct and IPv6-embedded requests.
