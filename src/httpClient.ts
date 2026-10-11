@@ -184,7 +184,7 @@ export async function uploadFile(opts: UploadOptions): Promise<string> {
       err instanceof Error ? err.message : String(err)
     ).toLowerCase();
     if (msg.includes('abort') || msg.includes('timeout')) {
-      throw new Error('Request aborted or timeout exceeded');
+      throw new Error('Request aborted or timeout exceeded', { cause: err });
     }
     throw err;
   } finally {
@@ -503,7 +503,7 @@ export async function downloadExternalUrl(
       message.toLowerCase().includes('abort') ||
       message.toLowerCase().includes('timeout')
     ) {
-      throw new Error('Download aborted or timeout exceeded');
+      throw new Error('Download aborted or timeout exceeded', { cause: err });
     }
 
     throw err;

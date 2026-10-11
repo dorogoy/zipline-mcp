@@ -151,7 +151,7 @@ export async function validateFileForSecrets(
       'code' in error &&
       error.code === 'ENOENT'
     ) {
-      throw new Error(`File not found: ${filepath}`);
+      throw new Error(`File not found: ${filepath}`, { cause: error });
     }
     throw error;
   }
