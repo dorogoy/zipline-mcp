@@ -1022,7 +1022,7 @@ server.registerTool(
   },
   async (args) => {
     const { url, timeoutMs = 30000, maxFileSizeBytes } = args;
-    let downloadedPath: string | null = null;
+    let downloadedPath: string | null;
 
     try {
       if (!isValidUrl(url)) throw new Error('Invalid URL');
