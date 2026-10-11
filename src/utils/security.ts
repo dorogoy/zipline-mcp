@@ -191,7 +191,8 @@ export function maskToken(input: string, token: string): string {
  * redactor (maskSensitiveData) so the two cannot drift apart. Not global, so
  * `.test()` stays stateless.
  */
-const JWT_TOKEN_PATTERN = /ey[0-9A-Za-z_-]+\.[0-9A-Za-z_-]+\.[0-9A-Za-z_-]*/;
+const JWT_TOKEN_PATTERN =
+  /ey[0-9A-Za-z_-]{1,10000}\.[0-9A-Za-z_-]{1,10000}\.[0-9A-Za-z_-]{0,10000}/;
 
 export function maskSensitiveData(input: string): string {
   if (!input || typeof input !== 'string') {
@@ -342,6 +343,29 @@ export async function resolveAllowedReadPath(
   return realFile;
 }
 
+/**
+ * Maps a secret type and matched text to a non-sensitive pattern label for reporting.
+ *
+ * Uses stateless regex tests (such as `JWT_TOKEN_PATTERN.test()`) to avoid stateful
+ * regex matching issues across multiple calls.
+ */
+function getPatternName(secretType: string, matchedText: string): string {
+  switch (secretType) {
+    case 'api_key':
+      return 'API_KEY=';
+    case 'password':
+      return 'PASSWORD=';
+    case 'secret':
+      return 'SECRET=';
+    case 'token':
+      return JWT_TOKEN_PATTERN.test(matchedText) ? 'JWT' : 'TOKEN=';
+    case 'private_key':
+      return 'PRIVATE_KEY=';
+    default:
+      return 'SECRET_PATTERN';
+  }
+}
+
 function scanForSecretPatterns(content: string): SecretDetectionResult {
   const patternEntries = Object.entries(SECRET_PATTERNS) as [
     keyof typeof SECRET_PATTERNS,
@@ -362,20 +386,7 @@ function scanForSecretPatterns(content: string): SecretDetectionResult {
               : secretType;
 
       // Use pattern type name instead of actual matched content to avoid leaking secrets
-      const patternName =
-        mappedSecretType === 'api_key'
-          ? 'API_KEY='
-          : mappedSecretType === 'password'
-            ? 'PASSWORD='
-            : mappedSecretType === 'secret'
-              ? 'SECRET='
-              : mappedSecretType === 'token'
-                ? JWT_TOKEN_PATTERN.test(match[0])
-                  ? 'JWT'
-                  : 'TOKEN='
-                : mappedSecretType === 'private_key'
-                  ? 'PRIVATE_KEY='
-                  : 'SECRET_PATTERN';
+      const patternName = getPatternName(mappedSecretType, match[0]);
 
       return {
         detected: true,
