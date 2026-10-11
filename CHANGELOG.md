@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.30](https://github.com/dorogoy/zipline-mcp/compare/v1.12.29...v1.12.30) (2026-10-11)
+
+
+### Bug Fixes
+
+* block RFC 7534, RFC 7450, and RFC 7535 IPv4 ranges in SSRF checks ([3af979a](https://github.com/dorogoy/zipline-mcp/commit/3af979ad45be17d79b57a4d21717501dadcfbcee))
+* **deps:** bump @modelcontextprotocol/sdk from 1.31.0 to 1.32.1 ([627fff0](https://github.com/dorogoy/zipline-mcp/commit/627fff0f9b6649c363c4a55a1cfba9df06ea033d))
+
 ## [1.12.29](https://github.com/dorogoy/zipline-mcp/compare/v1.12.28...v1.12.29) (2026-10-09)
 
 
