@@ -1575,29 +1575,38 @@ server.registerTool(
       }
     }
 
+    const tasks = ids.map(async (id) => {
+      validateId(id, 'id');
+      if (command === 'DELETE') {
+        await deleteUserFile({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          id,
+        });
+      } else {
+        await editFolder({
+          endpoint: ZIPLINE_ENDPOINT,
+          token: ZIPLINE_TOKEN,
+          id: folder!,
+          fileId: id,
+        });
+      }
+      return id;
+    });
+
+    const settledResults = await Promise.allSettled(tasks);
     const results = { success: [] as string[], failed: [] as string[] };
-    for (const id of ids) {
-      try {
-        validateId(id, 'id');
-        if (command === 'DELETE') {
-          await deleteUserFile({
-            endpoint: ZIPLINE_ENDPOINT,
-            token: ZIPLINE_TOKEN,
-            id,
-          });
-        } else {
-          await editFolder({
-            endpoint: ZIPLINE_ENDPOINT,
-            token: ZIPLINE_TOKEN,
-            id: folder!,
-            fileId: id,
-          });
-        }
+
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      if (id === undefined) continue;
+      const res = settledResults[i];
+      if (res && res.status === 'fulfilled') {
         results.success.push(id);
-      } catch (error) {
+      } else {
         results.failed.push(id);
-        if (results.failed.length === 1) {
-          secureLog('Batch operation error:', error);
+        if (results.failed.length === 1 && res && res.status === 'rejected') {
+          secureLog('Batch operation error:', res.reason);
         }
       }
     }
