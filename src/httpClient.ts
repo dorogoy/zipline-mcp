@@ -799,8 +799,8 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0003) {
       return true;
     }
-    // RFC 5180 Benchmarking (2001:2::/48)
-    if (h0 === 0x2001 && h1 === 0x0002 && h2 === 0) {
+    // RFC 5180 / RFC 9268 Benchmarking (2001:2::/32)
+    if (h0 === 0x2001 && h1 === 0x0002) {
       return true;
     }
     // 2001:1::/32 — IETF Protocol Assignments (RFC 2928). Includes PCP Anycast
