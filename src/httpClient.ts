@@ -841,18 +841,16 @@ export function isPrivateHost(hostname: string): boolean {
         return true;
       }
     }
-  }
-
-  // 6to4 IPv6 check (2002::/16 embeds IPv4 address in bits 16..47)
-  const sixToFourMatch =
-    /^2002:(?::|([0-9a-fA-F]{1,4})(?::([0-9a-fA-F]{1,4}))?(?::|$))/i.exec(host);
-  if (sixToFourMatch) {
-    const high = parseInt(sixToFourMatch[1] ?? '0', 16);
-    const low = parseInt(sixToFourMatch[2] ?? '0', 16);
-    const p1 = (high >> 8) & 0xff;
-    const p2 = high & 0xff;
-    const p3 = (low >> 8) & 0xff;
-    if (isPrivateIPv4(p1, p2, p3)) return true;
+    // 6to4 RFC 3056 (2002::/16). Expand :: so prefix is hextet 0 (0x2002)
+    // and embedded IPv4 address is hextets 1 and 2, regardless of zero compression.
+    if (h0 === 0x2002) {
+      const p1 = (h1 >> 8) & 0xff;
+      const p2 = h1 & 0xff;
+      const p3 = (h2 >> 8) & 0xff;
+      if (isPrivateIPv4(p1, p2, p3)) {
+        return true;
+      }
+    }
   }
 
   // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) / Multicast (ff00::/8) check

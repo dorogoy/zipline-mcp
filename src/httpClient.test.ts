@@ -830,6 +830,9 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:c0a8::1')).toBe(true);
       expect(isPrivateHost('2002:ac10::1')).toBe(true);
       expect(isPrivateHost('2002::')).toBe(true);
+      expect(isPrivateHost('2002:c0a8:101::192.168.1.1')).toBe(true);
+      expect(isPrivateHost('2002:0a00:101::')).toBe(true);
+      expect(isPrivateHost('2002:0901:101::')).toBe(false);
       // Raw string defense-in-depth check
       expect(isPrivateHost('2002:127.0.0.1::')).toBe(true);
       expect(isPrivateHost('2002:10.0.0.1::')).toBe(true);
