@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.32](https://github.com/dorogoy/zipline-mcp/compare/v1.12.31...v1.12.32) (2026-10-14)
+
+
+### Bug Fixes
+
+* expand IPv6 benchmarking address check to RFC 9268 /32 block ([#257](https://github.com/dorogoy/zipline-mcp/issues/257)) ([4bbba2b](https://github.com/dorogoy/zipline-mcp/commit/4bbba2ba0999044ef771c58ea2ac9c3a28602064))
+* prevent SSRF bypass via 6to4 dotted quad IPv6 addresses ([#258](https://github.com/dorogoy/zipline-mcp/issues/258)) ([7709a84](https://github.com/dorogoy/zipline-mcp/commit/7709a8452cff1da0b9d0a6ee1d2c24d2ba6194b8))
+* refactor 6to4 IPv6 SSRF check to use hextet expansion ([#256](https://github.com/dorogoy/zipline-mcp/issues/256)) ([19fe577](https://github.com/dorogoy/zipline-mcp/commit/19fe577e2f180393f1e9fa1057c1e00640dba720))
+
 ## [1.12.31](https://github.com/dorogoy/zipline-mcp/compare/v1.12.30...v1.12.31) (2026-10-11)
 
 
