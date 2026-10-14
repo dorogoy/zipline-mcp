@@ -737,9 +737,9 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96 & RFC 8215 64:ff9b:1::/48), Teredo (RFC 4380 2001:0::/32), and ISATAP (RFC 5214, :5efe:) IPv6 check
+  // IPv4-mapped, IPv4-compatible, IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96 & RFC 8215 64:ff9b:1::/48), Teredo (RFC 4380 2001:0::/32), 6to4 (2002::/16), and ISATAP (RFC 5214, :5efe:) IPv6 check
   const ipv4MappedDotted =
-    /^(?:64:ff9b:(?:1:)?::?|2001:(?:0*:)*::?|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i.exec(
+    /^(?:64:ff9b:(?:1:)?::?|2001:(?:0*:)*::?|2002:(?:[0-9a-fA-F]{1,4}:)*?|(?:0*:)*?(?:ffff:)?(?:0:)?|(?:[0-9a-fA-F]*:)+5efe:)\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?::.*)?$/i.exec(
       host
     );
   if (ipv4MappedDotted) {
