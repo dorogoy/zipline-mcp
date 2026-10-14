@@ -69,3 +69,9 @@
 **Vulnerability:** RFC 7534 defines `192.31.196.0/24` (AS112-v4), RFC 7450 defines `192.52.193.0/24` (AMT), and RFC 7535 defines `192.175.48.0/24` (Direct Delegation AS112) as Special-Purpose IPv4 address blocks. SSRF filters checking only RFC 1918 private, CGNAT, loopback, link-local, and TEST-NET ranges fail to detect these special-purpose addresses direct or embedded in IPv6 transition mechanisms (e.g. `::ffff:192.31.196.1`, `64:ff9b::192.52.193.1`, `2002:c01f:c401::`).
 **Learning:** Special-Purpose IPv4 address ranges defined in RFC 7534, RFC 7450, and RFC 7535 have `Global: False` or special local service handling in DNS/multicast infrastructure under RFC 6890.
 **Prevention:** IPv4 SSRF validation functions (`isPrivateIPv4`) must explicitly check `192.31.196.0/24`, `192.52.193.0/24`, and `192.175.48.0/24` alongside other RFC 6890 special-purpose address ranges to block direct and IPv6-embedded requests.
+
+## 2026-09-24 - Defense-in-Depth Blocking of Unallocated 2001:2::/32 IPv6 Space
+
+**Vulnerability:** While RFC 5180 designates `2001:2::/48` for IPv6 benchmarking, the surrounding `2001:2::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:2::/48` (`h0 === 0x2001 && h1 === 0x0002 && h2 === 0`) allowed requests to unallocated `2001:2::/32` addresses like `2001:2:1::1`.
+**Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
+**Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.

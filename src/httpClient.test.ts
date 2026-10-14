@@ -879,6 +879,8 @@ describe('Header Validation', () => {
       expect(isPrivateHost('198.51.100.1')).toBe(true);
       expect(isPrivateHost('203.0.113.1')).toBe(true);
       expect(isPrivateHost('192.0.0.1')).toBe(true);
+      expect(isPrivateHost('192.0.0.170')).toBe(true);
+      expect(isPrivateHost('192.0.0.255')).toBe(true);
       expect(isPrivateHost('192.88.99.1')).toBe(true);
       expect(isPrivateHost('192.31.196.1')).toBe(true);
       expect(isPrivateHost('192.52.193.1')).toBe(true);
@@ -900,6 +902,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
+      expect(isPrivateHost('2001:2:1::1')).toBe(true); // 2001:2::/32 unallocated IETF reserved space
       expect(isPrivateHost('2001:1::1')).toBe(true);
       expect(isPrivateHost('2001:1::')).toBe(true);
       expect(isPrivateHost('2001:1:ffff::1')).toBe(true);
