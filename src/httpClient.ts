@@ -799,7 +799,9 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0003) {
       return true;
     }
-    // RFC 5180 / RFC 9268 Benchmarking (2001:2::/32)
+    // RFC 5180 Benchmarking (2001:2::/48) plus the rest of 2001:2::/32,
+    // unallocated IETF-reserved space inside 2001::/23 (RFC 2928); blocked
+    // as defense-in-depth, not because IANA designates the whole /32.
     if (h0 === 0x2001 && h1 === 0x0002) {
       return true;
     }

@@ -902,7 +902,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
-      expect(isPrivateHost('2001:2:1::1')).toBe(true); // RFC 9268 benchmark block expansion (/32)
+      expect(isPrivateHost('2001:2:1::1')).toBe(true); // 2001:2::/32 unallocated IETF reserved space
       expect(isPrivateHost('2001:1::1')).toBe(true);
       expect(isPrivateHost('2001:1::')).toBe(true);
       expect(isPrivateHost('2001:1:ffff::1')).toBe(true);
