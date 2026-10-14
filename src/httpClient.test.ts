@@ -830,6 +830,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:c0a8::1')).toBe(true);
       expect(isPrivateHost('2002:ac10::1')).toBe(true);
       expect(isPrivateHost('2002::')).toBe(true);
+      // Raw string defense-in-depth check
       expect(isPrivateHost('2002:127.0.0.1::')).toBe(true);
       expect(isPrivateHost('2002:10.0.0.1::')).toBe(true);
       expect(isPrivateHost('2002:169.254.169.254::')).toBe(true);
@@ -837,6 +838,15 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:8.8.8.8::')).toBe(false);
       expect(isPrivateHost('2002:0808:0808::')).toBe(false);
       expect(isPrivateHost('2002:0102:0304::')).toBe(false);
+
+      // WHATWG URL parser behavior for 6to4 addresses
+      expect(() => new URL('http://[2002:127.0.0.1::]/')).toThrow();
+      expect(isPrivateHost(new URL('http://[2002::127.0.0.1]/').hostname)).toBe(
+        true
+      );
+      expect(isPrivateHost(new URL('http://[2002::8.8.8.8]/').hostname)).toBe(
+        true
+      );
 
       // IPv6 with zone index / scope identifier (% / %25)
       expect(isPrivateHost('::1%eth0')).toBe(true);
