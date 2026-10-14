@@ -833,8 +833,23 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:c0a8:101::192.168.1.1')).toBe(true);
       expect(isPrivateHost('2002:0a00:101::')).toBe(true);
       expect(isPrivateHost('2002:0901:101::')).toBe(false);
+      // Raw string defense-in-depth check
+      expect(isPrivateHost('2002:127.0.0.1::')).toBe(true);
+      expect(isPrivateHost('2002:10.0.0.1::')).toBe(true);
+      expect(isPrivateHost('2002:169.254.169.254::')).toBe(true);
+      expect(isPrivateHost('2002:192.168.1.1::')).toBe(true);
+      expect(isPrivateHost('2002:8.8.8.8::')).toBe(false);
       expect(isPrivateHost('2002:0808:0808::')).toBe(false);
       expect(isPrivateHost('2002:0102:0304::')).toBe(false);
+
+      // WHATWG URL parser behavior for 6to4 addresses
+      expect(() => new URL('http://[2002:127.0.0.1::]/')).toThrow();
+      expect(isPrivateHost(new URL('http://[2002::127.0.0.1]/').hostname)).toBe(
+        true
+      );
+      expect(isPrivateHost(new URL('http://[2002::8.8.8.8]/').hostname)).toBe(
+        true
+      );
 
       // IPv6 with zone index / scope identifier (% / %25)
       expect(isPrivateHost('::1%eth0')).toBe(true);
@@ -867,6 +882,8 @@ describe('Header Validation', () => {
       expect(isPrivateHost('198.51.100.1')).toBe(true);
       expect(isPrivateHost('203.0.113.1')).toBe(true);
       expect(isPrivateHost('192.0.0.1')).toBe(true);
+      expect(isPrivateHost('192.0.0.170')).toBe(true);
+      expect(isPrivateHost('192.0.0.255')).toBe(true);
       expect(isPrivateHost('192.88.99.1')).toBe(true);
       expect(isPrivateHost('192.31.196.1')).toBe(true);
       expect(isPrivateHost('192.52.193.1')).toBe(true);
@@ -888,6 +905,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
+      expect(isPrivateHost('2001:2:1::1')).toBe(true); // 2001:2::/32 unallocated IETF reserved space
       expect(isPrivateHost('2001:1::1')).toBe(true);
       expect(isPrivateHost('2001:1::')).toBe(true);
       expect(isPrivateHost('2001:1:ffff::1')).toBe(true);
