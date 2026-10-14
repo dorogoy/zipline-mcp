@@ -75,3 +75,9 @@
 **Vulnerability:** While RFC 5180 designates `2001:2::/48` for IPv6 benchmarking, the surrounding `2001:2::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:2::/48` (`h0 === 0x2001 && h1 === 0x0002 && h2 === 0`) allowed requests to unallocated `2001:2::/32` addresses like `2001:2:1::1`.
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
+
+## 2026-09-25 - Dotted-Decimal IPv4 Tail Expansion and RFC 8367 / RFC 9374 Special-Purpose IPv6 SSRF Validation
+
+**Vulnerability:** IPv6 addresses with dotted-decimal IPv4 tails (e.g., `2001:db8::127.0.0.1` or `2001:5::10.0.0.1`) failed hextet array expansion because `expandIpv6Hextets` returned `null` upon encountering `.` characters. Additionally, Special-Purpose IPv6 address blocks RFC 8367 (`2001:5::/32` HNCP Anycast) and RFC 9374 (`2001:30::/28` Drone Remote ID / ORCHIDv3) were not explicitly blocked in `isPrivateHost`.
+**Learning:** In IPv6 notation (RFC 4291 §2.2), dotted-decimal IPv4 tails represent two 16-bit hex hextets `(p1 << 8) | p2` and `(p3 << 8) | p4`. SSRF validation that relies on hextet expansion must convert dotted IPv4 tails into hex hextets before expanding `::` zero compression.
+**Prevention:** `expandIpv6Hextets` must parse and convert trailing dotted-decimal IPv4 octets into hex hextets prior to splitting on `::`, enabling all Special-Purpose IPv6 checks (including RFC 8367 `2001:5::/32` and RFC 9374 `2001:30::/28`) to evaluate embedded addresses seamlessly.
