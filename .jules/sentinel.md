@@ -75,3 +75,9 @@
 **Vulnerability:** While RFC 5180 designates `2001:2::/48` for IPv6 benchmarking, the surrounding `2001:2::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:2::/48` (`h0 === 0x2001 && h1 === 0x0002 && h2 === 0`) allowed requests to unallocated `2001:2::/32` addresses like `2001:2:1::1`.
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
+
+## 2026-09-25 - RFC 9383 ORCHIDv3 Special-Purpose IPv6 SSRF Validation Bypass
+
+**Vulnerability:** RFC 9383 designates `2001:30::/28` (`2001:30::` to `2001:3f:ffff:ffff:ffff:ffff:ffff:ffff`) for Overlay Routable Cryptographic Hash Identifiers Version 3 (ORCHIDv3). SSRF filters checking only ORCHID v1 (`2001:10::/28`) and ORCHID v2 (`2001:20::/28`) fail to detect `2001:30::/28` addresses, allowing SSRF requests to target non-routable overlay network endpoints.
+**Learning:** ORCHIDv3 (`2001:30::/28`) was allocated in 2023 under RFC 9383 within IETF Protocol Assignments space (`2001::/23`). In expanded hextet arrays, `2001:30::/28` matches `h0 === 0x2001` and `(h1 & 0xfff0) === 0x0030`.
+**Prevention:** IPv6 SSRF validation inspecting hextet arrays must check `(h1 & 0xfff0) === 0x0030` alongside ORCHID v1 (`0x0010`) and ORCHID v2 (`0x0020`) to block all ORCHID Special-Purpose IPv6 ranges.

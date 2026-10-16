@@ -902,6 +902,9 @@ describe('Header Validation', () => {
       expect(isPrivateHost('3fff::1')).toBe(true);
       expect(isPrivateHost('fec0:0:0:1::1')).toBe(true);
       expect(isPrivateHost('2001:20::1')).toBe(true);
+      expect(isPrivateHost('2001:30::1')).toBe(true);
+      expect(isPrivateHost('2001:3f::ffff')).toBe(true);
+      expect(isPrivateHost('2001:30::ffff:ffff')).toBe(true);
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
