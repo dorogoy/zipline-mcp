@@ -75,3 +75,9 @@
 **Vulnerability:** While RFC 5180 designates `2001:2::/48` for IPv6 benchmarking, the surrounding `2001:2::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:2::/48` (`h0 === 0x2001 && h1 === 0x0002 && h2 === 0`) allowed requests to unallocated `2001:2::/32` addresses like `2001:2:1::1`.
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
+
+## 2026-09-25 - RFC 7954 LISP EID Space IPv6 SSRF Validation Bypass
+
+**Vulnerability:** RFC 7954 defines `2001:5::/32` as the Locator/ID Separation Protocol (LISP) Endpoint Identifier (EID) address block. SSRF filters checking only standard Special-Purpose IPv6 ranges fail to detect `2001:5::/32` addresses targeting LISP-enabled overlay routing infrastructure or internal network endpoints.
+**Learning:** `2001:5::/32` addresses are classified with `Global: False` in the IANA Special-Purpose IPv6 Registry because LISP EIDs are non-routable in the global Internet default-free zone without LISP mapping resolution infrastructure.
+**Prevention:** SSRF host validation must inspect expanded hextet arrays (`expandIpv6Hextets`) and check `h0 === 0x2001 && h1 === 0x0005` to block `2001:5::/32` LISP EID space alongside other RFC 6890 special-purpose IPv6 blocks.

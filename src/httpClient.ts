@@ -815,6 +815,10 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0004 && h2 === 0x0112) {
       return true;
     }
+    // RFC 7954 LISP EID Space (2001:5::/32)
+    if (h0 === 0x2001 && h1 === 0x0005) {
+      return true;
+    }
     // RFC 4843 ORCHID v1 (2001:10::/28)
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0010) {
       return true;
