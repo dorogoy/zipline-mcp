@@ -795,7 +795,7 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0020) {
       return true;
     }
-    // RFC 9383 ORCHIDv3 (2001:30::/28)
+    // RFC 9374 DRIP Entity Tags (DETs) (2001:30::/28) — IANA special-purpose, non-global
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
       return true;
     }

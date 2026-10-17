@@ -76,8 +76,8 @@
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
 
-## 2026-09-25 - RFC 9383 ORCHIDv3 Special-Purpose IPv6 SSRF Validation Bypass
+## 2026-09-25 - RFC 9374 DRIP Entity Tag (DET) IPv6 SSRF Validation Bypass
 
-**Vulnerability:** RFC 9383 designates `2001:30::/28` (`2001:30::` to `2001:3f:ffff:ffff:ffff:ffff:ffff:ffff`) for Overlay Routable Cryptographic Hash Identifiers Version 3 (ORCHIDv3). SSRF filters checking only ORCHID v1 (`2001:10::/28`) and ORCHID v2 (`2001:20::/28`) fail to detect `2001:30::/28` addresses, allowing SSRF requests to target non-routable overlay network endpoints.
-**Learning:** ORCHIDv3 (`2001:30::/28`) was allocated in 2023 under RFC 9383 within IETF Protocol Assignments space (`2001::/23`). In expanded hextet arrays, `2001:30::/28` matches `h0 === 0x2001` and `(h1 & 0xfff0) === 0x0030`.
-**Prevention:** IPv6 SSRF validation inspecting hextet arrays must check `(h1 & 0xfff0) === 0x0030` alongside ORCHID v1 (`0x0010`) and ORCHID v2 (`0x0020`) to block all ORCHID Special-Purpose IPv6 ranges.
+**Vulnerability:** RFC 9374 allocates `2001:30::/28` (`2001:30::` to `2001:3f:ffff:ffff:ffff:ffff:ffff:ffff`) as the DRIP Entity Tag (DET) prefix for UAS Remote ID, registered by IANA as non-global special-purpose space. SSRF filters checking the ORCHID ranges (`2001:10::/28`, `2001:20::/28`) and the neighbouring IETF assignments do not cover it, so `2001:30::/28` addresses pass `isPrivateHost`.
+**Learning:** `2001:30::/28` is the DET prefix from RFC 9374 (2022-12 in the IANA special-purpose registry, Global: False) — not an ORCHID version. ORCHID stops at v2 (`2001:20::/28`, RFC 7343); RFC 9383 is unrelated. In expanded hextets it matches `h0 === 0x2001 && (h1 & 0xfff0) === 0x0030`.
+**Prevention:** Block `2001:30::/28` as its own non-global special-purpose range, cited as RFC 9374 DETs, separate from the ORCHID v1 (`0x0010`) and ORCHIDv2 (`0x0020`) checks.
