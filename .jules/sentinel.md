@@ -76,6 +76,12 @@
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
 
+## 2026-09-25 - Defense-in-Depth Blocking of RFC 7954 LISP EID Space (2001:5::/32)
+
+**Vulnerability:** RFC 7954 defines `2001:5::/32` as an experimental allocation for Locator/ID Separation Protocol (LISP) Endpoint Identifiers. After its experimental allocation period, the block returned to unallocated space inside `2001::/23` (RFC 2928). SSRF filters checking only standard Special-Purpose IPv6 ranges fail to block `2001:5::/32` addresses.
+**Learning:** `2001:5::/32` was an experimental allocation under RFC 7954. Blocking unallocated/experimental blocks within `2001::/23` provides defense-in-depth against SSRF.
+**Prevention:** SSRF host validation must inspect expanded hextet arrays (`expandIpv6Hextets`) and check `h0 === 0x2001 && h1 === 0x0005` to block `2001:5::/32` as defense-in-depth alongside `2001:2::/32`.
+
 ## 2026-09-25 - RFC 9374 DRIP Entity Tag (DET) IPv6 SSRF Validation Bypass
 
 **Vulnerability:** RFC 9374 allocates `2001:30::/28` (`2001:30::` to `2001:3f:ffff:ffff:ffff:ffff:ffff:ffff`) as the DRIP Entity Tag (DET) prefix for UAS Remote ID, registered by IANA as non-global special-purpose space. SSRF filters checking the ORCHID ranges (`2001:10::/28`, `2001:20::/28`) and the neighbouring IETF assignments do not cover it, so `2001:30::/28` addresses pass `isPrivateHost`.
