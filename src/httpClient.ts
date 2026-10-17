@@ -636,10 +636,33 @@ export function validateFolder(folder: string): void {
   }
 }
 
-/** Expand a textual IPv6 address into eight hextets. Dotted IPv4 tails return null. */
+/** Expand a textual IPv6 address into eight hextets. Handles optional dotted IPv4 tail. */
 function expandIpv6Hextets(host: string): number[] | null {
-  if (host.includes('.') || !host.includes(':')) return null;
-  const sides = host.split('::');
+  if (!host.includes(':')) return null;
+
+  let normalizedHost = host;
+  const lastColon = host.lastIndexOf(':');
+  if (lastColon !== -1) {
+    const tail = host.slice(lastColon + 1);
+    const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(tail);
+    if (ipv4Match) {
+      const p1 = Number(ipv4Match[1]);
+      const p2 = Number(ipv4Match[2]);
+      const p3 = Number(ipv4Match[3]);
+      const p4 = Number(ipv4Match[4]);
+      if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
+        const h1 = ((p1 << 8) | p2).toString(16);
+        const h2 = ((p3 << 8) | p4).toString(16);
+        normalizedHost = `${host.slice(0, lastColon)}:${h1}:${h2}`;
+      } else {
+        return null;
+      }
+    }
+  }
+
+  if (normalizedHost.includes('.')) return null;
+
+  const sides = normalizedHost.split('::');
   if (sides.length > 2) return null;
 
   const parseSide = (side: string): number[] | null => {
@@ -821,6 +844,14 @@ export function isPrivateHost(hostname: string): boolean {
     }
     // RFC 4843 ORCHID v1 (2001:10::/28)
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0010) {
+      return true;
+    }
+    // RFC 8367 HNCP (2001:5::/32)
+    if (h0 === 0x2001 && h1 === 0x0005) {
+      return true;
+    }
+    // RFC 9374 Drone Remote ID / ORCHIDv3 (2001:30::/28)
+    if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
       return true;
     }
     // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1

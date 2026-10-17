@@ -919,10 +919,19 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:10::1')).toBe(true);
       expect(isPrivateHost('2001:1f::1')).toBe(true);
       expect(isPrivateHost('2001:10::ffff:ffff')).toBe(true); // ORCHID v1 upper boundary
+      expect(isPrivateHost('2001:5::1')).toBe(true); // 2001:5::/32 unallocated space
+      expect(isPrivateHost('2001:5::ffff')).toBe(true);
+      expect(isPrivateHost('2001:6::1')).toBe(false); // just past 2001:5::/32
+      expect(isPrivateHost('2001:30::1')).toBe(true); // RFC 9374 Drone Remote ID / ORCHIDv3
+      expect(isPrivateHost('2001:3f::ffff:ffff')).toBe(true); // ORCHIDv3 upper boundary
+      expect(isPrivateHost('2001:40::1')).toBe(false); // just past 2001:30::/28
 
-      // Dotted-IPv4-tail forms rely on URL normalization canonicalizing to hex
+      // Dotted-IPv4-tail forms
       expect(isPrivateHost('100::127.0.0.1')).toBe(true);
       expect(isPrivateHost('2001:db8::192.0.2.1')).toBe(true);
+      expect(isPrivateHost('2001:5::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('2001:30::10.0.0.1')).toBe(true);
+      expect(isPrivateHost('fec0::169.254.169.254')).toBe(true);
 
       // Benchmarking & Documentation IPv4 via IPv6 transition mechanisms
       expect(isPrivateHost('::ffff:192.0.2.1')).toBe(true);
