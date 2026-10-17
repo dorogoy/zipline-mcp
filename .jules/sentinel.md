@@ -75,3 +75,9 @@
 **Vulnerability:** While RFC 5180 designates `2001:2::/48` for IPv6 benchmarking, the surrounding `2001:2::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:2::/48` (`h0 === 0x2001 && h1 === 0x0002 && h2 === 0`) allowed requests to unallocated `2001:2::/32` addresses like `2001:2:1::1`.
 **Learning:** Blocking `2001:2::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 5180 benchmarking range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0002` in IPv6 hextet array checks to block the entire `2001:2::/32` block as defense-in-depth.
+
+## 2026-09-25 - Dotted-Decimal IPv4 Tail Expansion and RFC 9374 Special-Purpose IPv6 SSRF Validation
+
+**Vulnerability:** IPv6 addresses with dotted-decimal IPv4 tails containing leading-zero octets (e.g., `2001:db8::192.000.002.001`) fail WHATWG URL canonicalization, so the raw dotted form reached `expandIpv6Hextets`, which returned `null` upon encountering `.` characters and let the address fall through unblocked. Additionally, the unallocated `2001:5::/32` block and the RFC 9374 `2001:30::/28` (Drone Remote ID / DETs) block were not explicitly blocked in `isPrivateHost`.
+**Learning:** In IPv6 notation (RFC 4291 §2.2), dotted-decimal IPv4 tails represent two 16-bit hex hextets `(p1 << 8) | p2` and `(p3 << 8) | p4`. When WHATWG URL parsing throws on leading zeros in dotted octets, raw strings reach custom parsers, requiring direct conversion of dotted IPv4 tails into hex hextets prior to `::` expansion.
+**Prevention:** `expandIpv6Hextets` must parse and convert trailing dotted-decimal IPv4 octets into hex hextets prior to splitting on `::`, enabling all Special-Purpose IPv6 checks (including `2001:5::/32` and RFC 9374 `2001:30::/28`) to evaluate embedded addresses seamlessly.
