@@ -1910,6 +1910,24 @@ describe('tmp_file_manager tool', () => {
         /Absolute path: \/home\/user\/\.zipline_tmp\/users\/testhash\/Test\.TXT/
       );
     });
+
+    it('should handle SandboxPathError from resolveSandboxPath gracefully', async () => {
+      const { resolveSandboxPath } = await import('./sandboxUtils.js');
+      const { SandboxPathError } = await import('./utils/security.js');
+      vi.mocked(resolveSandboxPath).mockImplementationOnce(() => {
+        throw new SandboxPathError('Path contains null bytes');
+      });
+
+      const handler = getToolHandler('tmp_file_manager');
+      if (!handler) throw new Error('Handler not found');
+
+      const result = await handler({ command: 'PATH test.txt' }, {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toMatch(
+        /❌ PATH refused: Path contains null bytes/
+      );
+    });
   });
 
   describe('DELETE command', () => {
