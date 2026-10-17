@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.33](https://github.com/dorogoy/zipline-mcp/compare/v1.12.32...v1.12.33) (2026-10-17)
+
+
+### Bug Fixes
+
+* add dotted IPv4 tail parsing and RFC 8367 / RFC 9374 IPv6 SSRF validation ([#260](https://github.com/dorogoy/zipline-mcp/issues/260)) ([1c9ab06](https://github.com/dorogoy/zipline-mcp/commit/1c9ab066e81d1a7d3ee914631a247bf4d3b5c6c1))
+* RFC 9383 ORCHIDv3 Special-Purpose IPv6 SSRF validation bypass ([#261](https://github.com/dorogoy/zipline-mcp/issues/261)) ([4472e9b](https://github.com/dorogoy/zipline-mcp/commit/4472e9b8560d04cac507792e6dd0238900566334))
+* SSRF bypass for RFC 7954 LISP EID Space IPv6 addresses ([#262](https://github.com/dorogoy/zipline-mcp/issues/262)) ([ac4f8e9](https://github.com/dorogoy/zipline-mcp/commit/ac4f8e9b1d18b22270d80459ade4281c3d53cb9a))
+
 ## [1.12.32](https://github.com/dorogoy/zipline-mcp/compare/v1.12.31...v1.12.32) (2026-10-14)
 
 
