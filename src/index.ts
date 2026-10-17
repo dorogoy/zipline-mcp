@@ -904,7 +904,22 @@ server.registerTool(
         content: [{ type: 'text', text: `❌ ${upperCmd} refused: ${err}` }],
         isError: true,
       };
-    const filePath = resolveSandboxPath(filename);
+    let filePath: string;
+    try {
+      filePath = resolveSandboxPath(filename);
+    } catch (e) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: maskSensitiveData(
+              `❌ ${upperCmd} refused: ${(e as Error).message}`
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
 
     if (upperCmd === 'CREATE') {
       try {
