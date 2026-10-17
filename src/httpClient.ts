@@ -818,6 +818,10 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0020) {
       return true;
     }
+    // RFC 9374 DRIP Entity Tags (DETs) (2001:30::/28) — IANA special-purpose, non-global
+    if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
+      return true;
+    }
     // RFC 7450 AMT (2001:3::/32)
     if (h0 === 0x2001 && h1 === 0x0003) {
       return true;
