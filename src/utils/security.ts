@@ -205,6 +205,10 @@ export function maskSensitiveData(input: string): string {
   const token = process.env.ZIPLINE_TOKEN ?? '';
   if (token) {
     masked = maskToken(masked, token);
+    const encodedToken = encodeURIComponent(token);
+    if (encodedToken !== token) {
+      masked = maskToken(masked, encodedToken);
+    }
   }
 
   // Mask raw JWTs, which carry credentials with no key name to match against
