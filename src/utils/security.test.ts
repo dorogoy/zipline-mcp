@@ -429,6 +429,15 @@ describe('Security Utils', () => {
       expect(result).toBe('Token: [REDACTED]');
     });
 
+    it('should mask URL-encoded ZIPLINE_TOKEN when token contains special characters', () => {
+      const originalToken = process.env.ZIPLINE_TOKEN;
+      process.env.ZIPLINE_TOKEN = 'secret+token/v1==';
+      const encodedToken = encodeURIComponent('secret+token/v1==');
+      const result = maskSensitiveData(`Query: token=${encodedToken}`);
+      expect(result).toBe('Query: token=[REDACTED]');
+      process.env.ZIPLINE_TOKEN = originalToken;
+    });
+
     it('should handle multiple occurrences of ZIPLINE_TOKEN', () => {
       const result = maskSensitiveData(
         'First: test-token-for-security, Second: test-token-for-security'
