@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.34](https://github.com/dorogoy/zipline-mcp/compare/v1.12.33...v1.12.34) (2026-10-18)
+
+
+### Bug Fixes
+
+* catch SandboxPathError in tmp_file_manager to fail securely ([45bd491](https://github.com/dorogoy/zipline-mcp/commit/45bd491b07423be0d9a5a2c16460dd466ea4663b))
+* **deps:** bump typescript-eslint from 8.67.0 to 8.71.2 ([abdfe3a](https://github.com/dorogoy/zipline-mcp/commit/abdfe3a743528350306fa8cb5db3ae1547269ae5))
+
 ## [1.12.33](https://github.com/dorogoy/zipline-mcp/compare/v1.12.32...v1.12.33) (2026-10-17)
 
 
