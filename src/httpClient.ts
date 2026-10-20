@@ -859,14 +859,23 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
       return true;
     }
-    // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
-    // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
+    // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1,
+    // Teredo Server IPv4 is hextets 2–3 (raw), and client IPv4 is hextets 6–7
+    // (raw or XOR 0xffff). Validate both Server and Client IPv4 for SSRF prevention.
     if (h0 === 0x2001 && h1 === 0) {
+      const serverHigh = hextets[2] ?? 0;
+      const serverLow = hextets[3] ?? 0;
       const rawHigh = hextets[6] ?? 0;
       const rawLow = hextets[7] ?? 0;
       const xorHigh = rawHigh ^ 0xffff;
       const xorLow = rawLow ^ 0xffff;
       if (
+        ((serverHigh !== 0 || serverLow !== 0) &&
+          isPrivateIPv4(
+            (serverHigh >> 8) & 0xff,
+            serverHigh & 0xff,
+            (serverLow >> 8) & 0xff
+          )) ||
         isPrivateIPv4(
           (xorHigh >> 8) & 0xff,
           xorHigh & 0xff,
