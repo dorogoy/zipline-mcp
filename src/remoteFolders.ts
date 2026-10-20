@@ -221,6 +221,9 @@ export async function createFolder(
   };
 
   if (files && files.length > 0) {
+    for (const fileId of files) {
+      validateId(fileId, 'fileId');
+    }
     requestBody.files = files;
   }
 

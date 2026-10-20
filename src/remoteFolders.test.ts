@@ -533,6 +533,22 @@ describe('createFolder', () => {
     });
   });
 
+  it('should throw InvalidIdError when files parameter contains an invalid file ID', async () => {
+    const invalidFileIds = ['../file', 'file/1', 'file\0', ''];
+
+    for (const invalidFileId of invalidFileIds) {
+      const options: CreateFolderOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        name: 'New Folder',
+        files: ['validFile1', invalidFileId],
+      };
+
+      await expect(createFolder(options)).rejects.toThrow(InvalidIdError);
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  });
+
   it('should create a folder with all parameters', async () => {
     // Arrange
     vi.mocked(fetch).mockResolvedValueOnce({
