@@ -545,6 +545,7 @@ describe('createFolder', () => {
       };
 
       await expect(createFolder(options)).rejects.toThrow(InvalidIdError);
+      expect(fetch).not.toHaveBeenCalled();
     }
   });
 
