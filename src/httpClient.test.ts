@@ -820,6 +820,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:0:7f00:1::a247:27dd')).toBe(true); // Server 127.0.0.1 loopback
       expect(isPrivateHost('2001:0:0a00:1::a247:27dd')).toBe(true); // Server 10.0.0.1 private
       expect(isPrivateHost('2001:0:a9fe:a9fe::a247:27dd')).toBe(true); // Server 169.254.169.254 link-local/metadata
+      expect(isPrivateHost('2001:0:0808:0808:0000:0000:6c47:27cb')).toBe(false); // public server 8.8.8.8 + public client stays allowed
       expect(isPrivateHost('2001:4860:4860::8888')).toBe(false);
 
       // 6to4 IPv6 (2002::/16)
