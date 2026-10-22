@@ -797,6 +797,8 @@ export function isPrivateHost(hostname: string): boolean {
     const h1 = hextets[1] ?? 0;
     const h2 = hextets[2] ?? 0;
     const h3 = hextets[3] ?? 0;
+    const h4 = hextets[4] ?? 0;
+    const h5 = hextets[5] ?? 0;
 
     // RFC 6666 Discard-Only (100::/64)
     if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) {
@@ -859,6 +861,47 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
       return true;
     }
+    // NAT64 RFC 6052 (64:ff9b::/96) and RFC 8215 (64:ff9b:1::/48)
+    if (
+      h0 === 0x0064 &&
+      h1 === 0xff9b &&
+      (h2 === 0 || h2 === 1) &&
+      h3 === 0 &&
+      h4 === 0 &&
+      h5 === 0
+    ) {
+      const high = hextets[6] ?? 0;
+      const low = hextets[7] ?? 0;
+      if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
+        return true;
+      }
+    }
+
+    // IPv4-mapped (::ffff:0:0/96) and IPv4-compatible (::/96)
+    if (
+      h0 === 0 &&
+      h1 === 0 &&
+      h2 === 0 &&
+      h3 === 0 &&
+      h4 === 0 &&
+      (h5 === 0xffff || h5 === 0)
+    ) {
+      const high = hextets[6] ?? 0;
+      const low = hextets[7] ?? 0;
+      if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
+        return true;
+      }
+    }
+
+    // ISATAP RFC 5214 (hextet 5 is 0x5efe)
+    if (h5 === 0x5efe) {
+      const high = hextets[6] ?? 0;
+      const low = hextets[7] ?? 0;
+      if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
+        return true;
+      }
+    }
+
     // Teredo RFC 4380 (2001:0::/32). Expand :: so the prefix is hextets 0–1
     // and the client IPv4 is hextets 6–7 (raw or XOR 0xffff), not a textual regex.
     if (h0 === 0x2001 && h1 === 0) {
