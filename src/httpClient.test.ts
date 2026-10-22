@@ -794,7 +794,8 @@ describe('Header Validation', () => {
       // ISATAP IPv6 (RFC 5214, :5efe:)
       expect(isPrivateHost('::5efe:127.0.0.1')).toBe(true);
       expect(isPrivateHost('::5efe:7f00:1')).toBe(true);
-      expect(isPrivateHost('2001:db8:0:0:0:5efe:7f00:1')).toBe(true);
+      expect(isPrivateHost('2001:4860:0:0:0:5efe:7f00:1.')).toBe(true);
+      expect(isPrivateHost('2001:4860:0:0:0:5efe:808:808.')).toBe(false);
       expect(isPrivateHost('::5efe:10.0.0.1')).toBe(true);
       expect(isPrivateHost('::5efe:a00:1')).toBe(true);
       expect(isPrivateHost('::5efe:169.254.169.254')).toBe(true);
