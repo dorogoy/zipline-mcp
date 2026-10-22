@@ -816,6 +816,11 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:0:53aa:1::80ff:fffe')).toBe(true); // middle-compressed 127.0.0.1 XOR
       expect(isPrivateHost('2001:0:1::5601:5601')).toBe(true); // middle-compressed 169.254.169.254 XOR
       expect(isPrivateHost('2001:0:4136:e378:8000:63bf:3fff:fdd2')).toBe(true); // RFC 4380 example, client 192.0.2.45
+      // Teredo Server IPv4 in hextets 2-3 validation
+      expect(isPrivateHost('2001:0:7f00:1::a247:27dd')).toBe(true); // Server 127.0.0.1 loopback
+      expect(isPrivateHost('2001:0:0a00:1::a247:27dd')).toBe(true); // Server 10.0.0.1 private
+      expect(isPrivateHost('2001:0:a9fe:a9fe::a247:27dd')).toBe(true); // Server 169.254.169.254 link-local/metadata
+      expect(isPrivateHost('2001:0:0808:0808:0000:0000:6c47:27cb')).toBe(false); // public server 8.8.8.8 + public client stays allowed
       expect(isPrivateHost('2001:4860:4860::8888')).toBe(false);
 
       // 6to4 IPv6 (2002::/16)
