@@ -491,6 +491,8 @@ export const remoteFolderManagerInputSchema = {
     ),
   page: z
     .number()
+    .int()
+    .positive()
     .optional()
     .describe(
       'Optional: Page number for pagination (for LIST command, default: none).'

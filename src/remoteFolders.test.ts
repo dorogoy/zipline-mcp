@@ -417,6 +417,23 @@ describe('listFolders', () => {
     expect(result).toEqual([]);
     expect(result.length).toBe(0);
   });
+
+  it('should throw an error when page is not a positive integer', async () => {
+    const invalidPages = [0, -1, -5, 1.5, NaN];
+
+    for (const invalidPage of invalidPages) {
+      const options: ListFoldersOptions = {
+        endpoint: mockEndpoint,
+        token: mockToken,
+        page: invalidPage,
+      };
+
+      await expect(listFolders(options)).rejects.toThrow(
+        'page must be a positive integer'
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  });
 });
 
 describe('createFolder', () => {
