@@ -881,6 +881,25 @@ describe('Header Validation', () => {
       expect(isPrivateHost('ff02::1')).toBe(true);
       expect(isPrivateHost('ff05::2')).toBe(true);
 
+      // Uncompressed IPv6 loopback, unspecified, link-local, ULA, and multicast
+      expect(isPrivateHost('0:0:0:0:0:0:0:1')).toBe(true);
+      expect(isPrivateHost('0:0:0:0:0:0:0:0')).toBe(true);
+      expect(isPrivateHost('0000:0000:0000:0000:0000:0000:0000:0001')).toBe(
+        true
+      );
+      expect(isPrivateHost('0000:0000:0000:0000:0000:0000:0000:0000')).toBe(
+        true
+      );
+      expect(isPrivateHost('fe80:0000:0000:0000:0000:0000:0000:0001')).toBe(
+        true
+      );
+      expect(isPrivateHost('fc00:0000:0000:0000:0000:0000:0000:0001')).toBe(
+        true
+      );
+      expect(isPrivateHost('ff02:0000:0000:0000:0000:0000:0000:0001')).toBe(
+        true
+      );
+
       // Multicast IPv4 (224.0.0.0/4) and Reserved / Broadcast IPv4 (240.0.0.0/4)
       expect(isPrivateHost('224.0.0.1')).toBe(true);
       expect(isPrivateHost('239.255.255.250')).toBe(true);
