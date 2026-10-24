@@ -798,6 +798,28 @@ export function isPrivateHost(hostname: string): boolean {
     const h2 = hextets[2] ?? 0;
     const h3 = hextets[3] ?? 0;
 
+    // IPv6 Unspecified :: and Loopback ::1
+    if (
+      h0 === 0 &&
+      h1 === 0 &&
+      h2 === 0 &&
+      h3 === 0 &&
+      hextets[4] === 0 &&
+      hextets[5] === 0 &&
+      hextets[6] === 0 &&
+      (hextets[7] === 0 || hextets[7] === 1)
+    ) {
+      return true;
+    }
+    // Link-Local (fe80::/10), ULA (fc00::/7), and Multicast (ff00::/8)
+    if (
+      (h0 & 0xffc0) === 0xfe80 ||
+      (h0 & 0xfe00) === 0xfc00 ||
+      (h0 & 0xff00) === 0xff00
+    ) {
+      return true;
+    }
+
     // RFC 6666 Discard-Only (100::/64)
     if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) {
       return true;
