@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.35](https://github.com/dorogoy/zipline-mcp/compare/v1.12.34...v1.12.35) (2026-10-24)
+
+
+### Bug Fixes
+
+* mask URL-encoded ZIPLINE_TOKEN in sensitive log output ([0ffbbef](https://github.com/dorogoy/zipline-mcp/commit/0ffbbefed13f78fb72af5218b4722c7b4ad1d42a))
+* prevent SSRF bypass via uncompressed IPv6 hextets ([#276](https://github.com/dorogoy/zipline-mcp/issues/276)) ([fba4616](https://github.com/dorogoy/zipline-mcp/commit/fba461675991f438aee9bec18eae52e697ca8eb3))
+* validate folder pagination page parameter ([#275](https://github.com/dorogoy/zipline-mcp/issues/275)) ([50a69e6](https://github.com/dorogoy/zipline-mcp/commit/50a69e6bc47ab53ba880f3d85f6f83cb5e423e7e))
+
 ## [1.12.34](https://github.com/dorogoy/zipline-mcp/compare/v1.12.33...v1.12.34) (2026-10-18)
 
 
