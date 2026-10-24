@@ -103,6 +103,10 @@ export async function listFolders(
 ): Promise<FullFolder[]> {
   const { endpoint, token, page, noincl } = options;
 
+  if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
+    throw new Error('page must be a positive integer');
+  }
+
   // Build the URL with query parameters
   const url = new URL(`${endpoint}/api/user/folders`);
 
