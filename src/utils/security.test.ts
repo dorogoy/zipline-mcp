@@ -658,6 +658,24 @@ describe('Security Utils', () => {
         expect(result.secretType).toBe('api_key');
       });
 
+      it('should detect AWS temporary access key pattern ASIA[0-9A-Z]{16}', () => {
+        const result = detectSecretPatterns(
+          'Access key: ASIAABCDEFGHIJKLMNOP',
+          'readme.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect AWS_ACCESS_KEY_ID= with temporary ASIA key', () => {
+        const result = detectSecretPatterns(
+          'AWS_ACCESS_KEY_ID=ASIAABCDEFGHIJKLMNOP',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
       it('should detect APIKEY= pattern', () => {
         const result = detectSecretPatterns('APIKEY=abc123', 'config.txt');
         expect(result.detected).toBe(true);
