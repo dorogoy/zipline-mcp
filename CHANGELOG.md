@@ -6,6 +6,14 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.36](https://github.com/dorogoy/zipline-mcp/compare/v1.12.35...v1.12.36) (2026-10-25)
+
+
+### Bug Fixes
+
+* **deps:** bump the npm_and_yarn group across 1 directory with 5 updates ([e7bfb05](https://github.com/dorogoy/zipline-mcp/commit/e7bfb05928264de895705f0189e96d8705add8c9))
+* detect AWS STS temporary access keys in secret scanner ([031d53c](https://github.com/dorogoy/zipline-mcp/commit/031d53c085ae98e06738f11ea583abe7b1ac53c9))
+
 ## [1.12.35](https://github.com/dorogoy/zipline-mcp/compare/v1.12.34...v1.12.35) (2026-10-24)
 
 
