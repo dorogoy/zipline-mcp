@@ -658,6 +658,24 @@ describe('Security Utils', () => {
         expect(result.secretType).toBe('api_key');
       });
 
+      it('should detect GitHub classic PAT (ghp_)', () => {
+        const result = detectSecretPatterns(
+          'ghp_1234567890abcdefghijklmnopqrstuvwxyz',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
+      it('should detect GitHub fine-grained PAT (github_pat_)', () => {
+        const result = detectSecretPatterns(
+          'github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
       it('should detect AWS temporary access key pattern ASIA[0-9A-Z]{16}', () => {
         const result = detectSecretPatterns(
           'Access key: ASIAABCDEFGHIJKLMNOP',
@@ -876,6 +894,15 @@ describe('Security Utils', () => {
         ]) {
           expect(detectSecretPatterns(content, 'key.pem').detected).toBe(false);
         }
+      });
+
+      it('should detect PuTTY private key format', () => {
+        const result = detectSecretPatterns(
+          'PuTTY-User-Key-File-2: ssh-rsa\nEncryption: none\nComment: test key',
+          'id_rsa.ppk'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('private_key');
       });
 
       it('should detect PRIVATE_KEY= pattern', () => {
