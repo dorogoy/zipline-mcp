@@ -658,13 +658,15 @@ describe('Security Utils', () => {
         expect(result.secretType).toBe('api_key');
       });
 
-      it('should detect GitHub classic PAT (ghp_)', () => {
-        const result = detectSecretPatterns(
-          'ghp_1234567890abcdefghijklmnopqrstuvwxyz',
-          'config.txt'
-        );
-        expect(result.detected).toBe(true);
-        expect(result.secretType).toBe('api_key');
+      it('should detect GitHub classic PAT and tokens (ghp_, gho_, ghu_, ghs_)', () => {
+        for (const prefix of ['ghp_', 'gho_', 'ghu_', 'ghs_']) {
+          const result = detectSecretPatterns(
+            `${prefix}1234567890abcdefghijklmnopqrstuvwxyz`,
+            'config.txt'
+          );
+          expect(result.detected).toBe(true);
+          expect(result.secretType).toBe('api_key');
+        }
       });
 
       it('should detect GitHub fine-grained PAT (github_pat_)', () => {
