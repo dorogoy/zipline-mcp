@@ -276,7 +276,7 @@ export function secureLog(message: string, ...args: unknown[]): void {
 
 const SECRET_PATTERNS = {
   apiKey:
-    /(?:api[_-]?key|apikey|aws_access_key_id)\s*[:=]\s*['"]?(?:[a-z0-9_-]{3,}|A[KS]IA[0-9A-Z]{16})['"]?|A[KS]IA[0-9A-Z]{16}/i,
+    /(?:api[_-]?key|apikey|aws_access_key_id)\s*[:=]\s*['"]?(?:[a-z0-9_-]{3,}|A[KS]IA[0-9A-Z]{16})['"]?|A[KS]IA[0-9A-Z]{16}|(?:ghp|gho|ghu|ghs)_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{22,255}/i,
   password: /(?:password|passwd|pass|pwd)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   secret:
     /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
@@ -285,7 +285,7 @@ const SECRET_PATTERNS = {
     'i'
   ),
   privateKey:
-    /-----BEGIN (?:[A-Z0-9_-]+\s+)*PRIVATE KEY(?: BLOCK)?-----|private[_-]?key\s*[:=]/i,
+    /-----BEGIN (?:[A-Z0-9_-]+\s+)*PRIVATE KEY(?: BLOCK)?-----|PuTTY-User-Key-File-[0-9]+:|private[_-]?key\s*[:=]/i,
 } as const;
 
 function isEnvFile(filename: string): boolean {
