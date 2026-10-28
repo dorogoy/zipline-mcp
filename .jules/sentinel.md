@@ -99,3 +99,9 @@
 **Vulnerability:** Teredo (`RFC 4380`, `2001:0::/32`) IPv6 addresses contain the Teredo Server IPv4 address in hextets 2 and 3 in standard hex-encoded IPv4 format (`WWXX:YYZZ`). SSRF filters inspecting only the Teredo Client IPv4 in hextets 6 and 7 failed to detect Teredo URLs targeting private, loopback, or cloud metadata Teredo servers specified in hextets 2 and 3 (e.g., `2001:0:7f00:1::`).
 **Learning:** Teredo IPv6 address structure embeds two distinct IPv4 addresses: the Teredo Server IPv4 address in hextets 2–3 (raw) and the Teredo Client IPv4 address in hextets 6–7 (XOR-inverted). Inspecting only the client IPv4 allows SSRF attacks to target internal or loopback Teredo servers via hextets 2–3.
 **Prevention:** SSRF host validation for `2001:0::/32` Teredo addresses must inspect hextets 2–3 (`serverHigh` and `serverLow`) when non-zero, extracting and classifying the Teredo Server IPv4 address against private, loopback, and cloud metadata IPv4 address ranges alongside client IPv4 checks.
+
+## 2026-09-27 - Defense-in-Depth Blocking of RFC 7535 AS112-v6 Surrounding 2001:4::/32 IPv6 Space
+
+**Vulnerability:** While RFC 7535 designates `2001:4:112::/48` for AS112-v6 DNS service, the surrounding `2001:4::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:4:112::/48` (`h0 === 0x2001 && h1 === 0x0004 && h2 === 0x0112`) allowed requests to unallocated `2001:4::/32` addresses like `2001:4:113::1`.
+**Learning:** Blocking `2001:4::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 7535 AS112-v6 range.
+**Prevention:** Match `h0 === 0x2001 && h1 === 0x0004` in IPv6 hextet array checks to block the entire `2001:4::/32` block as defense-in-depth alongside `2001:2::/32` and `2001:5::/32`.
