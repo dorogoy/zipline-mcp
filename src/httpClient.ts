@@ -862,8 +862,10 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0001) {
       return true;
     }
-    // RFC 7535 AS112-v6 (2001:4:112::/48)
-    if (h0 === 0x2001 && h1 === 0x0004 && h2 === 0x0112) {
+    // RFC 7535 AS112-v6 (2001:4:112::/48) plus the rest of 2001:4::/32,
+    // unallocated IETF-reserved space inside 2001::/23 (RFC 2928); blocked
+    // as defense-in-depth.
+    if (h0 === 0x2001 && h1 === 0x0004) {
       return true;
     }
     // LISP EID block per RFC 7954 (2001:5::/32) — experimental allocation; blocked as

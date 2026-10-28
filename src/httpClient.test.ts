@@ -945,7 +945,8 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:1:ffff::1')).toBe(true);
       expect(isPrivateHost('2001:4:112::1')).toBe(true);
       expect(isPrivateHost('2001:4:112::')).toBe(true);
-      expect(isPrivateHost('2001:4:113::1')).toBe(false); // just past AS112-v6 /48
+      expect(isPrivateHost('2001:4:113::1')).toBe(true); // 2001:4::/32 unallocated space (defense-in-depth)
+      expect(isPrivateHost('2001:4::1')).toBe(true);
       expect(isPrivateHost('2001:5::1')).toBe(true);
       expect(isPrivateHost('2001:5:ffff::1')).toBe(true);
       expect(isPrivateHost('2001:6::1')).toBe(false); // just past LISP EID 2001:5::/32
