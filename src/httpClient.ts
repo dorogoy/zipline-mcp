@@ -901,14 +901,13 @@ export function isPrivateHost(hostname: string): boolean {
       }
     }
 
-    // IPv4-mapped (::ffff:0:0/96) and IPv4-compatible (::/96)
+    // IPv4-mapped (::ffff:0:0/96), IPv4-compatible (::/96), and IPv4-translated (RFC 6145/7915 ::ffff:0:0:0/96)
     if (
       h0 === 0 &&
       h1 === 0 &&
       h2 === 0 &&
       h3 === 0 &&
-      h4 === 0 &&
-      (h5 === 0xffff || h5 === 0)
+      ((h4 === 0 && (h5 === 0xffff || h5 === 0)) || (h4 === 0xffff && h5 === 0))
     ) {
       const high = hextets[6] ?? 0;
       const low = hextets[7] ?? 0;
