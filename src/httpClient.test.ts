@@ -761,6 +761,10 @@ describe('Header Validation', () => {
       expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
       expect(isPrivateHost('::ffff:0:127.0.0.1')).toBe(true);
       expect(isPrivateHost('::ffff:0:7f00:1')).toBe(true);
+      expect(isPrivateHost('0:0:0:0:ffff:0:7f00:1')).toBe(true);
+      expect(isPrivateHost('::ffff:0:a00:1')).toBe(true);
+      expect(isPrivateHost('0:0:0:0:ffff:0:a00:1')).toBe(true);
+      expect(isPrivateHost('::ffff:0:a9fe:a9fe')).toBe(true);
 
       // IPv4-compatible IPv6
       expect(isPrivateHost('::127.0.0.1')).toBe(true);

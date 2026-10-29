@@ -105,3 +105,9 @@
 **Vulnerability:** While RFC 7535 designates `2001:4:112::/48` for AS112-v6 DNS service, the surrounding `2001:4::/32` block resides in unallocated IETF protocol assignment space within `2001::/23` (RFC 2928). SSRF filters checking only `2001:4:112::/48` (`h0 === 0x2001 && h1 === 0x0004 && h2 === 0x0112`) allowed requests to unallocated `2001:4::/32` addresses like `2001:4:113::1`.
 **Learning:** Blocking `2001:4::/32` completely provides defense-in-depth against SSRF to unallocated IETF-reserved IPv6 space surrounding the RFC 7535 AS112-v6 range.
 **Prevention:** Match `h0 === 0x2001 && h1 === 0x0004` in IPv6 hextet array checks to block the entire `2001:4::/32` block as defense-in-depth alongside `2001:2::/32` and `2001:5::/32`.
+
+## 2026-09-28 - Defense-in-Depth for RFC 6145 / RFC 7915 IPv4-Translated IPv6 Addresses in Expanded Hextet Parsing
+
+**Vulnerability:** RFC 6145 / RFC 7915 defines `::ffff:0:0:0/96` (`0:0:0:0:ffff:0:W.X.Y.Z`) as the IPv4-translated IPv6 address format. While regex parsing (`ipv4MappedHex`) caught advertised hex-encoded IPv4-translated forms, the secondary hextet array inspection arm checked only `h4 === 0` (IPv4-mapped and IPv4-compatible), omitting the `h4 === 0xffff && h5 === 0` case.
+**Learning:** In SIIT / IPv4-translated IPv6 notation (RFC 6145 §2.1 and RFC 7915 §2.1), hextet 4 is `0xffff` and hextet 5 is `0`. Aligning the expanded hextet parser with the regex parser provides a consistent secondary defense layer.
+**Prevention:** Include `(h4 === 0xffff && h5 === 0)` alongside IPv4-mapped (`h4 === 0 && h5 === 0xffff`) and IPv4-compatible (`h4 === 0 && h5 === 0`) in expanded hextet array inspection to ensure defense-in-depth coverage across all parsing pipelines.
