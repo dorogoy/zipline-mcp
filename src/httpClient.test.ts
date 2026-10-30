@@ -787,10 +787,18 @@ describe('Header Validation', () => {
       expect(isPrivateHost('64:ff9b:1::127.0.0.1')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::7f00:1')).toBe(true);
       expect(isPrivateHost('64:ff9b:1:0:0:0:7f00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:7f00:1::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:127.0.0.1::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:7f00:1:0:0')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:808:808::')).toBe(false);
       expect(isPrivateHost('64:ff9b:1::10.0.0.1')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::a00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:a00:1::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:10.0.0.1::')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::169.254.169.254')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::a9fe:a9fe')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:a9fe:a9fe::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:0:169.254.169.254::')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::8.8.8.8')).toBe(false);
       expect(isPrivateHost('0:0:0:0:0:ffff:7f00:1')).toBe(true);
       expect(isPrivateHost('0:0:0:0:0:0:7f00:1')).toBe(true);

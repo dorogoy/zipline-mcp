@@ -111,3 +111,9 @@
 **Vulnerability:** RFC 6145 / RFC 7915 defines `::ffff:0:0:0/96` (`0:0:0:0:ffff:0:W.X.Y.Z`) as the IPv4-translated IPv6 address format. While regex parsing (`ipv4MappedHex`) caught advertised hex-encoded IPv4-translated forms, the secondary hextet array inspection arm checked only `h4 === 0` (IPv4-mapped and IPv4-compatible), omitting the `h4 === 0xffff && h5 === 0` case.
 **Learning:** In SIIT / IPv4-translated IPv6 notation (RFC 6145 §2.1 and RFC 7915 §2.1), hextet 4 is `0xffff` and hextet 5 is `0`. Aligning the expanded hextet parser with the regex parser provides a consistent secondary defense layer.
 **Prevention:** Include `(h4 === 0xffff && h5 === 0)` alongside IPv4-mapped (`h4 === 0 && h5 === 0xffff`) and IPv4-compatible (`h4 === 0 && h5 === 0`) in expanded hextet array inspection to ensure defense-in-depth coverage across all parsing pipelines.
+
+## 2026-09-29 - RFC 8215 Local-Use NAT64 IPv6 SSRF Validation Bypass via Hextets 4–5 and Embedded Dotted-Decimal Addresses
+
+**Vulnerability:** Under RFC 6052 §2.2, a 48-bit prefix like RFC 8215 Local-Use NAT64 (`64:ff9b:1::/48`) places the embedded 32-bit IPv4 address in bits 64..95 (hextets 4 and 5). SSRF filters checking only hextets 6 and 7 under the assumption that hextets 4 and 5 are zero failed to detect NAT64 addresses with IPv4 targets in hextets 4 and 5 (e.g. `64:ff9b:1:0:7f00:1::` or `64:ff9b:1:0:127.0.0.1::`).
+**Learning:** NAT64 gateways translating `64:ff9b:1::/48` construct IPv4-embedded addresses where the IPv4 target resides in hextets 4 and 5 or hextets 6 and 7. Furthermore, `expandIpv6Hextets` only looked for dotted-decimal IPv4 at the end of host strings, missing embedded dotted-decimal IPv4 preceding trailing `::` compression.
+**Prevention:** Expand embedded dotted-decimal IPv4 addresses anywhere within IPv6 strings into hex hextets during `expandIpv6Hextets`, and inspect both hextets 4–5 and hextets 6–7 in `isPrivateHost` when evaluating RFC 8215 NAT64 IPv6 prefixes.
