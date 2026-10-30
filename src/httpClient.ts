@@ -884,8 +884,8 @@ export function isPrivateHost(hostname: string): boolean {
       return true;
     }
     // NAT64 RFC 6052 (64:ff9b::/96) and RFC 8215 (64:ff9b:1::/48)
-    if (h0 === 0x0064 && h1 === 0xff9b && h3 === 0) {
-      if (h2 === 0 && h4 === 0 && h5 === 0) {
+    if (h0 === 0x0064 && h1 === 0xff9b) {
+      if (h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
         const high = hextets[6] ?? 0;
         const low = hextets[7] ?? 0;
         if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
@@ -893,6 +893,17 @@ export function isPrivateHost(hostname: string): boolean {
         }
       }
       if (h2 === 1) {
+        // RFC 6052 §2.2 /48 placement: IPv4 = bits 48..63 (hextet 3) + bits 72..87 (h4 low byte + h5 high byte);
+        // u-octet (bits 64..71, high byte of hextet 4) MUST be 0.
+        if (h3 !== 0) {
+          const uOctet = ((hextets[4] ?? 0) >>> 8) & 0xff;
+          if (uOctet !== 0) return true; // invalid embedding, block as defense-in-depth
+          const p1 = (h3 >> 8) & 0xff;
+          const p2 = h3 & 0xff;
+          const p3 = (hextets[4] ?? 0) & 0xff;
+          return isPrivateIPv4(p1, p2, p3);
+        }
+        // /64 placement (hextets 4–5) or /96 placement (hextets 6–7)
         const high4 = hextets[4] ?? 0;
         const low5 = hextets[5] ?? 0;
         if (high4 !== 0 || low5 !== 0) {

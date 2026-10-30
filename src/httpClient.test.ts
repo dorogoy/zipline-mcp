@@ -787,6 +787,10 @@ describe('Header Validation', () => {
       expect(isPrivateHost('64:ff9b:1::127.0.0.1')).toBe(true);
       expect(isPrivateHost('64:ff9b:1::7f00:1')).toBe(true);
       expect(isPrivateHost('64:ff9b:1:0:0:0:7f00:1')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:c0a8:1:100::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:7f00:1::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:a9fe:a9:fe00::')).toBe(true);
+      expect(isPrivateHost('64:ff9b:1:808:8:800::')).toBe(false);
       expect(isPrivateHost('64:ff9b:1:0:7f00:1::')).toBe(true);
       expect(isPrivateHost('64:ff9b:1:0:127.0.0.1::')).toBe(true);
       expect(isPrivateHost('64:ff9b:1:0:7f00:1:0:0')).toBe(true);
