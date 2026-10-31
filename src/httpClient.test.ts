@@ -951,6 +951,14 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:4:112::')).toBe(true);
       expect(isPrivateHost('2001:4:113::1')).toBe(true); // 2001:4::/32 unallocated space (defense-in-depth)
       expect(isPrivateHost('2001:4::1')).toBe(true);
+      // RFC 7535 Direct Delegation AS112 Service (2620:4f:8000::/48)
+      expect(isPrivateHost('2620:4f:8000::1')).toBe(true);
+      expect(isPrivateHost('2620:4f:8000::')).toBe(true);
+      expect(isPrivateHost('2620:4f:8000:0:0:0:0:1')).toBe(true);
+      expect(isPrivateHost('2620:4f:8000::ffff:ffff')).toBe(true);
+      expect(isPrivateHost('2620:4f:8000::192.0.2.1')).toBe(true);
+      expect(isPrivateHost('2620:4f:7fff::1')).toBe(false); // boundary check before /48
+      expect(isPrivateHost('2620:4f:8001::1')).toBe(false); // boundary check after /48
       expect(isPrivateHost('2001:5::1')).toBe(true);
       expect(isPrivateHost('2001:5:ffff::1')).toBe(true);
       expect(isPrivateHost('2001:6::1')).toBe(false); // just past LISP EID 2001:5::/32
