@@ -951,7 +951,7 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:4:112::')).toBe(true);
       expect(isPrivateHost('2001:4:113::1')).toBe(true); // 2001:4::/32 unallocated space (defense-in-depth)
       expect(isPrivateHost('2001:4::1')).toBe(true);
-      // RFC 7535 Direct Delegation AS112 Service (2620:4f:8000::/48)
+      // RFC 7534 Direct Delegation AS112 Service (2620:4f:8000::/48)
       expect(isPrivateHost('2620:4f:8000::1')).toBe(true);
       expect(isPrivateHost('2620:4f:8000::')).toBe(true);
       expect(isPrivateHost('2620:4f:8000:0:0:0:0:1')).toBe(true);
