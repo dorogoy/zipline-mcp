@@ -636,27 +636,25 @@ export function validateFolder(folder: string): void {
   }
 }
 
-/** Expand a textual IPv6 address into eight hextets. Handles optional dotted IPv4 tail. */
+/** Expand a textual IPv6 address into eight hextets. Handles embedded dotted IPv4. */
 function expandIpv6Hextets(host: string): number[] | null {
   if (!host.includes(':')) return null;
 
   let normalizedHost = host;
-  const lastColon = host.lastIndexOf(':');
-  if (lastColon !== -1) {
-    const tail = host.slice(lastColon + 1);
-    const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(tail);
-    if (ipv4Match) {
-      const p1 = Number(ipv4Match[1]);
-      const p2 = Number(ipv4Match[2]);
-      const p3 = Number(ipv4Match[3]);
-      const p4 = Number(ipv4Match[4]);
-      if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
-        const h1 = ((p1 << 8) | p2).toString(16);
-        const h2 = ((p3 << 8) | p4).toString(16);
-        normalizedHost = `${host.slice(0, lastColon)}:${h1}:${h2}`;
-      } else {
-        return null;
-      }
+  const ipv4Match = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/.exec(
+    normalizedHost
+  );
+  if (ipv4Match) {
+    const p1 = Number(ipv4Match[1]);
+    const p2 = Number(ipv4Match[2]);
+    const p3 = Number(ipv4Match[3]);
+    const p4 = Number(ipv4Match[4]);
+    if (p1 <= 255 && p2 <= 255 && p3 <= 255 && p4 <= 255) {
+      const h1 = ((p1 << 8) | p2).toString(16);
+      const h2 = ((p3 << 8) | p4).toString(16);
+      normalizedHost = normalizedHost.replace(ipv4Match[0], `${h1}:${h2}`);
+    } else {
+      return null;
     }
   }
 
@@ -886,18 +884,42 @@ export function isPrivateHost(hostname: string): boolean {
       return true;
     }
     // NAT64 RFC 6052 (64:ff9b::/96) and RFC 8215 (64:ff9b:1::/48)
-    if (
-      h0 === 0x0064 &&
-      h1 === 0xff9b &&
-      (h2 === 0 || h2 === 1) &&
-      h3 === 0 &&
-      h4 === 0 &&
-      h5 === 0
-    ) {
-      const high = hextets[6] ?? 0;
-      const low = hextets[7] ?? 0;
-      if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
-        return true;
+    if (h0 === 0x0064 && h1 === 0xff9b) {
+      if (h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
+        const high = hextets[6] ?? 0;
+        const low = hextets[7] ?? 0;
+        if (isPrivateIPv4((high >> 8) & 0xff, high & 0xff, (low >> 8) & 0xff)) {
+          return true;
+        }
+      }
+      if (h2 === 1) {
+        // RFC 6052 §2.2 /48 placement: IPv4 = bits 48..63 (hextet 3) + bits 72..87 (h4 low byte + h5 high byte);
+        // u-octet (bits 64..71, high byte of hextet 4) MUST be 0.
+        if (h3 !== 0) {
+          const uOctet = ((hextets[4] ?? 0) >>> 8) & 0xff;
+          if (uOctet !== 0) return true; // invalid embedding, block as defense-in-depth
+          const p1 = (h3 >> 8) & 0xff;
+          const p2 = h3 & 0xff;
+          const p3 = (hextets[4] ?? 0) & 0xff;
+          return isPrivateIPv4(p1, p2, p3);
+        }
+        // /64 placement (hextets 4–5) or /96 placement (hextets 6–7)
+        const high4 = hextets[4] ?? 0;
+        const low5 = hextets[5] ?? 0;
+        if (high4 !== 0 || low5 !== 0) {
+          return isPrivateIPv4(
+            (high4 >> 8) & 0xff,
+            high4 & 0xff,
+            (low5 >> 8) & 0xff
+          );
+        }
+        const high6 = hextets[6] ?? 0;
+        const low7 = hextets[7] ?? 0;
+        return isPrivateIPv4(
+          (high6 >> 8) & 0xff,
+          high6 & 0xff,
+          (low7 >> 8) & 0xff
+        );
       }
     }
 
