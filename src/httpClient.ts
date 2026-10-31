@@ -868,6 +868,10 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && h1 === 0x0004) {
       return true;
     }
+    // RFC 7535 Direct Delegation AS112 Service (2620:4f:8000::/48)
+    if (h0 === 0x2620 && h1 === 0x004f && h2 === 0x8000) {
+      return true;
+    }
     // LISP EID block per RFC 7954 (2001:5::/32) — experimental allocation; blocked as
     // defense-in-depth against unallocated space inside 2001::/23 (RFC 2928), like 2001:2::/32 above.
     if (h0 === 0x2001 && h1 === 0x0005) {

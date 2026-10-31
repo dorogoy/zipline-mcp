@@ -111,3 +111,9 @@
 **Vulnerability:** RFC 6145 / RFC 7915 defines `::ffff:0:0:0/96` (`0:0:0:0:ffff:0:W.X.Y.Z`) as the IPv4-translated IPv6 address format. While regex parsing (`ipv4MappedHex`) caught advertised hex-encoded IPv4-translated forms, the secondary hextet array inspection arm checked only `h4 === 0` (IPv4-mapped and IPv4-compatible), omitting the `h4 === 0xffff && h5 === 0` case.
 **Learning:** In SIIT / IPv4-translated IPv6 notation (RFC 6145 §2.1 and RFC 7915 §2.1), hextet 4 is `0xffff` and hextet 5 is `0`. Aligning the expanded hextet parser with the regex parser provides a consistent secondary defense layer.
 **Prevention:** Include `(h4 === 0xffff && h5 === 0)` alongside IPv4-mapped (`h4 === 0 && h5 === 0xffff`) and IPv4-compatible (`h4 === 0 && h5 === 0`) in expanded hextet array inspection to ensure defense-in-depth coverage across all parsing pipelines.
+
+## 2026-10-29 - RFC 7535 Direct Delegation AS112 Service IPv6 SSRF Validation Bypass
+
+**Vulnerability:** RFC 7535 defines `2620:4f:8000::/48` as the Direct Delegation AS112 Service IPv6 prefix (for sinkholing and answering reverse DNS queries for private address spaces). SSRF filters checking only standard special-purpose IPv6 ranges and `2001:4:112::/48` failed to detect requests targeting the `2620:4f:8000::/48` prefix.
+**Learning:** In RFC 7535, AS112 direct delegation defines both an IPv4 block (`192.175.48.0/24`) and an IPv6 block (`2620:4f:8000::/48`). While the IPv4 block and the legacy AS112-v6 prefix (`2001:4:112::/48`) were blocked, `2620:4f:8000::/48` resides outside `2001::/16` and requires an explicit prefix match.
+**Prevention:** Inspect expanded hextet arrays in `isPrivateHost` for `h0 === 0x2620 && h1 === 0x004f && h2 === 0x8000` to block direct delegation AS112 IPv6 addresses from SSRF attacks.
