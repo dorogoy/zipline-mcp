@@ -123,3 +123,9 @@
 **Vulnerability:** RFC 9602 allocates `5f00::/16` as a dedicated special-purpose prefix for Segment Routing over IPv6 (SRv6) Segment Identifiers (SIDs), designated by IANA as non-global (`Globally Reachable: False`). SSRF filters inspecting standard Special-Purpose IPv6 ranges (RFC 6666 Discard-Only, Documentation, ULA, Link-Local) omitted `5f00::/16`, allowing SSRF requests to target internal SR domain routing endpoints and interfaces.
 **Learning:** In SRv6 architectures, SIDs in `5f00::/16` do not follow standard RFC 4291 unicast address semantics, are restricted to contained SR domains, and must be filtered at domain boundaries. Standard IPv6 SSRF filters miss this entire /16 block unless `h0 === 0x5f00` is explicitly evaluated.
 **Prevention:** In `isPrivateHost`, check `h0 === 0x5f00` in the expanded hextet parser and add `^5f00:/i` to the fallback prefix pattern to block `5f00::/16` SRv6 SID addresses.
+
+## 2026-10-29 - Defense-in-Depth Blocking of RFC 7534 Direct Delegation AS112 Service IPv6 Space
+
+**Vulnerability:** RFC 7534 defines `2620:4f:8000::/48` as the Direct Delegation AS112 Service IPv6 prefix (for sinkholing and answering reverse DNS queries for private address spaces). SSRF filters checking only standard special-purpose IPv6 ranges and `2001:4:112::/48` did not cover the `2620:4f:8000::/48` prefix.
+**Learning:** In the AS112 architecture, RFC 7534 specifies `2620:4f:8000::/48` for direct delegation AS112 nameservers (whereas RFC 7535 documents `2001:4:112::/48`). While the IPv4 AS112 block and `2001:4:112::/48` were blocked, `2620:4f:8000::/48` resides in 2620::/16 and requires an explicit prefix match for defense-in-depth.
+**Prevention:** Inspect expanded hextet arrays in `isPrivateHost` for `h0 === 0x2620 && h1 === 0x004f && h2 === 0x8000` to block direct delegation AS112 IPv6 addresses from SSRF attacks as defense-in-depth.
