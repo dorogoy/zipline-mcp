@@ -952,6 +952,17 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2001:3f::ffff')).toBe(true);
       expect(isPrivateHost('2001:30::ffff:ffff')).toBe(true);
       expect(isPrivateHost('2001:40::1')).toBe(false); // just past the RFC 9374 DET /28
+
+      // RFC 9602 Segment Routing (SRv6) SIDs (5f00::/16)
+      expect(isPrivateHost('5f00::1')).toBe(true);
+      expect(isPrivateHost('5f00::')).toBe(true);
+      expect(isPrivateHost('5f00:0:0:0:0:0:0:1')).toBe(true);
+      expect(isPrivateHost('5f00:abcd:1234::1')).toBe(true);
+      expect(isPrivateHost('5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff')).toBe(
+        true
+      );
+      expect(isPrivateHost('5f00::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('5f01::1')).toBe(false); // just outside the 5f00::/16 prefix
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
