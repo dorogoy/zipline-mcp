@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.38](https://github.com/dorogoy/zipline-mcp/compare/v1.12.37...v1.12.38) (2026-11-01)
+
+
+### Bug Fixes
+
+* block RFC 7535 direct delegation AS112 IPv6 SSRF bypass ([#288](https://github.com/dorogoy/zipline-mcp/issues/288)) ([020a7d4](https://github.com/dorogoy/zipline-mcp/commit/020a7d4f012ca4d8951936cfe20ae678d4570c84))
+* **deps:** bump typescript-eslint from 8.71.2 to 8.72.1 ([6fc5f91](https://github.com/dorogoy/zipline-mcp/commit/6fc5f919131ea791acc116cc731dae9f623d97c5))
+* RFC 9602 SRv6 SIDs IPv6 SSRF Validation Bypass ([#292](https://github.com/dorogoy/zipline-mcp/issues/292)) ([2590e70](https://github.com/dorogoy/zipline-mcp/commit/2590e706654a02328346d4c29ce51fc13f122f6f))
+
 ## [1.12.37](https://github.com/dorogoy/zipline-mcp/compare/v1.12.36...v1.12.37) (2026-10-29)
 
 
