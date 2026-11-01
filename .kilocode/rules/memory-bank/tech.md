@@ -4,7 +4,7 @@ This project, the Zipline MCP Server, is built using the following key technolog
 
 ## Core Technologies
 
-- **Node.js**: The JavaScript runtime environment. The project specifies Node.js v18 or higher.
+- **Node.js**: The JavaScript runtime environment. The project specifies Node.js v26 or higher.
 - **TypeScript**: A superset of JavaScript that adds static typing. Configured with `module: NodeNext` for modern ESM module resolution.
 - **ESM Modules**: Mandatory use of `.js` extensions in all relative imports (e.g., `./utils/security.js`) to ensure Node.js compatibility.
 - **@modelcontextprotocol/sdk**: The SDK for implementing MCP (Model Context Protocol) servers. This is fundamental for enabling communication with MCP clients.
@@ -23,7 +23,7 @@ This project, the Zipline MCP Server, is built using the following key technolog
 
 ## Technical Constraints & Considerations
 
-- **Node.js Version**: Requires Node.js 18 or higher due to reliance on native `fetch` and `Blob`/`FormData` APIs.
+- **Node.js Version**: Requires Node.js 26 or higher due to reliance on native `fetch` and `Blob`/`FormData` APIs.
 - **Environment Variables**: `ZIPLINE_TOKEN` and `ZIPLINE_ENDPOINT` are critical environment variables for Zipline authentication and server configuration.
 - **Secure Sandboxing**: The `tmp_file_manager` and `download_external_url` tools implement secure sandboxing for temporary file operations, isolating user data and preventing path traversal.
 - **File Size Limits**: Downloads and reads from `tmp_file_manager` have defined maximum file sizes (e.g., 100MB for downloads, 1MB for reads).
