@@ -1082,7 +1082,7 @@ User-specific paths are masked with `[HASH]` to prevent token leakage in logs wh
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v26 or higher)
 - npm or yarn
 
 ### Setup
