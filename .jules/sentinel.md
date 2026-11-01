@@ -118,6 +118,12 @@
 **Learning:** NAT64 translators emitting RFC 8215 local-use addresses format IPv4 targets across hextet 3 and hextets 4–5 according to RFC 6052 §2.2. While WHATWG `URL` parser rejects non-tail dotted notation before host checks execute, raw hex placements like `64:ff9b:1:c0a8:1:100::` pass URL parsing and bypass host filters unless hextet 3 split bits are evaluated.
 **Prevention:** In `isPrivateHost`, evaluate `h3 !== 0` for RFC 6052 /48 split placement (`p1=h3>>8, p2=h3&0xff, p3=h4&0xff`), check hextets 4–5 for /64 placement, and inspect hextets 6–7 for /96 placement.
 
+## 2026-09-30 - RFC 9602 Segment Routing (SRv6) SIDs (5f00::/16) IPv6 SSRF Validation Bypass
+
+**Vulnerability:** RFC 9602 allocates `5f00::/16` as a dedicated special-purpose prefix for Segment Routing over IPv6 (SRv6) Segment Identifiers (SIDs), designated by IANA as non-global (`Globally Reachable: False`). SSRF filters inspecting standard Special-Purpose IPv6 ranges (RFC 6666 Discard-Only, Documentation, ULA, Link-Local) omitted `5f00::/16`, allowing SSRF requests to target internal SR domain routing endpoints and interfaces.
+**Learning:** In SRv6 architectures, SIDs in `5f00::/16` do not follow standard RFC 4291 unicast address semantics, are restricted to contained SR domains, and must be filtered at domain boundaries. Standard IPv6 SSRF filters miss this entire /16 block unless `h0 === 0x5f00` is explicitly evaluated.
+**Prevention:** In `isPrivateHost`, check `h0 === 0x5f00` in the expanded hextet parser and add `^5f00:/i` to the fallback prefix pattern to block `5f00::/16` SRv6 SID addresses.
+
 ## 2026-10-29 - Defense-in-Depth Blocking of RFC 7534 Direct Delegation AS112 Service IPv6 Space
 
 **Vulnerability:** RFC 7534 defines `2620:4f:8000::/48` as the Direct Delegation AS112 Service IPv6 prefix (for sinkholing and answering reverse DNS queries for private address spaces). SSRF filters checking only standard special-purpose IPv6 ranges and `2001:4:112::/48` did not cover the `2620:4f:8000::/48` prefix.
