@@ -957,6 +957,8 @@ describe('Header Validation', () => {
       expect(isPrivateHost('5f00::1')).toBe(true);
       expect(isPrivateHost('5f00::')).toBe(true);
       expect(isPrivateHost('5f00:0:0:0:0:0:0:1')).toBe(true);
+      expect(isPrivateHost('5f00:0::1')).toBe(true); // partially compressed form
+      expect(isPrivateHost('5F00::1')).toBe(true); // uppercase, case-insensitive block
       expect(isPrivateHost('5f00:abcd:1234::1')).toBe(true);
       expect(isPrivateHost('5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff')).toBe(
         true
