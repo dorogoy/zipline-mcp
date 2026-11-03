@@ -820,8 +820,8 @@ export function isPrivateHost(hostname: string): boolean {
       return true;
     }
 
-    // RFC 6666 Discard-Only (100::/64)
-    if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) {
+    // RFC 6666 Discard-Only (100::/64) and RFC 9780 Dummy IPv6 Prefix (100:0:0:1::/64)
+    if (h0 === 0x0100 && h1 === 0 && h2 === 0 && (h3 === 0 || h3 === 1)) {
       return true;
     }
     // RFC 3849 Documentation (2001:db8::/32)

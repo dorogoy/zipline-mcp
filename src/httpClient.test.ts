@@ -940,9 +940,15 @@ describe('Header Validation', () => {
       expect(isPrivateHost('2002:c01f:c401::')).toBe(true); // 2002:192.31.196.1
       expect(isPrivateHost('2002:c0af:3001::')).toBe(true); // 2002:192.175.48.1
 
-      // Special-Purpose IPv6 ranges (RFC 6666 Discard-Only 100::/64, RFC 3849 Documentation 2001:db8::/32, RFC 9637 Documentation 3fff::/20, RFC 3879 Site-Local fec0::/10, RFC 7343 ORCHIDv2 2001:20::/28, RFC 7450 AMT 2001:3::/32, RFC 5180 Benchmarking 2001:2::/48, 2001:1::/32 [incl. RFC 7723 PCP Anycast], RFC 7535 AS112-v6 2001:4:112::/48, RFC 7954 LISP EID 2001:5::/32 [defense-in-depth], RFC 4843 ORCHID v1 2001:10::/28 [deprecated])
+      // Special-Purpose IPv6 ranges (RFC 6666 Discard-Only 100::/64, RFC 9780 Dummy IPv6 Prefix 100:0:0:1::/64, RFC 3849 Documentation 2001:db8::/32, RFC 9637 Documentation 3fff::/20, RFC 3879 Site-Local fec0::/10, RFC 7343 ORCHIDv2 2001:20::/28, RFC 7450 AMT 2001:3::/32, RFC 5180 Benchmarking 2001:2::/48, 2001:1::/32 [incl. RFC 7723 PCP Anycast], RFC 7535 AS112-v6 2001:4:112::/48, RFC 7954 LISP EID 2001:5::/32 [defense-in-depth], RFC 4843 ORCHID v1 2001:10::/28 [deprecated])
       expect(isPrivateHost('100::1')).toBe(true);
       expect(isPrivateHost('100::')).toBe(true);
+      expect(isPrivateHost('100:0:0:1::1')).toBe(true); // RFC 9780 Dummy IPv6 Prefix
+      expect(isPrivateHost('100:0:0:1::')).toBe(true);
+      expect(isPrivateHost('100:0:0:1:ffff:ffff:ffff:ffff')).toBe(true);
+      expect(isPrivateHost('100:0:0:1::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('100:0:0:2::1')).toBe(false); // just past RFC 9780 /64
+      expect(isPrivateHost('100:0:1::1')).toBe(false);
       expect(isPrivateHost('2001:db8::1')).toBe(true);
       expect(isPrivateHost('2001:db8:85a3::8a2e:370:7334')).toBe(true);
       expect(isPrivateHost('3fff::1')).toBe(true);
