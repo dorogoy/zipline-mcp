@@ -517,6 +517,32 @@ describe('downloadExternalUrl (TDD)', () => {
     });
   });
 
+  it('strips surrounding brackets from IPv6 host literals for DNS resolution', async () => {
+    vi.mocked(lookup).mockResolvedValue([
+      { address: '2606:4700:4700::1111', family: 6 },
+    ] as never);
+    let seen: RequestOptions | undefined;
+    installRequest((options, callback) => {
+      seen = options;
+      callback(
+        fakeResponse(200, { 'content-length': String(content.length) }, [
+          content,
+        ])
+      );
+    });
+
+    const { downloadExternalUrl } = await import('./httpClient.js');
+    await downloadExternalUrl('http://[2606:4700:4700::1111]/test.txt');
+
+    // lookup should be called with unbracketed IPv6 literal
+    expect(lookup).toHaveBeenCalledWith(
+      '2606:4700:4700::1111',
+      expect.objectContaining({ all: true, verbatim: true })
+    );
+    expect(seen?.hostname).toBe('2606:4700:4700::1111');
+    expect(seen?.servername).toBe('[2606:4700:4700::1111]');
+  });
+
   it('re-resolves a redirect and refuses a private answer', async () => {
     vi.mocked(lookup).mockImplementation((async (hostname: string) => {
       if (hostname === 'rebind.example') {

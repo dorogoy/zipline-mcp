@@ -268,9 +268,12 @@ interface PinnedAddress {
  * the one the socket must use.
  */
 async function resolvePinnedAddress(hostname: string): Promise<PinnedAddress> {
+  // Strip surrounding brackets from IPv6 host literals (e.g. "[2001:db8::1]" -> "2001:db8::1")
+  // so Node dns.lookup doesn't fail with ENOTFOUND on bracketed literals.
+  const cleanHostname = hostname.replace(/^\[|\]$/g, '');
   let records: { address: string; family: number }[];
   try {
-    records = await lookup(hostname, { all: true, verbatim: true });
+    records = await lookup(cleanHostname, { all: true, verbatim: true });
   } catch {
     throw new InvalidUrlError(`Host could not be resolved: ${hostname}`);
   }
