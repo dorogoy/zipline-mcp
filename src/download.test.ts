@@ -517,7 +517,7 @@ describe('downloadExternalUrl (TDD)', () => {
     });
   });
 
-  it('strips surrounding brackets from IPv6 host literals for DNS resolution', async () => {
+  it('strips surrounding brackets from IPv6 host literals for DNS resolution and omits SNI servername for IP literals', async () => {
     vi.mocked(lookup).mockResolvedValue([
       { address: '2606:4700:4700::1111', family: 6 },
     ] as never);
@@ -532,7 +532,7 @@ describe('downloadExternalUrl (TDD)', () => {
     });
 
     const { downloadExternalUrl } = await import('./httpClient.js');
-    await downloadExternalUrl('http://[2606:4700:4700::1111]/test.txt');
+    await downloadExternalUrl('https://[2606:4700:4700::1111]/test.txt');
 
     // lookup should be called with unbracketed IPv6 literal
     expect(lookup).toHaveBeenCalledWith(
@@ -540,7 +540,9 @@ describe('downloadExternalUrl (TDD)', () => {
       expect.objectContaining({ all: true, verbatim: true })
     );
     expect(seen?.hostname).toBe('2606:4700:4700::1111');
-    expect(seen?.servername).toBe('[2606:4700:4700::1111]');
+    // servername must be undefined for IP addresses to prevent invalid SNI (RFC 6066)
+    // and avoid ERR_TLS_CERT_ALTNAME_INVALID on bracketed literals
+    expect(seen?.servername).toBeUndefined();
   });
 
   it('re-resolves a redirect and refuses a private answer', async () => {

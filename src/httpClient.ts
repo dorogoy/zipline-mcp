@@ -2,6 +2,7 @@ import { readFile, rm, open } from 'fs/promises';
 import http from 'http';
 import https from 'https';
 import { lookup } from 'dns/promises';
+import { isIP } from 'net';
 import type { IncomingMessage, IncomingHttpHeaders } from 'http';
 import type { LookupFunction } from 'net';
 import {
@@ -320,6 +321,8 @@ function requestPinned(
   signal: AbortSignal
 ): Promise<IncomingMessage> {
   const lib = target.protocol === 'https:' ? https : http;
+  // Strip brackets from target.hostname for IPv6 literals before checking if it's an IP
+  const cleanTargetHost = target.hostname.replace(/^\[|\]$/g, '');
   const options: https.RequestOptions = {
     protocol: target.protocol,
     hostname: pinned.address,
@@ -327,12 +330,17 @@ function requestPinned(
     method: 'GET',
     path: `${target.pathname}${target.search}`,
     headers: { host: target.host },
-    servername: target.hostname,
     // Host is the original name. The socket stays on the pinned address.
     setHost: false,
     lookup: pinnedLookup(pinned),
     signal,
   };
+  // Only set servername (SNI) when target host is a domain name.
+  // RFC 6066 and Node DEP0123 disallow SNI for IP addresses, and bracketed
+  // IPv6 literals break TLS certificate altname verification against iPAddress SANs.
+  if (!isIP(cleanTargetHost)) {
+    options.servername = cleanTargetHost;
+  }
   if (target.port) options.port = target.port;
 
   return new Promise((resolve, reject) => {
