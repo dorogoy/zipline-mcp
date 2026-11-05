@@ -6,6 +6,15 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.39](https://github.com/dorogoy/zipline-mcp/compare/v1.12.38...v1.12.39) (2026-11-05)
+
+
+### Bug Fixes
+
+* block RFC 9780 Dummy IPv6 Prefix in SSRF host checks ([#296](https://github.com/dorogoy/zipline-mcp/issues/296)) ([3f1437a](https://github.com/dorogoy/zipline-mcp/commit/3f1437a79506b8eed078d3599dd15ee709efb370))
+* **deps:** bump @hono/node-server ([128aea2](https://github.com/dorogoy/zipline-mcp/commit/128aea2327823ee16f55e3103edfa32682c5f059))
+* IPv6 literal bracket resolution in download pinning ([#299](https://github.com/dorogoy/zipline-mcp/issues/299)) ([a03bfcb](https://github.com/dorogoy/zipline-mcp/commit/a03bfcbea5d3713018fae22b1bb859b771793ee5))
+
 ## [1.12.38](https://github.com/dorogoy/zipline-mcp/compare/v1.12.37...v1.12.38) (2026-11-01)
 
 
