@@ -42,7 +42,7 @@
   "homepage": "https://github.com/dorogoy/zipline-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.2",
-    "file-type": "^21.3.0",
+    "file-type": "^22.3.0",
     "mime-types": "^3.0.1",
     "typescript-eslint": "^8.67.0",
     "zod": "^4.6.5"
