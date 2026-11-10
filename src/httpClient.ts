@@ -745,14 +745,24 @@ export function isPrivateHost(hostname: string): boolean {
   // Strip trailing dots (e.g. "localhost." -> "localhost")
   host = host.replace(/\.+$/, '');
 
-  // Local hostnames and domain aliases (RFC 6761)
+  // Local hostnames, special-use domain names (RFC 6761, RFC 7686, RFC 8375, RFC 9476), and local network aliases
   if (
     host === 'localhost' ||
     host.endsWith('.localhost') ||
     host === 'localhost.localdomain' ||
     host.endsWith('.localhost.localdomain') ||
+    host === 'local' ||
     host.endsWith('.local') ||
-    host.endsWith('.internal')
+    host === 'internal' ||
+    host.endsWith('.internal') ||
+    host === 'lan' ||
+    host.endsWith('.lan') ||
+    host === 'home.arpa' ||
+    host.endsWith('.home.arpa') ||
+    host === 'onion' ||
+    host.endsWith('.onion') ||
+    host === 'alt' ||
+    host.endsWith('.alt')
   ) {
     return true;
   }
@@ -892,14 +902,6 @@ export function isPrivateHost(hostname: string): boolean {
     }
     // RFC 4843 ORCHID v1 (2001:10::/28)
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0010) {
-      return true;
-    }
-    // RFC 8367 HNCP (2001:5::/32)
-    if (h0 === 0x2001 && h1 === 0x0005) {
-      return true;
-    }
-    // RFC 9374 Drone Remote ID / ORCHIDv3 (2001:30::/28)
-    if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
       return true;
     }
     // NAT64 RFC 6052 (64:ff9b::/96) and RFC 8215 (64:ff9b:1::/48)

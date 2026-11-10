@@ -188,6 +188,10 @@ describe('downloadExternalUrl (TDD)', () => {
     expect(isPrivateHost('::ffff:127.0.0.1')).toBe(true);
     expect(isPrivateHost('::ffff:7f00:1')).toBe(true);
     expect(isPrivateHost('::ffff:a9fe:a9fe')).toBe(true);
+    expect(isPrivateHost('home.arpa')).toBe(true);
+    expect(isPrivateHost('router.home.arpa')).toBe(true);
+    expect(isPrivateHost('device.lan')).toBe(true);
+    expect(isPrivateHost('printer.local')).toBe(true);
     expect(isPrivateHost('example.com')).toBe(false);
 
     const privateUrls = [
@@ -195,6 +199,10 @@ describe('downloadExternalUrl (TDD)', () => {
       'http://localhost./secret',
       'http://foo.localhost/secret',
       'http://localhost.localdomain/secret',
+      'http://home.arpa/admin',
+      'http://router.home.arpa/config',
+      'http://device.lan/status',
+      'http://printer.local/jobs',
       'http://127.0.0.1:8080/data',
       'http://169.254.169.254/latest/meta-data/',
       'http://10.0.0.1/admin',
