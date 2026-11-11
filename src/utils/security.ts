@@ -281,7 +281,7 @@ const SECRET_PATTERNS = {
   secret:
     /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   token: new RegExp(
-    `(?:token|auth[_-]?token|refresh_token|access_token)\\s*[:=]\\s*['"]?[a-z0-9_-]{3,}['"]?|${JWT_TOKEN_PATTERN.source}|xox[baprs]-[0-9a-zA-Z-]{10,}`,
+    `(?:token|auth[_-]?token|refresh_token|access_token)\\s*[:=]\\s*['"]?[a-z0-9_-]{3,}['"]?|${JWT_TOKEN_PATTERN.source}|xox[baprs]-[0-9a-zA-Z-]{20,}`,
     'i'
   ),
   privateKey:

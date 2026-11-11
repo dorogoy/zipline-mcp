@@ -656,15 +656,11 @@ describe('Security Utils', () => {
         );
         expect(result.detected).toBe(true);
         expect(result.secretType).toBe('api_key');
-      });
 
-      it('should detect GitLab personal access token (glpat-)', () => {
-        const result = detectSecretPatterns(
-          'glpat-0123456789abcdefghij',
-          'config.txt'
-        );
-        expect(result.detected).toBe(true);
-        expect(result.secretType).toBe('api_key');
+        // Boundary negative test: 19 characters after prefix should not match
+        expect(
+          detectSecretPatterns('glpat-' + 'a'.repeat(19), 'config.txt').detected
+        ).toBe(false);
       });
 
       it('should detect GitHub classic PAT and tokens (ghp_, gho_, ghu_, ghs_)', () => {
@@ -841,6 +837,11 @@ describe('Security Utils', () => {
           expect(result.detected).toBe(true);
           expect(result.secretType).toBe('token');
         }
+
+        // Boundary negative test: 19 characters after prefix should not match
+        expect(
+          detectSecretPatterns('xoxb-1234567890123456789', 'notes.txt').detected
+        ).toBe(false);
       });
     });
 
