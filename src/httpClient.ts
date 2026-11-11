@@ -904,6 +904,14 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0010) {
       return true;
     }
+    // RFC 8367 HNCP (2001:5::/32)
+    if (h0 === 0x2001 && h1 === 0x0005) {
+      return true;
+    }
+    // RFC 9374 Drone Remote ID / ORCHIDv3 (2001:30::/28)
+    if (h0 === 0x2001 && (h1 & 0xfff0) === 0x0030) {
+      return true;
+    }
     // NAT64 RFC 6052 (64:ff9b::/96) and RFC 8215 (64:ff9b:1::/48)
     if (h0 === 0x0064 && h1 === 0xff9b) {
       if (h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
