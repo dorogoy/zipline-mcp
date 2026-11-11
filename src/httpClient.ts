@@ -745,14 +745,24 @@ export function isPrivateHost(hostname: string): boolean {
   // Strip trailing dots (e.g. "localhost." -> "localhost")
   host = host.replace(/\.+$/, '');
 
-  // Local hostnames and domain aliases (RFC 6761)
+  // Local hostnames, special-use domain names (RFC 6761, RFC 7686, RFC 8375, RFC 9476), and local network aliases
   if (
     host === 'localhost' ||
     host.endsWith('.localhost') ||
     host === 'localhost.localdomain' ||
     host.endsWith('.localhost.localdomain') ||
+    host === 'local' ||
     host.endsWith('.local') ||
-    host.endsWith('.internal')
+    host === 'internal' ||
+    host.endsWith('.internal') ||
+    host === 'lan' ||
+    host.endsWith('.lan') ||
+    host === 'home.arpa' ||
+    host.endsWith('.home.arpa') ||
+    host === 'onion' ||
+    host.endsWith('.onion') ||
+    host === 'alt' ||
+    host.endsWith('.alt')
   ) {
     return true;
   }
