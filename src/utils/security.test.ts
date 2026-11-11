@@ -658,6 +658,15 @@ describe('Security Utils', () => {
         expect(result.secretType).toBe('api_key');
       });
 
+      it('should detect GitLab personal access token (glpat-)', () => {
+        const result = detectSecretPatterns(
+          'glpat-0123456789abcdefghij',
+          'config.txt'
+        );
+        expect(result.detected).toBe(true);
+        expect(result.secretType).toBe('api_key');
+      });
+
       it('should detect GitHub classic PAT and tokens (ghp_, gho_, ghu_, ghs_)', () => {
         for (const prefix of ['ghp_', 'gho_', 'ghu_', 'ghs_']) {
           const result = detectSecretPatterns(
@@ -821,6 +830,17 @@ describe('Security Utils', () => {
           'notes.txt'
         );
         expect(result.detected).toBe(false);
+      });
+
+      it('should detect raw Slack tokens (xoxb-, xoxp-, xoxa-, xoxr-, xoxs-)', () => {
+        for (const prefix of ['xoxb-', 'xoxp-', 'xoxa-', 'xoxr-', 'xoxs-']) {
+          const result = detectSecretPatterns(
+            `${prefix}123456789012-1234567890123-abcdefghijklmnopqrstuvwx`,
+            'notes.txt'
+          );
+          expect(result.detected).toBe(true);
+          expect(result.secretType).toBe('token');
+        }
       });
     });
 
