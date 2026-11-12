@@ -971,6 +971,18 @@ describe('Header Validation', () => {
       );
       expect(isPrivateHost('5f00::127.0.0.1')).toBe(true);
       expect(isPrivateHost('5f01::1')).toBe(false); // just outside the 5f00::/16 prefix
+
+      // RFC 3701 / RFC 5156 6bone and legacy Teredo (3ffe::/16)
+      expect(isPrivateHost('3ffe::1')).toBe(true);
+      expect(isPrivateHost('3ffe::')).toBe(true);
+      expect(isPrivateHost('3ffe:831f::1')).toBe(true); // legacy Teredo prefix in 3ffe::/16
+      expect(isPrivateHost('3FFE::1')).toBe(true); // case-insensitive
+      expect(isPrivateHost('3ffe:0:0:0:0:0:0:1')).toBe(true);
+      expect(isPrivateHost('3ffe:ffff:ffff:ffff:ffff:ffff:ffff:ffff')).toBe(
+        true
+      );
+      expect(isPrivateHost('3ffe::127.0.0.1')).toBe(true);
+      expect(isPrivateHost('3ffd::1')).toBe(false); // just below 3ffe::/16
       expect(isPrivateHost('2001:3::1')).toBe(true);
       expect(isPrivateHost('2001:2::1')).toBe(true);
       expect(isPrivateHost('2001:2::')).toBe(true);
