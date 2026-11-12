@@ -656,6 +656,11 @@ describe('Security Utils', () => {
         );
         expect(result.detected).toBe(true);
         expect(result.secretType).toBe('api_key');
+
+        // Boundary negative test: 19 characters after prefix should not match
+        expect(
+          detectSecretPatterns('glpat-' + 'a'.repeat(19), 'config.txt').detected
+        ).toBe(false);
       });
 
       it('should detect GitHub classic PAT and tokens (ghp_, gho_, ghu_, ghs_)', () => {
@@ -821,6 +826,22 @@ describe('Security Utils', () => {
           'notes.txt'
         );
         expect(result.detected).toBe(false);
+      });
+
+      it('should detect raw Slack tokens (xoxb-, xoxp-, xoxa-, xoxr-, xoxs-)', () => {
+        for (const prefix of ['xoxb-', 'xoxp-', 'xoxa-', 'xoxr-', 'xoxs-']) {
+          const result = detectSecretPatterns(
+            `${prefix}123456789012-1234567890123-abcdefghijklmnopqrstuvwx`,
+            'notes.txt'
+          );
+          expect(result.detected).toBe(true);
+          expect(result.secretType).toBe('token');
+        }
+
+        // Boundary negative test: 19 characters after prefix should not match
+        expect(
+          detectSecretPatterns('xoxb-1234567890123456789', 'notes.txt').detected
+        ).toBe(false);
       });
     });
 
