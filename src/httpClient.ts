@@ -847,6 +847,10 @@ export function isPrivateHost(hostname: string): boolean {
     if (h0 === 0x5f00) {
       return true;
     }
+    // RFC 3701 / RFC 5156 6bone and legacy Teredo testing (3ffe::/16) — decommissioned/reserved non-global space
+    if (h0 === 0x3ffe) {
+      return true;
+    }
     // RFC 3879 Deprecated Site-Local (fec0::/10)
     if ((h0 & 0xffc0) === 0xfec0) {
       return true;
@@ -1009,14 +1013,15 @@ export function isPrivateHost(hostname: string): boolean {
     }
   }
 
-  // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) / Multicast (ff00::/8) / SRv6 SIDs (5f00::/16) check
+  // General IPv6 loopback / link-local (fe80::/10) / ULA (fc00::/7) / Multicast (ff00::/8) / SRv6 SIDs (5f00::/16) / 6bone (3ffe::/16) check
   if (
     host === '::1' ||
     host === '::' ||
     /^fe[89ab][0-9a-f]:/i.test(host) ||
     /^f[cd][0-9a-f]{2}:/i.test(host) ||
     /^ff[0-9a-f]{2}:/i.test(host) ||
-    /^5f00:/i.test(host)
+    /^5f00:/i.test(host) ||
+    /^3ffe:/i.test(host)
   ) {
     return true;
   }

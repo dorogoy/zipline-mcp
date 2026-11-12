@@ -135,3 +135,9 @@
 **Vulnerability:** RFC 9780 defines `100:0:0:1::/64` as the Dummy IPv6 Prefix for OAM/MPLS packet destination addresses, designated in the IANA IPv6 Special-Purpose Address Registry as non-global and non-forwardable (`Globally Reachable: False`, `Forwardable: False`, `Destination: False`). SSRF filters inspecting RFC 6666 Discard-Only (`100::/64`) checked only `h3 === 0`, allowing `100:0:0:1::/64` addresses like `100:0:0:1::1` to pass `isPrivateHost`.
 **Learning:** RFC 9780 allocates `100:0:0:1::/64` inside the `100::/16` space, adjacent to RFC 6666 `100::/64` (`100:0:0:0::/64`). Because RFC 6666 checks required `h3 === 0`, addresses within `100:0:0:1::/64` bypassed the filter unless `h3 === 1` was also checked.
 **Prevention:** In `isPrivateHost`, expand the `100::` check to `h0 === 0x0100 && h1 === 0 && h2 === 0 && (h3 === 0 || h3 === 1)` to cover both RFC 6666 and RFC 9780 special-purpose blocks.
+
+## 2026-11-02 - RFC 3701 / RFC 5156 6bone and Legacy Teredo Testing Space (3ffe::/16) SSRF Validation Bypass
+
+**Vulnerability:** RFC 2471 / RFC 3701 / RFC 5156 defines `3ffe::/16` as the 6bone test network prefix, including `3ffe:831f::/32` which was historically used for early Teredo testing. Following 6bone phaseout, `3ffe::/16` was returned to IANA reserved space and is non-globally-routable. SSRF filters inspecting standard special-purpose IPv6 ranges omitted `3ffe::/16`, allowing SSRF requests to target legacy testing networks or non-routable interfaces.
+**Learning:** `3ffe::/16` was decommissioned under RFC 3701 and returned under RFC 5156, remaining IANA-reserved non-global unicast space. Standard unicast routing ignores it, but internal network testbeds or legacy dual-stack infrastructure may still bind or route `3ffe::/16` addresses.
+**Prevention:** In `isPrivateHost`, evaluate `h0 === 0x3ffe` in the expanded hextet parser and include `^3ffe:/i` in the fallback prefix regex to block `3ffe::/16` addresses.
