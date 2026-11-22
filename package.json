@@ -44,7 +44,7 @@
     "@modelcontextprotocol/sdk": "^1.17.2",
     "file-type": "^22.3.0",
     "mime-types": "^3.0.1",
-    "typescript-eslint": "^8.67.0",
+    "typescript-eslint": "^8.73.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
