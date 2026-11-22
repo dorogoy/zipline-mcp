@@ -276,12 +276,12 @@ export function secureLog(message: string, ...args: unknown[]): void {
 
 const SECRET_PATTERNS = {
   apiKey:
-    /(?:api[_-]?key|apikey|aws_access_key_id)\s*[:=]\s*['"]?(?:[a-z0-9_-]{3,}|A[KS]IA[0-9A-Z]{16})['"]?|A[KS]IA[0-9A-Z]{16}|(?:ghp|gho|ghu|ghs)_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{22,255}/i,
+    /(?:api[_-]?key|apikey|aws_access_key_id)\s*[:=]\s*['"]?(?:[a-z0-9_-]{3,}|A[KS]IA[0-9A-Z]{16})['"]?|A[KS]IA[0-9A-Z]{16}|(?:ghp|gho|ghu|ghs)_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{22,255}|glpat-[a-zA-Z0-9_-]{20,}/i,
   password: /(?:password|passwd|pass|pwd)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   secret:
     /(?:secret[_-]?key|client_secret|secret)\s*[:=]\s*['"]?[^\s'"]{3,}['"]?/i,
   token: new RegExp(
-    `(?:token|auth[_-]?token|refresh_token|access_token)\\s*[:=]\\s*['"]?[a-z0-9_-]{3,}['"]?|${JWT_TOKEN_PATTERN.source}`,
+    `(?:token|auth[_-]?token|refresh_token|access_token)\\s*[:=]\\s*['"]?[a-z0-9_-]{3,}['"]?|${JWT_TOKEN_PATTERN.source}|xox[baprs]-[0-9a-zA-Z-]{20,}`,
     'i'
   ),
   privateKey:

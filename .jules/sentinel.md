@@ -141,3 +141,15 @@
 **Vulnerability:** RFC 2471 / RFC 3701 / RFC 5156 defines `3ffe::/16` as the 6bone test network prefix, including `3ffe:831f::/32` which was historically used for early Teredo testing. Following 6bone phaseout, `3ffe::/16` was returned to IANA reserved space and is non-globally-routable. SSRF filters inspecting standard special-purpose IPv6 ranges omitted `3ffe::/16`, allowing SSRF requests to target legacy testing networks or non-routable interfaces.
 **Learning:** `3ffe::/16` was decommissioned under RFC 3701 and returned under RFC 5156, remaining IANA-reserved non-global unicast space. Standard unicast routing ignores it, but internal network testbeds or legacy dual-stack infrastructure may still bind or route `3ffe::/16` addresses.
 **Prevention:** In `isPrivateHost`, evaluate `h0 === 0x3ffe` in the expanded hextet parser and include `^3ffe:/i` in the fallback prefix regex to block `3ffe::/16` addresses.
+
+## 2026-11-02 - RFC 8375 `home.arpa` and Special-Use Domain SSRF Validation Bypass
+
+**Vulnerability:** RFC 8375 reserves `home.arpa` as the Special-Use Domain Name for non-unique residential home networks/devices (routers, IoT devices, home gateways). SSRF filters checking only `localhost`, `.local`, and `.internal` allowed requests targeting `home.arpa`, `router.home.arpa`, `.lan`, and non-DNS special-use domains (`.onion`, `.alt`), allowing SSRF to attack local homenet equipment or leak queries.
+**Learning:** In residential and small-office networks complying with RFC 8375 / HNCP, devices and routers resolve under `home.arpa` locally rather than public DNS. Because standard hostname checks checked only `localhost`, `.local`, and `.internal`, URLs like `http://router.home.arpa/admin` bypassed SSRF hostname validation.
+**Prevention:** In `isPrivateHost`, explicitly block `home.arpa`, `*.home.arpa`, bare `local`, `internal`, `lan`, `*.lan`, and special-use domains `*.onion` (RFC 7686) and `*.alt` (RFC 9476).
+
+## 2026-11-05 - Unkeyed GitLab Personal Access Token and Slack Token Secret Scanning Bypass
+
+**Vulnerability:** Files containing raw GitLab Personal Access Tokens (`glpat-[0-9a-zA-Z_-]{20,}`) and Slack API tokens (`xoxb-`, `xoxp-`, `xoxa-`, `xoxr-`, `xoxs-`) without an explicit prefix like `token=` or `api_key=` bypassed `detectSecretPatterns` and were accepted for upload.
+**Learning:** Unlike GitHub PATs (`ghp_`, `github_pat_`) and AWS access keys (`AKIA...`, `ASIA...`), GitLab PATs and Slack tokens have specific distinct token prefixes that can appear anywhere in configuration files, scripts, or documentation without an assignment operator. Relying solely on key-name prefix matching misses these credentials.
+**Prevention:** In `SECRET_PATTERNS`, include prefix signatures for standalone tokens (`glpat-[a-zA-Z0-9_-]{20,}` in `apiKey` and `xox[baprs]-[0-9a-zA-Z-]{10,}` in `token`) alongside JWT and GitHub PAT formats to catch unkeyed credential leaks.
