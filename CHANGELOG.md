@@ -6,6 +6,16 @@
 * **userFiles:** add get/update/delete user file tools ([f49ce5e](https://github.com/dorogoy/zipline-mcp/commit/f49ce5eb0e0b558e99b3b329f07da73c935fe375))
 * **userFiles:** add list_user_files tool and tests ([85b67fa](https://github.com/dorogoy/zipline-mcp/commit/85b67fa310c78847dcb7def1fdb16d27fcc463cd))
 
+## [1.12.40](https://github.com/dorogoy/zipline-mcp/compare/v1.12.39...v1.12.40) (2026-11-22)
+
+
+### Bug Fixes
+
+* block home.arpa and special-use local domains against SSRF ([#303](https://github.com/dorogoy/zipline-mcp/issues/303)) ([e58ac69](https://github.com/dorogoy/zipline-mcp/commit/e58ac69960ea1d967b2a8ca956652964b4d22412))
+* block RFC 5156 6bone and legacy Teredo 3ffe::/16 addresses in SSRF filter ([#305](https://github.com/dorogoy/zipline-mcp/issues/305)) ([a0382db](https://github.com/dorogoy/zipline-mcp/commit/a0382db4408ed80c073237eb080bb5b03681db00))
+* **deps:** bump file-type from 21.3.2 to 22.3.0 ([d0b575e](https://github.com/dorogoy/zipline-mcp/commit/d0b575e9b0e05a09fbea1639358d43fc30c4c0f2))
+* **deps:** bump hono ([66e277b](https://github.com/dorogoy/zipline-mcp/commit/66e277b545a058dd32664d7f5e9057aa189cf607))
+
 ## [1.12.39](https://github.com/dorogoy/zipline-mcp/compare/v1.12.38...v1.12.39) (2026-11-05)
 
 
