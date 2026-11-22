@@ -1048,6 +1048,28 @@ describe('Header Validation', () => {
       expect(isPrivateHost('93.184.216.34')).toBe(false);
       expect(isPrivateHost('::ffff:93.184.216.34')).toBe(false);
       expect(isPrivateHost('::5db8:d822')).toBe(false);
+
+      // Special-use, home.arpa (RFC 8375), and local domain blocking
+      expect(isPrivateHost('localhost')).toBe(true);
+      expect(isPrivateHost('app.localhost')).toBe(true);
+      expect(isPrivateHost('localhost.localdomain')).toBe(true);
+      expect(isPrivateHost('sub.localhost.localdomain')).toBe(true);
+      expect(isPrivateHost('local')).toBe(true);
+      expect(isPrivateHost('printer.local')).toBe(true);
+      expect(isPrivateHost('internal')).toBe(true);
+      expect(isPrivateHost('service.internal')).toBe(true);
+      expect(isPrivateHost('lan')).toBe(true);
+      expect(isPrivateHost('device.lan')).toBe(true);
+      expect(isPrivateHost('home.arpa')).toBe(true);
+      expect(isPrivateHost('router.home.arpa')).toBe(true);
+      expect(isPrivateHost('ROUTER.HOME.ARPA')).toBe(true);
+      expect(isPrivateHost('device.home.arpa.')).toBe(true);
+      expect(isPrivateHost('hidden.onion')).toBe(true);
+      expect(isPrivateHost('onion')).toBe(true);
+      expect(isPrivateHost('myservice.alt')).toBe(true);
+      expect(isPrivateHost('alt')).toBe(true);
+      expect(isPrivateHost('example.com')).toBe(false);
+      expect(isPrivateHost('not-home-arpa.com')).toBe(false);
     });
 
     it('includes x-zipline-original-name header when provided', async () => {
